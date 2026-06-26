@@ -79,13 +79,48 @@ https://api.nenestudio.net/api/stripe/webhook
 
 ---
 
-## 4. Cloudflare Pagesで画面を公開
+## 4. 画面を公開（2つの方法）
+
+### 方法A：Render だけで公開（おすすめ・設定が少ない）
+
+Render の `nenestudio` サービスは **画面（HTML）と API の両方** を配信しています。  
+Cloudflare Pages は **不要** です。
+
+1. Render → **nenestudio** → **Settings** → **Custom Domains**
+2. 次の2つを追加：
+   - `nenestudio.net`
+   - `api.nenestudio.net`
+3. Render が表示する CNAME を **Cloudflare DNS** に登録：
+
+| タイプ | 名前 | 内容 |
+|--------|------|------|
+| CNAME | `@` または `nenestudio.net` | Render が指定するホスト名 |
+| CNAME | `api` | 同上（同じ Render サービス） |
+
+4. Cloudflare の **Proxy status** は一旦 **DNS only（灰色の雲）** にすると証明書が通りやすいです。
+
+### 方法B：Cloudflare Pages で画面を公開
 
 1. Cloudflare **Workers & Pages → Create application → Pages → Connect to Git**
-2. リポジトリ `kool858915-crypto/nenestudio` を接続し、**Root directory** は空欄のままにします。
+2. リポジトリ `kool858915-crypto/nenestudio` を接続
 3. **Build command**: 空欄 / **Build output directory**: `.`
-4. デプロイ完了後、**Custom domains** で `nenestudio.net` を追加します。
-5. 必要なら `www.nenestudio.net` → `nenestudio.net` へリダイレクトを設定します。
+4. **Custom domains** で `nenestudio.net` を追加
+
+または GitHub Actions（`.github/workflows/deploy-cloudflare-pages.yml`）を使う場合：
+
+1. Cloudflare → **My Profile → API Tokens** → 「Edit Cloudflare Workers」でトークン作成
+2. GitHub リポジトリ → **Settings → Secrets** に追加：
+   - `CLOUDFLARE_API_TOKEN`
+   - `CLOUDFLARE_ACCOUNT_ID`（ダッシュボード右サイドバーに表示）
+3. `main` へ push すると自動デプロイ
+
+ローカルから手動デプロイ：
+
+```powershell
+$env:CLOUDFLARE_API_TOKEN="..."
+$env:CLOUDFLARE_ACCOUNT_ID="..."
+.\scripts\deploy-cloudflare.ps1
+```
 
 ---
 
