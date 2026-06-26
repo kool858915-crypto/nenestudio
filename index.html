@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#4da3ff" />
+    <title>NENE Studio UI Wireframe</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="メニュー">
+        <div class="brand">
+          <span class="brand-mark">N</span>
+          <div>
+            <strong>NENE Studio</strong>
+            <small>AIツール作成</small>
+          </div>
+        </div>
+        <div class="language-switch" aria-label="Language">
+          <button class="language-button active" data-language="ja">日本語</button>
+          <button class="language-button" data-language="en">English</button>
+        </div>
+        <nav class="side-nav">
+          <button class="nav-item active" data-screen="create">作る</button>
+          <button class="nav-item" data-screen="login">ログイン</button>
+          <button class="nav-item" data-screen="usage">使い方</button>
+          <button class="nav-item" data-screen="saved">保存済み</button>
+          <button class="nav-item" data-screen="agent">AIエージェント作成</button>
+          <button class="nav-item" data-screen="terms">利用規約</button>
+          <button class="nav-item" data-screen="privacy">プライバシーポリシー</button>
+          <button class="nav-item" data-screen="contact">お問い合わせ</button>
+          <button class="nav-item" data-screen="settings">設定</button>
+        </nav>
+      </aside>
+
+      <main class="workspace">
+        <section class="topbar">
+          <div>
+            <p class="eyebrow">MVPワイヤーフレーム</p>
+            <h1 id="screen-title">何を作りますか？</h1>
+          </div>
+          <button class="primary-action" id="main-action">AIツールを作成する</button>
+        </section>
+
+        <section class="create-progress" id="create-progress" aria-label="作る手順">
+          <button class="step-item active" data-step-screen="create"><span>1</span>内容を決める</button>
+          <button class="step-item" data-step-screen="proposal"><span>2</span>提案を選ぶ</button>
+          <button class="step-item" data-step-screen="nodes"><span>3</span>部品を組む</button>
+          <button class="step-item" data-step-screen="blueprint"><span>4</span>内容確認</button>
+          <button class="step-item" data-step-screen="export"><span>5</span>ツール作成</button>
+        </section>
+
+        <section class="screen" id="login">
+          <div class="section-heading">
+            <p class="eyebrow">ログイン</p>
+            <h2>メールアドレスでユーザーを判定します。</h2>
+            <p>保存済みツール、課金状態、広告なしフラグはサーバーのデータベースに保存します。</p>
+          </div>
+          <div class="auth-grid">
+            <article class="question-card compact-card">
+              <p class="step-count">アカウント</p>
+              <h2>ログイン / 新規登録</h2>
+              <label>メールアドレス<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
+              <label>パスワード<input id="auth-password" type="password" autocomplete="current-password" placeholder="8文字以上" /></label>
+              <div class="button-row">
+                <button class="primary" id="login-button" type="button">ログイン</button>
+                <button class="secondary" id="register-button" type="button">新規登録</button>
+                <button class="secondary" id="logout-button" type="button">ログアウト</button>
+              </div>
+              <p class="status-message" id="auth-status">ログインしていません。</p>
+            </article>
+            <article class="question-card compact-card">
+              <p class="step-count">安全管理</p>
+              <h2>サーバーで保護する情報</h2>
+              <p>OpenAI APIキー、Stripeの秘密キー、Webhook署名キーはブラウザに置かず、サーバーの環境変数で管理します。</p>
+              <p>広告なし判定はStripe Webhookで更新された課金状態だけを信用します。</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="screen active" id="create">
+          <div class="intro-panel">
+            <div>
+              <h2>作りたいAIツールを段階的に作成します。</h2>
+              <p>カテゴリは収益化しやすい順に並んでいます。まずは1つ選んでください。</p>
+            </div>
+            <div class="mini-flow">
+              <span>選ぶ</span>
+              <span>答える</span>
+              <span>提案から選ぶ</span>
+              <span>作成する</span>
+            </div>
+          </div>
+          <div class="category-grid" id="category-grid"></div>
+          <div class="create-hearing">
+            <div class="section-heading">
+              <p class="eyebrow">方向性ヒアリング</p>
+              <h2>作る内容が決まってきたら、方向性を3つだけ確認します。</h2>
+              <p>ヒアリングは、どんなツールにするかを決めるための質問です。「作る」流れの中で必要なときに答えます。</p>
+            </div>
+            <div class="question-card">
+              <p class="step-count">質問 1 / 3</p>
+              <h2 id="purpose-question-title">どんなツールを作りますか？</h2>
+              <div class="choice-list" id="purpose-options">
+                <button class="choice active" data-question="purpose">ニュースから注目銘柄を探す</button>
+                <button class="choice" data-question="purpose">決算情報を要約する</button>
+                <button class="choice" data-question="purpose">株価チャートを分析する</button>
+                <button class="choice" data-question="purpose">急騰しそうなテーマを探す</button>
+                <button class="choice" data-question="purpose">自分だけの条件で銘柄を点数化する</button>
+              </div>
+            </div>
+            <div class="question-card">
+              <p class="step-count">質問 2 / 3</p>
+              <h2 id="scope-question-title">どの対象を扱いますか？</h2>
+              <div class="pill-row" id="scope-options">
+                <button class="pill active" data-question="market">日本株</button>
+                <button class="pill" data-question="market">米国株</button>
+                <button class="pill" data-question="market">両方</button>
+              </div>
+            </div>
+            <div class="question-card">
+              <p class="step-count">質問 3 / 3</p>
+              <h2 id="output-question-title">どんな形で出力しますか？</h2>
+              <div class="pill-row wrap" id="output-options">
+                <button class="pill active" data-question="output">ランキング形式</button>
+                <button class="pill" data-question="output">点数評価</button>
+                <button class="pill" data-question="output">要約レポート</button>
+                <button class="pill" data-question="output">グラフ付き</button>
+                <button class="pill" data-question="output">通知形式</button>
+              </div>
+            </div>
+            <div class="question-card">
+              <p class="step-count">自由入力</p>
+              <h2>自分の言葉で追加できます。</h2>
+              <div class="form-grid">
+                <label>ツール名<input id="custom-tool-name" type="text" placeholder="例：朝の注目株チェックツール" /></label>
+                <label>使う人<input id="custom-target-user" type="text" placeholder="例：投資初心者、店舗オーナー、営業担当" /></label>
+                <label>入れる情報<textarea id="custom-inputs" rows="3" placeholder="例：ニュース本文、銘柄名、決算PDFの本文、検索キーワード、URLメモ"></textarea></label>
+                <label>出したい結果<textarea id="custom-result" rows="3" placeholder="例：ランキング、理由、注意点、投稿文案"></textarea></label>
+              </div>
+            </div>
+            <div class="button-row">
+              <button class="secondary" id="reset-category">カテゴリを選び直す</button>
+              <button class="primary" id="go-proposal">次へ進む</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="proposal">
+          <div class="proposal-grid">
+            <article class="proposal-card recommended active" data-proposal="0">
+              <span class="tag">おすすめ</span>
+              <h2>ニュース連動型注目株発見ツール</h2>
+              <p>ニュース記事を読み取り、関連しそうな業界や銘柄を整理するツールです。</p>
+              <dl class="score-list">
+                <div><dt>収益化しやすさ</dt><dd>★★★★★</dd></div>
+                <div><dt>作りやすさ</dt><dd>★★★★☆</dd></div>
+                <div><dt>需要</dt><dd>★★★★★</dd></div>
+              </dl>
+              <p class="meta">必要なデータ：ニュース記事、銘柄リスト</p>
+              <button class="primary full" data-action="choose-proposal">この案でツールを作成する</button>
+            </article>
+            <article class="proposal-card" data-proposal="1">
+              <h2>決算要約ツール</h2>
+              <p>決算資料やニュースを短くまとめ、良い点と注意点を整理します。</p>
+              <dl class="score-list">
+                <div><dt>収益化しやすさ</dt><dd>★★★★☆</dd></div>
+                <div><dt>作りやすさ</dt><dd>★★★☆☆</dd></div>
+                <div><dt>需要</dt><dd>★★★★☆</dd></div>
+              </dl>
+              <p class="meta">必要なデータ：決算資料、企業名</p>
+              <button class="secondary full" data-action="choose-proposal">この案でツールを作成する</button>
+            </article>
+            <article class="proposal-card" data-proposal="2">
+              <h2>株価チャート点数化ツール</h2>
+              <p>条件に合わせてチャートを確認し、見やすい点数に変換します。</p>
+              <dl class="score-list">
+                <div><dt>収益化しやすさ</dt><dd>★★★☆☆</dd></div>
+                <div><dt>作りやすさ</dt><dd>★★☆☆☆</dd></div>
+                <div><dt>需要</dt><dd>★★★★☆</dd></div>
+              </dl>
+              <p class="meta">必要なデータ：株価データ、条件設定</p>
+              <button class="secondary full" data-action="choose-proposal">この案でツールを作成する</button>
+            </article>
+          </div>
+          <div class="button-row">
+            <button class="secondary" id="shuffle-proposals">別の案を見る</button>
+            <button class="secondary" id="back-to-create">自分で調整する</button>
+          </div>
+        </section>
+
+        <section class="screen" id="nodes">
+          <div class="question-card compact-card">
+            <p class="step-count">自由入力</p>
+            <h2>追加したい作業の部品を書けます。</h2>
+            <div class="form-grid two-column">
+              <label>部品名<input id="custom-node-title" type="text" placeholder="例：注意点をチェックする部品" /></label>
+              <label>何をするか<input id="custom-node-description" type="text" placeholder="例：危険な表現や不足情報を確認する" /></label>
+            </div>
+          </div>
+          <div class="node-toolbar">
+            <button class="primary" id="arrange-nodes">AIにきれいに並べてもらう</button>
+            <button class="secondary" id="add-node">部品を追加する</button>
+            <button class="secondary" id="remove-node">不要な部品を消す</button>
+          </div>
+          <div class="section-heading">
+            <p class="eyebrow">作業の部品</p>
+            <h2>この画面では、ツールが行う作業を小さな部品に分けて確認します。</h2>
+            <p>ノードは「作業の部品」という意味です。入力、AIの分析、出力などを1つずつカードにして、どの順番で動くかを見えるようにします。</p>
+          </div>
+          <div class="node-canvas" id="node-canvas">
+            <article class="node start">開始<span>作業を始める</span></article>
+            <article class="node">ニュースを集める部品<span>ニュース記事を取り込みます</span></article>
+            <article class="node">重要な言葉を探す部品<span>記事の中からテーマやキーワードを見つけます</span></article>
+            <article class="node">会社名を整理する部品<span>関係しそうな会社を一覧にします</span></article>
+            <article class="node">AIが読み取る部品<span>ニュースの意味や注目点を整理します</span></article>
+            <article class="node">点数を付ける部品<span>条件に合わせて見やすい評価にします</span></article>
+            <article class="node">レポートにする部品<span>結果を読める文章にまとめます</span></article>
+            <article class="node end">出力<span>レポートとして保存する</span></article>
+          </div>
+          <div class="question-card compact-card">
+            <p class="step-count">部品を直接編集</p>
+            <h2>作業の部品名と内容を変更できます。</h2>
+            <div class="node-editor-list" id="node-editor-list"></div>
+          </div>
+          <div class="agent-card">
+            <span class="tag">おすすめ度 ★★★★★</span>
+            <h2>部品を組み合わせた例：投資ニュース発信ツール</h2>
+            <p>上の作業部品をつなげると、ニュース取得から投稿案作成までを一連の流れとして確認できます。</p>
+            <div class="agent-flow">
+              <span>ニュースを取得</span>
+              <span>注目テーマを抽出</span>
+              <span>関連銘柄を整理</span>
+              <span>X投稿を作成</span>
+              <span>画像生成指示を作成</span>
+              <span>投稿案として出力</span>
+            </div>
+            <div class="button-row">
+              <button class="primary" id="go-blueprint">この組み合わせでツールを作成する</button>
+              <button class="secondary" id="agent-add-tool">ツールを追加する</button>
+              <button class="secondary" id="agent-refresh">別の組み合わせを見る</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="blueprint">
+          <div class="question-card compact-card">
+            <p class="step-count">内容確認を編集</p>
+            <h2>最終確認の文章を直接変更できます。</h2>
+            <div class="form-grid two-column">
+              <label>何をするツールか<textarea id="edit-summary-purpose" rows="3"></textarea></label>
+              <label>誰が使うか<textarea id="edit-summary-user" rows="3"></textarea></label>
+              <label>何を入れるか<textarea id="edit-summary-inputs" rows="3"></textarea></label>
+              <label>何が出るか<textarea id="edit-summary-result" rows="3"></textarea></label>
+              <label>使い方<textarea id="edit-summary-usage" rows="3"></textarea></label>
+            </div>
+          </div>
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-tab="simple">かんたん表示</button>
+            <button class="tab" data-tab="detail">詳細表示</button>
+          </div>
+          <div class="blueprint-panel active" id="simple-panel">
+            <div class="info-grid" id="simple-blueprint">
+              <article><h3>このツールは何をする？</h3><p>ニュースから注目テーマと関連銘柄を整理します。</p></article>
+              <article><h3>何を入れればいい？</h3><p>ニュース本文、見たい市場、出力形式、URLメモを入れます。</p></article>
+              <article><h3>何が出てくる？</h3><p>注目テーマ、関連銘柄、理由、投稿用メモが出ます。</p></article>
+              <article><h3>どう使う？</h3><p>APIキーを設定し、ニュースを指定して実行します。</p></article>
+            </div>
+          </div>
+          <div class="blueprint-panel" id="detail-panel">
+            <pre class="code-block" id="detail-blueprint">tool_name: ニュース連動型注目株発見ツール
+purpose: ニュースから関連テーマと銘柄を整理する
+target_user: 投資メモや投稿案を作りたい初心者
+inputs: ニュース本文, URLメモ, 市場, 出力形式
+workflow: 取得 -> 抽出 -> 分析 -> 点数化 -> レポート
+required_api_keys: OpenAI API key, News API key
+folders: config, prompts, workflow, output
+error_handling: 本文未入力、APIキー未設定、取得失敗を表示
+prompt: ニュースを読み、投資判断ではなく整理情報としてまとめる</pre>
+          </div>
+        </section>
+
+        <section class="screen" id="export">
+          <div class="export-grid">
+            <button class="export-card active" data-export-format="folder"><strong>フォルダ形式</strong><span>実行用HTML/JS/CSSまでまとめる</span></button>
+            <button class="export-card" data-export-format="zip"><strong>ZIP形式</strong><span>実行用ファイル一式をZIP用にまとめる</span></button>
+            <button class="export-card" data-export-format="api"><strong>APIキー入力形式</strong><span>認証コードを入れるだけで使う</span></button>
+            <button class="export-card" data-export-format="codex"><strong>Codex用ツール作成内容</strong><span>コード作成AIに渡す内容</span></button>
+            <button class="export-card" data-export-format="claude"><strong>Claude Code用ツール作成内容</strong><span>実装支援AIに渡す内容</span></button>
+          </div>
+          <div class="folder-panel">
+            <h2>ツール出力内容</h2>
+            <div class="notice" id="api-format-notice" hidden></div>
+            <pre class="code-block" id="export-preview">NENE_Tool/
+  README.md
+  setup.md
+  config/
+    api_keys.example
+  prompts/
+    main_prompt.md
+  workflow/
+    nodes.md
+  output/
+    sample_output.md
+  tool_design.md</pre>
+            <button class="primary" id="copy-export">ツールを作成する</button>
+            <button class="secondary" id="launch-created-tool">起動ボタン</button>
+            <div class="save-options">
+              <label><input id="save-created-choice" type="checkbox" /> <span id="save-created-label">作成したツールを保存する</span></label>
+              <button class="secondary" id="save-created-tool">保存する</button>
+            </div>
+            <p class="status-message" id="export-status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section class="screen" id="saved">
+          <div class="saved-list" id="saved-list">
+            <article><strong>ニュース取得ツール</strong><span>保存済み</span></article>
+            <article><strong>株価分析ツール</strong><span>保存済み</span></article>
+            <article><strong>X投稿作成ツール</strong><span>保存済み</span></article>
+            <article><strong>画像生成指示ツール</strong><span>保存済み</span></article>
+          </div>
+        </section>
+
+        <section class="screen" id="usage">
+          <div class="section-heading">
+            <p class="eyebrow">作成したツールの使い方</p>
+            <h2>ZIP形式なら、解凍して `index.html` を開くだけで使えます。</h2>
+            <p>フォルダ形式でコピーした場合だけ、区切りごとにファイルへ分けてください。</p>
+          </div>
+          <div class="usage-visual-grid">
+            <article class="usage-card">
+              <div class="usage-illustration">
+                <span class="paper-icon">README</span>
+                <span class="paper-icon">index.html</span>
+                <span class="paper-icon">script.js</span>
+              </div>
+              <h3>1. ZIP形式で作成する</h3>
+              <p>`ZIP形式` を選んで `ツールを作成する` を押すと、実行用ファイル一式が入ったZIPが出ます。</p>
+            </article>
+            <article class="usage-card">
+              <div class="usage-illustration split-view">
+                <span>コピー内容</span>
+                <strong>-></strong>
+                <span>各ファイル</span>
+              </div>
+              <h3>2. ZIPを解凍する</h3>
+              <p>解凍すると `index.html`、`style.css`、`script.js` などが最初から分かれた状態で入っています。</p>
+            </article>
+            <article class="usage-card">
+              <div class="usage-illustration browser-view">
+                <span class="browser-bar"></span>
+                <strong>index.html</strong>
+              </div>
+              <h3>3. 起動する</h3>
+              <p>解凍したフォルダの `index.html` をブラウザで開きます。この画面の `作成したツールを起動する` でも確認できます。</p>
+            </article>
+            <article class="usage-card">
+              <div class="usage-illustration form-view">
+                <span>APIキー</span>
+                <span>本文貼り付け</span>
+                <span>生成する</span>
+              </div>
+              <h3>4. APIキーと本文を入れて使う</h3>
+              <p>URLはメモ用です。実際に処理したい本文や元情報を貼り付け、OpenAI APIキーを入れて生成します。</p>
+            </article>
+          </div>
+          <div class="folder-panel">
+            <h2>フォルダ形式をコピーした場合だけ作るファイル</h2>
+            <div class="info-grid">
+              <article><h3>`index.html`</h3><p>画面本体です。出力内の `--- index.html ---` から次の区切りまでを入れます。</p></article>
+              <article><h3>`style.css`</h3><p>見た目のファイルです。`index.html` と同じフォルダに置きます。</p></article>
+              <article><h3>`script.js`</h3><p>生成ボタンやAPI通信の動きです。`index.html` と同じフォルダに置きます。</p></article>
+              <article><h3>補助ファイル</h3><p>`README.md`、`setup.md`、`prompts/main_prompt.md` などは説明・保管用です。実行に最低限必要なのは上の3つです。</p></article>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="agent">
+          <div class="section-heading">
+            <p class="eyebrow">AIエージェント作成</p>
+            <h2>保存済みツールを組み合わせて、作れるAIエージェントを提案します。</h2>
+            <p>AIエージェントは、複数のツールを順番につなげて、まとまった作業を自動で進める仕組みです。</p>
+          </div>
+          <div class="proposal-grid" id="agent-proposals"></div>
+          <div class="folder-panel">
+            <h2>AIエージェント作成内容</h2>
+            <pre class="code-block" id="agent-preview">保存済みツールを追加すると、作成できるAIエージェント案が表示されます。</pre>
+            <div class="button-row">
+              <button class="primary" id="create-agent">AIエージェントを作成する</button>
+              <button class="secondary" id="save-agent">保存する</button>
+            </div>
+            <p class="status-message" id="agent-status" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section class="screen" id="terms">
+          <div class="section-heading">
+            <p class="eyebrow">Terms / Review</p>
+            <h2>利用規約とストア審査用説明</h2>
+            <p>PWAとして配布し、必要に応じてスマホアプリ審査用の説明文に転用できます。</p>
+          </div>
+          <div class="policy-panel">
+            <h1>利用規約</h1>
+            <p>NENE Studioは、AIツールの設計、保存、出力を補助するサービスです。利用者は、入力内容、APIキー、生成結果の利用について自己責任で管理します。</p>
+            <h2>禁止事項</h2>
+            <ul>
+              <li>個人情報、機密情報、パスワード、秘密鍵、クレジットカード番号を入力すること</li>
+              <li>他者の権利を侵害する内容、違法な内容、投資助言として誤認される内容の生成</li>
+              <li>URL本文を自動取得して処理する用途での利用</li>
+            </ul>
+            <h2>課金と解約</h2>
+            <p>広告なしプランはStripeのみで決済します。カード決済と、Stripeで有効化した携帯払いに対応します。解約、領収書、再請求はStripe Billingで管理します。</p>
+            <h2>ストア審査用説明</h2>
+            <p>本アプリは、ユーザーがAIツールの構成を作成し、保存済みツールやAIエージェント案を管理する生産性アプリです。投資系の出力は情報整理を目的とし、売買助言や利益保証を行いません。</p>
+            <p>ユーザー生成コンテンツは本人の入力に基づき、OpenAI APIキーはサーバー側で保護します。課金状態はStripe Webhookで検証し、クライアントURLだけでは有料機能を解放しません。</p>
+          </div>
+        </section>
+
+        <section class="screen" id="privacy">
+          <div class="section-heading">
+            <p class="eyebrow">Privacy Policy</p>
+            <h2>プライバシーポリシー</h2>
+            <p>NENE Studio の個人情報、APIキー、AI入力データの取り扱いについて説明します。</p>
+          </div>
+          <article class="policy-panel">
+            <h1>プライバシーポリシー</h1>
+            <p>NENE Studio（以下「本サービス」といいます。）は、AI（人工知能）ツールの設計図作成、ノード（処理の部品）の作成、AIエージェント（自動で仕事を進めるAIの仕組み）の提案を行うサービスです。</p>
+            <p>本サービスは、利用者の個人情報（氏名・メールアドレスなど個人を識別できる情報）の重要性を認識し、個人情報の保護に関する法律、関連するガイドライン（法律の運用方針を示す説明文書）その他の法令を遵守し、適切に取り扱います。</p>
+
+            <h2>第1条　取得する情報</h2>
+            <p>本サービスでは、利用者が入力した情報、サービス利用時に自動で取得される情報、AIツール作成のために入力される情報を取得する場合があります。</p>
+            <ul>
+              <li>氏名、メールアドレス、問い合わせ内容</li>
+              <li>作成したAIツール、設計図、プロンプト、APIキー</li>
+              <li>利用日時、操作履歴、エラーログ、端末情報、ブラウザ情報、IPアドレス、Cookie</li>
+              <li>作りたいツールのジャンル、ヒアリング回答、保存したツール構成、ノード構成</li>
+            </ul>
+
+            <h2>第2条　情報の利用目的</h2>
+            <p>取得した情報は、AIツール設計図の作成、AIエージェント提案、作成済みツールの保存・表示、ノード編集、外部サービス接続、動作確認、不具合修正、問い合わせ対応、不正利用防止、品質改善、法令対応のために利用します。</p>
+
+            <h2>第3条　APIキーの取り扱い</h2>
+            <p>APIキー（外部サービスを使うための認証コード）は、利用者が指定した外部サービスに接続し、本サービスの機能を提供する目的でのみ利用します。利用者は自己の責任でAPIキーを管理するものとします。</p>
+            <p>APIキーが漏えいまたは流出した可能性がある場合、利用者は自己の責任において、該当する外部サービス上でAPIキーの無効化、削除、再発行、利用停止などの対応を行うものとします。</p>
+
+            <h2>第4条　AI入力データの取り扱い</h2>
+            <p>本サービスでは、入力された文章、設計内容、ツール構成、プロンプトをAIによる設計図作成や提案のために利用する場合があります。個人情報、機密情報、パスワード、秘密鍵、クレジットカード番号、口座情報、第三者の著作物は入力しないでください。</p>
+            <p>AI出力内容の正確性、完全性、合法性は保証されません。</p>
+
+            <h2>第5条　第三者提供</h2>
+            <p>本サービスは、本人同意、法令に基づく場合、人の生命・身体・財産保護、公的機関からの正当な要請、本サービス提供に必要な外部サービス利用の場合を除き、個人情報を第三者に提供しません。</p>
+
+            <h2>第6条　外部サービスの利用</h2>
+            <p>本サービスでは、AI API、クラウドストレージ、データベース、アクセス解析ツール、エラー監視ツールなどを利用する場合があります。外部サービスの仕様変更、障害、停止、料金変更、API制限などにより損害が発生した場合、本サービス運営者の責めに帰すべき事由がない限り責任を負いません。</p>
+
+            <h2>第7条　Cookieの利用</h2>
+            <p>本サービスでは、利便性向上、利用状況の確認、不正利用防止のためにCookieを利用する場合があります。Cookieを無効にした場合、一部機能が正常に利用できない場合があります。</p>
+
+            <h2>第8条　安全管理措置</h2>
+            <p>本サービスは、個人情報の漏えい、紛失、改ざん、不正アクセスを防ぐため、アクセス制限、暗号化、パスワード管理、APIキー管理、ログ管理、不正アクセス対策、バックアップ、委託先管理などの合理的な安全管理措置を行います。</p>
+
+            <h2>第9条　情報の保存期間</h2>
+            <p>本サービスは、利用目的の達成に必要な範囲で個人情報を保存します。保存の必要がなくなった情報は、合理的な期間内に削除または匿名化します。</p>
+
+            <h2>第10条　利用者の権利</h2>
+            <p>利用者は、自己の個人情報について、開示、訂正、追加、削除、利用停止、第三者提供の停止を求めることができます。</p>
+
+            <h2>第11条　未成年者の利用</h2>
+            <p>未成年者が本サービスを利用する場合は、親権者または法定代理人の同意を得たうえで利用してください。</p>
+
+            <h2>第12条　投資・金融系ツールに関する注意</h2>
+            <p>株、FX、仮想通貨、ニュース分析などに関するツールは、情報整理や分析補助を目的とするものであり、投資助言を行うものではありません。投資判断は利用者自身の責任で行ってください。</p>
+
+            <h2>第13条　免責事項</h2>
+            <p>本サービスは、AIによる出力内容について、正確性、完全性、有用性、合法性、特定目的への適合性を保証しません。APIキー、パスワード、認証情報、秘密情報は利用者自身の責任で管理するものとします。</p>
+
+            <h2>第14条　プライバシーポリシーの変更</h2>
+            <p>本サービスは、必要に応じて本プライバシーポリシーを変更することがあります。重要な変更を行う場合は、本サービス上での表示その他適切な方法により通知します。</p>
+
+            <h2>第15条　問い合わせ窓口</h2>
+            <p>運営者名：NENE Studio<br />所在地：メールでのお問い合わせ時にご案内します<br />メールアドレス：<a href="mailto:contact@nenestudio.net">contact@nenestudio.net</a><br />受付時間：平日 10:00〜18:00（土日祝除く、返信は2営業日以内）</p>
+            <p>制定日：2026年6月26日<br />最終更新日：2026年6月26日</p>
+          </article>
+        </section>
+
+        <section class="screen" id="contact">
+          <div class="section-heading">
+            <p class="eyebrow">Contact</p>
+            <h2>お問い合わせ</h2>
+            <p>サービス、課金、広告、AI出力に関する問い合わせ先です。</p>
+          </div>
+          <div class="policy-panel">
+            <h1>お問い合わせ先</h1>
+            <p>運営者名：NENE Studio</p>
+            <p>メールアドレス：<a href="mailto:contact@nenestudio.net">contact@nenestudio.net</a></p>
+            <p>受付時間：平日 10:00〜18:00（土日祝除く、返信は2営業日以内）</p>
+            <p>課金に関する問い合わせでは、Stripeの決済メールに記載された情報を確認します。クレジットカード番号やパスワードは送らないでください。</p>
+          </div>
+        </section>
+
+        <section class="screen" id="settings">
+          <div class="settings-panel">
+            <h2>サーバー側APIキー設定</h2>
+            <p>OpenAI APIキー、Stripe秘密キー、Webhook署名キーはブラウザに入力せず、サーバーの `.env` で管理します。</p>
+            <p>ブラウザからはログイン情報だけを送り、AI生成や決済確認はサーバーAPIが実行します。</p>
+            <div class="plan-panel">
+              <h3>広告表示プラン</h3>
+              <label><input type="radio" name="plan" value="free" checked /> 無料プラン：出力前に広告が流れます</label>
+              <label><input type="radio" name="plan" value="premium" /> 月額780円プラン：広告なしで出力できます</label>
+              <p>広告なしプランはStripe決済完了後に有効になります。</p>
+            </div>
+            <div class="plan-panel">
+              <h3>支払い方法</h3>
+              <p>支払いはStripeのみです。Stripe Checkout + Stripe Billing で月額780円のサブスクを管理します。</p>
+              <p>カード決済と、Stripeで有効化した携帯払い（Apple Pay / Google Pay）に対応します。</p>
+              <button class="primary" id="stripe-checkout-button" type="button">Stripeで支払う</button>
+              <p id="stripe-payment-status">未決済です。Stripeで支払い後、広告なしプランが有効になります。</p>
+              <p>決済完了はStripe Webhookでサーバーが確認します。URLだけでは広告なしになりません。</p>
+            </div>
+            <button class="primary" id="save-settings">保存する</button>
+            <p class="status-message" id="settings-status" aria-live="polite"></p>
+          </div>
+        </section>
+      </main>
+
+      <aside class="assistant-panel">
+        <p class="eyebrow">AIアシスト</p>
+        <h2>今やること</h2>
+        <p id="assist-now">作りたいツールを1つ選んでください。</p>
+        <h3>おすすめ</h3>
+        <p id="assist-recommend">最初は「ニュース分析ツール」が作りやすいです。</p>
+        <h3>理由</h3>
+        <p id="assist-reason">入力が少なく、毎日使えて、収益化にもつなげやすいです。</p>
+        <h3>操作結果</h3>
+        <p id="assist-status">まだ操作はありません。</p>
+        <div class="notice" id="investment-notice" hidden>
+          このツールは投資判断を補助するものです。売買の最終判断は利用者本人が行います。
+        </div>
+      </aside>
+    </div>
+    <div class="ad-overlay" id="ad-overlay" hidden>
+      <div class="ad-box">
+        <p class="eyebrow">広告</p>
+        <h2>無料プランのため、出力前に広告を表示しています。</h2>
+        <p>月額780円プランにすると、この広告は表示されません。</p>
+        <div class="ad-visual">NENE Studio Pro</div>
+        <button class="primary" id="ad-continue" disabled>あと 5 秒</button>
+      </div>
+    </div>
+    <script src="./config.js"></script>
+    <script src="./script.js"></script>
+  </body>
+</html>

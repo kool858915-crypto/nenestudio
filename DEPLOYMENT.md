@@ -1,0 +1,122 @@
+# 独自ドメイン公開手順（nenestudio.net）
+
+安価な構成として、画面は **Cloudflare Pages**、サーバーAPIは **Render** を使います。
+
+GitHub リポジトリ（このフォルダ単体）:
+
+```text
+https://github.com/kool858915-crypto/nenestudio
+```
+
+Cloudflare Pages / Render では **Root directory は空欄（リポジトリ直下）** にしてください。
+
+| 用途 | URL |
+|------|-----|
+| アプリ（PWA） | `https://nenestudio.net` |
+| APIサーバー | `https://api.nenestudio.net` |
+
+`config.js` は、ローカルでは `/api`、本番ドメインでは自動的に `https://api.nenestudio.net/api` を使います。
+
+---
+
+## 1. Cloudflareでドメインを管理
+
+1. [Cloudflare](https://dash.cloudflare.com/) にログインします。
+2. **Add a site** で `nenestudio.net` を追加します（すでにCloudflare管理ならスキップ）。
+3. ネームサーバーがCloudflare向きになっていることを確認します。
+
+---
+
+## 2. RenderでAPIサーバーを公開
+
+1. GitHub リポジトリ `kool858915-crypto/nenestudio` を使います（すでにプッシュ済み）。
+2. [Render](https://render.com/) で **New → Blueprint** または **Web Service** を作成します。
+3. リポジトリ `nenestudio` を選び、**Root Directory** は空欄のままにします。
+   - Blueprint を使う場合: リポジトリ直下の `render.yaml` が読み込まれます。
+4. **Build Command**: `npm install` / **Start Command**: `npm start`
+5. 環境変数を設定します。
+
+```env
+APP_BASE_URL=https://api.nenestudio.net
+PUBLIC_APP_URL=https://nenestudio.net
+CORS_ORIGIN=https://nenestudio.net
+JWT_SECRET=長いランダム文字列（32文字以上推奨）
+DATABASE_PATH=./server/nene-studio-db.json
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID=price_...（月額780円）
+OPENAI_API_KEY=sk-proj-...
+```
+
+6. Renderの **Settings → Custom Domains** で `api.nenestudio.net` を追加します。
+7. Renderが表示する **CNAME** をCloudflare DNSに追加します。
+
+| タイプ | 名前 | 内容 |
+|--------|------|------|
+| CNAME | `api` | Renderが指定するホスト名 |
+
+---
+
+## 3. Stripe設定
+
+1. Stripeダッシュボードで **月額780円** のサブスク用 **Price** を作成します。
+2. Renderの `STRIPE_PRICE_ID` にその Price ID を入れます。
+3. **Developers → Webhooks → Add endpoint** で以下を登録します。
+
+```text
+https://api.nenestudio.net/api/stripe/webhook
+```
+
+4. 有効にするイベント:
+
+- `checkout.session.completed`
+- `customer.subscription.deleted`
+- `invoice.payment_failed`
+
+5. 表示された **Signing secret** を Render の `STRIPE_WEBHOOK_SECRET` に入れます。
+
+6. Stripe **Checkout** の成功URLはサーバー側で `https://nenestudio.net/index.html?stripe=success` に設定済みです。
+
+---
+
+## 4. Cloudflare Pagesで画面を公開
+
+1. Cloudflare **Workers & Pages → Create application → Pages → Connect to Git**
+2. リポジトリ `kool858915-crypto/nenestudio` を接続し、**Root directory** は空欄のままにします。
+3. **Build command**: 空欄 / **Build output directory**: `.`
+4. デプロイ完了後、**Custom domains** で `nenestudio.net` を追加します。
+5. 必要なら `www.nenestudio.net` → `nenestudio.net` へリダイレクトを設定します。
+
+---
+
+## 5. 動作確認
+
+1. `https://nenestudio.net` が開く
+2. ログイン / 新規登録ができる
+3. `https://api.nenestudio.net/api/auth/me` がログイン後に応答する（ブラウザからは直接叩かない）
+4. Stripeテスト決済 → Webhook → 広告なしプランが有効になる
+5. PWAとして「インストール」できる
+
+---
+
+## 6. AdSense申請前チェック
+
+- [ ] `https://nenestudio.net` で公開されている
+- [ ] 利用規約ページがある
+- [ ] プライバシーポリシーがある
+- [ ] お問い合わせ先（メール等）が正式な内容になっている
+- [x] 運営者情報を `contact@nenestudio.net` に設定した（Cloudflare Email Routing で転送設定推奨）
+- [ ] 未完成・テスト用の文言が目立たない
+
+---
+
+## 7. ローカル開発
+
+```bash
+cd nene-studio-wireframe
+npm install
+cp .env.example .env
+npm run dev
+```
+
+ブラウザ: `http://localhost:8787`

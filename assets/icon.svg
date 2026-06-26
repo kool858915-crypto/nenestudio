@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="NENE Studio">
+  <rect width="512" height="512" rx="112" fill="#0b1018"/>
+  <path d="M96 352V160h56l104 124V160h64v192h-56L160 228v124H96Z" fill="#f4f7fb"/>
+  <path d="M336 160h80v64h-80v-64Zm0 96h80v96h-80v-96Z" fill="#54d39a"/>
+  <path d="M80 406c86 42 266 42 352 0" fill="none" stroke="#4da3ff" stroke-width="28" stroke-linecap="round"/>
+</svg>
