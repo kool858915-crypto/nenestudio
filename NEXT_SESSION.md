@@ -1,6 +1,6 @@
 # NENE Studio 公開作業 — 次回持ち越しメモ
 
-> 最終更新: 2026-06-26  
+> 最終更新: 2026-06-26（再開セッション）  
 > リポジトリ: https://github.com/kool858915-crypto/nenestudio
 
 ---
@@ -13,8 +13,11 @@
 | Render API サーバー | Live | https://nenestudio.onrender.com |
 | JWT_SECRET | 作成済み | ローカル `.env` + `JWT_SECRET.local.txt`（Git 除外） |
 | Cloudflare Pages プロジェクト | 作成済み | プロジェクト名 `nenestudio` |
-| Pages 手動デプロイ | 完了 | https://nenestudio.pages.dev |
-| Pages カスタムドメイン登録 | pending | `nenestudio.net`（DNS 未接続） |
+| Pages 手動デプロイ | 完了 | https://nenestudio.pages.dev（Wrangler で最新化済み） |
+| Pages カスタムドメイン登録 | pending | `nenestudio.net` — エラー: **CNAME record not set** |
+| GitHub Actions 自動デプロイ | **未修復** | `CLOUDFLARE_API_TOKEN` が古いまま（07:55 更新） |
+| Cloudflare ゾーン | **未追加** | `nenestudio.net` が Add a site されていない |
+| api.nenestudio.net | **未接続** | DNS / Render Custom Domain 未設定 |
 | Wrangler ログイン | 完了 | kool858915@gmail.com |
 | GitHub Secret `CLOUDFLARE_ACCOUNT_ID` | 設定済み | `e575f757a53cf6fa3a19b54691e14e9a` |
 | GitHub Actions ワークフロー | 追加済み | `.github/workflows/deploy-cloudflare-pages.yml` |
@@ -26,27 +29,31 @@
 
 ### 1. GitHub 自動デプロイの修復（最優先）
 
-**症状:** GitHub Actions が `Authentication error [code: 10000]` で失敗。
+**症状:** GitHub Actions が `Authentication error [code: 10000]` で失敗（2026-06-26 再確認）。
 
 **原因:** 古い Cloudflare API Token を Delete したが、GitHub の `CLOUDFLARE_API_TOKEN` が新トークンに未更新。
 
 **やること:**
 1. Cloudflare → API Tokens → **Edit Cloudflare Workers** で新トークン作成
-2. GitHub → Settings → Secrets → Actions → **`CLOUDFLARE_API_TOKEN`** → **Update secret**
-3. 確認: Actions → **Deploy to Cloudflare Pages** を手動実行 → 成功するか見る
+2. GitHub → Settings → Secrets → Actions → **`CLOUDFLARE_API_TOKEN`** → **Update secret**（New ではなく Update）
+3. 新トークンをチャットに貼れば AI が `gh secret set` でも更新可能
+4. 確認: Actions → **Deploy to Cloudflare Pages** を手動実行 → 成功するか見る
 
 **注意:** `CLOUDFLARE_ACCOUNT_ID` は `e575f757a53cf6fa3a19b54691e14e9a`（変更しない）。
 
+**回避策:** Wrangler ログイン済みならローカルから `npx wrangler pages deploy . --project-name=nenestudio --branch=main` でもデプロイ可能（2026-06-26 実行済み）。
+
 ---
 
-### 2. ドメイン `nenestudio.net` を Cloudflare に追加
+### 2. ドメイン `nenestudio.net` を Cloudflare に追加（★今ここ）
 
-**症状:** ゾーン未登録のため `nenestudio.net` が Pages で pending のまま。
+**症状:** ゾーン未登録 + Pages 側エラー `CNAME record not set`（2026-06-26 再確認）。
 
 **やること:**
 1. Cloudflare ダッシュボード → **Add a site** → `nenestudio.net`
 2. ドメイン業者で **ネームサーバー** を Cloudflare 指定のものに変更
-3. 反映後、Pages の `nenestudio.net` が Active になるか確認
+3. 反映後、Pages → **nenestudio** → Custom domains → `nenestudio.net` が **Active** になるか確認
+4. `www.nenestudio.net` は `_redirects` で本体へリダイレクト済み
 
 ---
 
