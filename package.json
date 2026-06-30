@@ -10,7 +10,8 @@
     "dev": "node server/index.js",
     "start": "node server/index.js",
     "check": "node --check script.js && node --check server/index.js",
-    "verify:auth": "node scripts/verify-auth.mjs"
+    "verify:auth": "node scripts/verify-auth.mjs",
+    "setup:stripe": "node scripts/setup-stripe.mjs"
   },
   "dependencies": {
     "apple-signin-auth": "^2.0.0",
