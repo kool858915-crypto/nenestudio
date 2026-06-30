@@ -44,7 +44,11 @@ JWT_SECRET=長いランダム文字列（32文字以上推奨）
 DATABASE_PATH=./server/nene-studio-db.json
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-STRIPE_PRICE_ID=price_...（月額780円）
+STRIPE_PRICE_ID_ADFREE=price_...（月額480円・広告カット）
+STRIPE_PRICE_ID_AI50=price_...（月額980円・AI50回）
+STRIPE_PRICE_ID_AI100=price_...（月額1250円・AI100回）
+# 互換用（未設定時 ai50 のフォールバック）
+STRIPE_PRICE_ID=price_...
 OPENAI_API_KEY=sk-proj-...
 ```
 
@@ -59,8 +63,8 @@ OPENAI_API_KEY=sk-proj-...
 
 ## 3. Stripe設定
 
-1. Stripeダッシュボードで **月額780円** のサブスク用 **Price** を作成します。
-2. Renderの `STRIPE_PRICE_ID` にその Price ID を入れます。
+1. Stripeダッシュボードで **月額480円 / 980円 / 1250円** のサブスク用 **Price** を3つ作成します。
+2. Renderの `STRIPE_PRICE_ID_ADFREE` / `STRIPE_PRICE_ID_AI50` / `STRIPE_PRICE_ID_AI100` に各 Price ID を入れます。
 3. **Developers → Webhooks → Add endpoint** で以下を登録します。
 
 ```text

@@ -40,23 +40,21 @@ button {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 224px minmax(0, 1fr) 300px;
+  grid-template-columns: 224px minmax(0, 1fr);
   gap: 18px;
   min-height: 100vh;
   padding: 18px;
 }
 
 .sidebar,
-.workspace,
-.assistant-panel {
+.workspace {
   border: 1px solid var(--line);
   background: var(--panel);
   box-shadow: var(--shadow);
   backdrop-filter: blur(18px);
 }
 
-.sidebar,
-.assistant-panel {
+.sidebar {
   border-radius: 8px;
   padding: 18px;
 }
@@ -247,8 +245,7 @@ button {
 .intro-panel p,
 .proposal-card p,
 .section-heading p,
-.agent-card p,
-.assistant-panel p {
+.agent-card p {
   color: var(--muted);
   line-height: 1.7;
 }
@@ -468,6 +465,70 @@ button {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
+}
+
+.auth-form-fields label {
+  display: grid;
+  gap: 8px;
+}
+
+.auth-form-fields input {
+  width: 100%;
+}
+
+.oauth-login-panel {
+  margin-bottom: 18px;
+}
+
+.oauth-login-label {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.oauth-button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.oauth-google-fallback {
+  min-height: 40px;
+}
+
+.server-status-list {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.server-status-list li {
+  margin: 6px 0;
+}
+
+.server-status-list code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.oauth-login-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.oauth-divider {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
 }
 
 .usage-visual-grid {
@@ -753,6 +814,152 @@ button {
   color: var(--muted);
 }
 
+.guide-callout {
+  border: 1px solid rgba(77, 163, 255, 0.35);
+  border-radius: 8px;
+  background: rgba(77, 163, 255, 0.08);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.guide-callout ul {
+  margin: 10px 0 0;
+  padding-left: 20px;
+}
+
+.guide-step-list {
+  margin: 12px 0 24px;
+  padding-left: 22px;
+  color: var(--muted);
+}
+
+.guide-step-list li {
+  margin: 10px 0;
+  line-height: 1.7;
+}
+
+.guide-step-list ul {
+  margin-top: 8px;
+}
+
+.plan-tier-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+  margin-bottom: 24px;
+}
+
+.plan-tier-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px 22px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.plan-tier-card.highlight {
+  border-color: rgba(77, 163, 255, 0.45);
+  background: rgba(77, 163, 255, 0.06);
+}
+
+.plan-tier-card.premium {
+  border-color: rgba(250, 204, 21, 0.35);
+  background: rgba(250, 204, 21, 0.05);
+}
+
+.plan-tier-card h3 {
+  margin: 0 0 12px;
+  font-size: 1.15rem;
+}
+
+.plan-tree {
+  margin: 0 0 14px;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.plan-tree li {
+  margin: 6px 0;
+}
+
+.plan-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+  margin: 0 0 14px;
+}
+
+.price-disclaimer {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 8px 0 0;
+  line-height: 1.6;
+}
+
+.plan-link-button {
+  width: 100%;
+}
+
+.plan-paid-heading {
+  margin-top: 28px;
+}
+
+.plan-paid-grid {
+  margin-bottom: 24px;
+}
+
+.plan-summary-panel {
+  margin-top: 8px;
+}
+.plan-panel {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+
+.plan-panel h3 {
+  margin-top: 0;
+}
+
+.plan-panel label {
+  display: block;
+  margin: 10px 0;
+}
+
+.plan-panel select,
+.plan-panel input[type="password"] {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+}
+
+.implement-guide-panel code,
+.apikey-guide-panel code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.92em;
+}
+
+.implement-guide-panel a,
+.apikey-guide-panel a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.guide-prompt {
+  white-space: pre-wrap;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.guide-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
 .save-options {
   display: flex;
   flex-wrap: wrap;
@@ -860,15 +1067,8 @@ button {
   padding: 0 12px;
 }
 
-.assistant-panel {
-  align-self: start;
-  position: sticky;
-  top: 18px;
-}
-
-.assistant-panel h2,
-.assistant-panel h3 {
-  margin-bottom: 6px;
+.app-status-bar {
+  margin: 0 0 14px;
 }
 
 .notice {
@@ -894,11 +1094,6 @@ button {
     grid-template-columns: 190px minmax(0, 1fr);
   }
 
-  .assistant-panel {
-    grid-column: 1 / -1;
-    position: static;
-  }
-
   .category-grid,
   .proposal-grid,
   .export-grid {
@@ -917,8 +1112,7 @@ button {
   }
 
   .sidebar,
-  .workspace,
-  .assistant-panel {
+  .workspace {
     padding: 14px;
   }
 

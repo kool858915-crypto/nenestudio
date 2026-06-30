@@ -185,40 +185,46 @@ const categoryThemes = {
 };
 
 const screenCopy = {
-  login: ["ログイン", "作る画面へ戻る", "メールアドレスでログインしてください。", "保存や課金状態の同期にはログインが必要です。", "誰が使っているかを判定し、保存済みツールを安全に管理します。"],
-  create: ["何を作りますか？", "次へ進む", "カテゴリを選び、必要なときだけ方向性の質問に答えてください。", "最初は「ニュース分析ツール」が作りやすいです。", "入力が少なく、毎日使えて、収益化にもつなげやすいです。"],
-  proposal: ["提案を選びます", "次へ進む", "3つの案から使いたいものを選んでください。", "最初はニュース連動型の案がおすすめです。", "必要なデータが少なく、出力の使い道が広いからです。"],
-  nodes: ["作業の部品を組みます", "次へ進む", "作業の部品と、その組み合わせ例を確認してください。", "まずは自動で並んだまま進めて大丈夫です。", "ノードは作業の部品です。部品をつなげると、完成までの流れが見えるようになります。"],
-  blueprint: ["作成内容を確認します", "次へ進む", "かんたん表示で内容を確認してください。", "慣れている人だけ詳細表示を見れば十分です。", "CodexやClaude Codeに渡す内容は詳細表示に入っています。"],
-  export: ["ツールを作成します", "ツールを作成する", "出したい形式を選んでください。", "最初はフォルダ形式がおすすめです。", "READMEや設定ファイルをまとめて確認しやすいからです。"],
-  usage: ["作成したツールの使い方", "作る画面へ戻る", "作成結果をどう使うか確認してください。", "最初はフォルダ形式で作成し、ファイル名ごとに分ける方法がおすすめです。", "index.html、style.css、script.js が同じフォルダにあれば、ブラウザで開いて使えます。"],
-  saved: ["保存済みツール", "作業の部品を見る", "過去に作ったツールを確認してください。", "複数のツールを組み合わせると、まとまった作業の流れを作れます。", "作業の流れを分けておくと、後から組み替えやすくなります。"],
-  agent: ["AIエージェントを作成します", "AIエージェントを作成する", "保存済みツールから、作れるAIエージェント案を確認してください。", "まずは保存済みツールを2つ以上作ると提案が広がります。", "ツールを組み合わせると、調査から出力までを一連の作業にできます。"],
-  terms: ["利用規約", "作る画面へ戻る", "利用条件とストア審査用説明を確認してください。", "正式公開前に運営者情報を確定してください。", "課金、生成AI、投資系注意の説明が必要です。"],
-  privacy: ["プライバシーポリシー", "作る画面へ戻る", "個人情報やAPIキーの取り扱いを確認してください。", "APIキーは自己責任で管理してください。", "入力する情報には個人情報や機密情報を含めないでください。"],
-  contact: ["お問い合わせ", "作る画面へ戻る", "問い合わせ先を確認してください。", "公開前に正式な連絡先へ差し替えてください。", "AdSense審査でも問い合わせ先は重要です。"],
-  settings: ["サーバー設定を確認します", "保存する", "ログイン、課金、APIキー保護の設定を確認してください。", "支払いはStripeのみです。", "OpenAI APIキーはブラウザに置かずサーバーで管理します。"],
+  login: ["ログイン", "作る画面へ戻る"],
+  create: ["何を作りますか？", "次へ進む"],
+  proposal: ["提案を選びます", "次へ進む"],
+  nodes: ["作業の部品を組みます", "次へ進む"],
+  blueprint: ["作成内容を確認します", "次へ進む"],
+  export: ["ツールを作成します", "ツールを作成する"],
+  usage: ["作成したツールの使い方", "作る画面へ戻る"],
+  implement: ["無料で実装する", "作る画面へ戻る"],
+  plans: ["プラン一覧", "作る画面へ戻る"],
+  apikey: ["APIキー設定", "作る画面へ戻る"],
+  saved: ["保存済みツール", "作業の部品を見る"],
+  agent: ["AIエージェントを作成します", "AIエージェントを作成する"],
+  terms: ["利用規約", "作る画面へ戻る"],
+  privacy: ["プライバシーポリシー", "作る画面へ戻る"],
+  contact: ["お問い合わせ", "作る画面へ戻る"],
+  settings: ["プランとAPI設定", "保存する"],
 };
 
 const screenCopyEn = {
-  login: ["Login", "Back to Build", "Log in with your email address.", "Login is required to sync saved tools and billing status.", "The app identifies the current user and stores tools securely."],
-  create: ["What do you want to build?", "Next", "Choose a category and answer direction questions only when needed.", "News analysis tools are a good first choice.", "They need fewer inputs and are easy to reuse."],
-  proposal: ["Choose a proposal", "Next", "Choose one of the suggested ideas.", "The recommended idea is usually the easiest place to start.", "It has fewer required inputs and broad output uses."],
-  nodes: ["Build the workflow parts", "Next", "Review the workflow parts and their combination.", "You can start with the automatic order.", "Nodes are workflow parts. Connecting them shows the full tool flow."],
-  blueprint: ["Review the tool content", "Next", "Review the simple summary first.", "Advanced users can check the detailed view.", "The detailed view contains content for Codex or Claude Code."],
-  export: ["Create the tool", "Create Tool", "Choose the output format.", "ZIP is recommended because the files are already separated.", "You can unzip it and open index.html."],
-  usage: ["How to Use Output Code", "Back to Build", "Check how to use the generated code as a tool.", "ZIP output is the easiest option.", "Open index.html after extracting the files."],
-  saved: ["Saved Tools", "View Workflow", "Check your saved tools.", "Combining tools can create an AI agent.", "Separate workflows are easier to reuse."],
-  agent: ["Create AI Agent", "Create AI Agent", "Review AI agent ideas based on saved tools.", "Save at least two tools to get better suggestions.", "Combining tools can automate a larger workflow."],
-  terms: ["Terms of Use", "Back to Build", "Review usage terms and store review notes.", "Finalize operator details before public release.", "Billing, generative AI, and investment disclaimers are required."],
-  privacy: ["Privacy Policy", "Back to Build", "Review how personal data and API keys are handled.", "Manage API keys at your own responsibility.", "Do not enter personal or confidential information."],
-  contact: ["Contact", "Back to Build", "Check the contact information.", "Replace this with real contact details before launch.", "Contact information is important for AdSense review."],
-  settings: ["Server Settings", "Save", "Review login, billing, and API key protection settings.", "Payments are Stripe only.", "The OpenAI API key is kept on the server, not in the browser."],
+  login: ["Login", "Back to Build"],
+  create: ["What do you want to build?", "Next"],
+  proposal: ["Choose a proposal", "Next"],
+  nodes: ["Build the workflow parts", "Next"],
+  blueprint: ["Review the tool content", "Next"],
+  export: ["Create the tool", "Create Tool"],
+  usage: ["How to Use Output Code", "Back to Build"],
+  implement: ["Build Free with External AI", "Back to Build"],
+  plans: ["Plans", "Back to Build"],
+  apikey: ["API Key Setup (BYOK)", "Back to Build"],
+  saved: ["Saved Tools", "View Workflow"],
+  agent: ["Create AI Agent", "Create AI Agent"],
+  terms: ["Terms of Use", "Back to Build"],
+  privacy: ["Privacy Policy", "Back to Build"],
+  contact: ["Contact", "Back to Build"],
+  settings: ["Plan and API Settings", "Save"],
 };
 
 const uiText = {
   ja: {
-    nav: { create: "作る", login: "ログイン", usage: "使い方", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", contact: "お問い合わせ", settings: "設定" },
+    nav: { create: "作る", login: "ログイン", usage: "使い方", implement: "無料で実装", plans: "プラン", apikey: "APIキー設定", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", contact: "お問い合わせ", settings: "設定" },
     brand: "AIツール作成",
     launch: "起動ボタン",
     exportTitle: "ツール出力内容",
@@ -226,7 +232,7 @@ const uiText = {
     save: "保存する",
   },
   en: {
-    nav: { create: "Build", login: "Login", usage: "How to Use", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", contact: "Contact", settings: "Settings" },
+    nav: { create: "Build", login: "Login", usage: "How to Use", implement: "Build Free", plans: "Plans", apikey: "API Key", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", contact: "Contact", settings: "Settings" },
     brand: "AI Tool Builder",
     launch: "Launch Button",
     exportTitle: "Tool Output",
@@ -334,10 +340,12 @@ const textTranslations = {
   "APIキーは外部サービスに接続するための認証コードです。": "API keys are authentication codes for external services.",
   "広告表示プラン": "Ad Display Plan",
   "無料プラン：出力前に広告が流れます": "Free plan: ads appear before output",
-  "月額780円プラン：広告なしで出力できます": "¥780/month plan: output without ads",
+  "480円プラン：広告カットのみ": "¥480/month plan: ad-free output only",
+  "980円プラン：広告なし＋運営API月50回": "¥980/month plan: ad-free + 50 operator AI runs/month",
+  "1250円プラン：広告なし＋運営API月100回": "¥1250/month plan: ad-free + 100 operator AI runs/month",
   "広告なしプランはStripe決済完了後に有効になります。": "The ad-free plan becomes active after Stripe payment is completed.",
   "支払い方法": "Payment Method",
-  "支払いはStripeのみです。Stripe Checkout + Stripe Billing で月額780円のサブスクを管理します。": "Payments are Stripe only. Stripe Checkout + Stripe Billing manages the ¥780/month subscription.",
+  "支払いはStripeのみです。480円／980円／1250円の月額サブスクを管理します。": "Payments are Stripe only. Manages ¥480 / ¥980 / ¥1250 monthly subscriptions.",
   "カード決済と、Stripeで有効化した携帯払い（Apple Pay / Google Pay）に対応します。": "Supports card payments and mobile payments enabled in Stripe, such as Apple Pay / Google Pay.",
   "Stripeで支払う": "Pay with Stripe",
   "未決済です。Stripeで支払い後、広告なしプランが有効になります。": "Unpaid. The ad-free plan becomes active after Stripe payment.",
@@ -376,7 +384,7 @@ const textTranslations = {
   "操作結果": "Status",
   "広告": "Ad",
   "無料プランのため、出力前に広告を表示しています。": "Free plan: an ad is shown before output.",
-  "月額780円プランにすると、この広告は表示されません。": "The ¥780/month plan removes this ad.",
+  "月額480円以上の有料プランにすると、この広告は表示されません。": "Paid plans from ¥480/month remove this ad.",
   "株投資ツール": "Stock Investment Tool",
   "FXツール": "FX Tool",
   "ニュース分析ツール": "News Analysis Tool",
@@ -623,13 +631,16 @@ const textTranslations = {
   "表示言語を日本語に変更しました。": "Language changed to Japanese.",
   "設定を保存しました。": "Settings saved.",
   "作業の部品を見やすい順番に並べました。": "Arranged the workflow parts in an easier-to-read order.",
-  "月額780円プランを選択しました。Stripe決済完了後は広告なしになります。": "Selected the ¥780/month plan. Ads are removed after Stripe payment is completed.",
-  "月額780円プランを選択しました。下のStripeボタンからカードまたは携帯払いで支払ってください。": "Selected the ¥780/month plan. Pay by card or mobile payment using the Stripe button below.",
+  "月額480円プランを選択しました。Stripe決済完了後は広告なしになります。": "Selected the ¥480/month plan. Ads are removed after Stripe payment.",
+  "980円プランを選択しました。下のStripeボタンから支払ってください。": "Selected the ¥980/month plan. Pay using the Stripe button below.",
+  "1250円プランを選択しました。下のStripeボタンから支払ってください。": "Selected the ¥1250/month plan. Pay using the Stripe button below.",
   "Stripeの決済画面を開きました。カードまたは携帯払いで支払ってください。": "Opened Stripe Checkout. Pay by card or mobile payment.",
   "Stripe決済完了を確認しました。広告なしプランを有効にしました。": "Stripe payment completion detected. The ad-free plan is now active.",
   "無料プランに戻しました。出力前に広告が表示されます。": "Returned to the free plan. Ads will appear before output.",
   "無料プランを選択しました。出力前に広告が表示されます。": "Selected the free plan. Ads will appear before output.",
-  "月額780円プラン": "¥780/month plan",
+  "480円プラン（広告カット）": "¥480/month (ad-free)",
+  "980円プラン（AI50回）": "¥980/month (50 AI runs)",
+  "1250円プラン（AI100回）": "¥1250/month (100 AI runs)",
   "無料プラン": "Free plan",
   "を保存しました。APIキーは必要になったら入力してください。": " saved. Enter API keys when needed.",
   "を保存しました。この試作品では画面を閉じるまで保持します。": " saved. This prototype keeps it until the screen is closed.",
@@ -654,7 +665,139 @@ const textTranslations = {
   "口コミ返信、販促、運営メモ": "review replies, promotions, operation notes",
   "独自ツール、検証用、個人用途": "custom tools, testing, personal use",
   "X投稿、note記事、投資メモ": "X posts, note articles, investment notes",
+  "無料プラン：設計図を作り、Codex 等で実装する": "Free Plan: Create a Blueprint and Build with Codex",
+  "※ 金額を確認しながらご使用ください。": "※ Please confirm amounts while using the service.",
+  "APIキーは不要です。NENE Studio で設計図を出力し、Cursor（Codex）・Claude Code・ChatGPT などの外部AIに渡して実装します。": "No API key is required. Export a blueprint from NENE Studio and implement it with external AI such as Cursor (Codex), Claude Code, or ChatGPT.",
 };
+
+const implementGuideEn = `
+            <div class="guide-callout">
+              <strong>What the free plan includes</strong>
+              <ul>
+                <li>Category → proposal → parts → blueprint creation (<strong>no API required</strong>)</li>
+                <li>Download <strong>Tool Content for Codex</strong> or <strong>Tool Content for Claude Code</strong></li>
+                <li>Implementation happens in <strong>your external AI tool</strong> (no NENE Studio API cost)</li>
+                <li>Ads appear before output on the free plan (removed on paid plans from ¥480/month)</li>
+              </ul>
+            </div>
+
+            <h2>Step A: Create a blueprint in NENE Studio (about 5-10 minutes)</h2>
+            <ol class="guide-step-list">
+              <li>Click <strong>Build</strong> in the left menu.</li>
+              <li>Choose one <strong>category</strong>, then click <strong>Next</strong>.</li>
+              <li>Answer <strong>questions 1-3</strong> or keep the defaults. Click <strong>Next</strong> on each screen.</li>
+              <li>On <strong>Choose a proposal</strong>, pick one idea and click <strong>Next</strong>.</li>
+              <li>Review <strong>Workflow parts</strong>, then click <strong>Next</strong>.</li>
+              <li>On <strong>Review the tool content</strong>, open <strong>Detailed View</strong>, then click <strong>Next</strong>.</li>
+              <li>On <strong>Create the tool</strong>, choose one:
+                <ul>
+                  <li><strong>Tool Content for Codex</strong> … for Cursor (Codex)</li>
+                  <li><strong>Tool Content for Claude Code</strong> … for Claude Code</li>
+                </ul>
+              </li>
+              <li>Click <strong>Create Tool</strong> (ads appear first on the free plan).</li>
+              <li>Save the downloaded file or copied blueprint in a memo app.</li>
+            </ol>
+
+            <h2>Step B: Build with Cursor (Codex)</h2>
+            <p>Cursor is an AI editor. Paste the blueprint and ask it to create the files.</p>
+            <ol class="guide-step-list">
+              <li>Open <a href="https://cursor.com/" target="_blank" rel="noopener noreferrer">https://cursor.com/</a> and install Cursor.</li>
+              <li>Create a <strong>new folder</strong> on your PC (example: <code>my-tool</code>).</li>
+              <li>Open that folder in Cursor.</li>
+              <li>Open chat (Codex / Agent) and paste the <strong>full blueprint</strong> from NENE Studio.</li>
+              <li>Send the <strong>sample prompt below</strong>.</li>
+              <li>Save the generated <code>index.html</code> and related files into the folder.</li>
+              <li>Open <code>index.html</code> in your browser and test it.</li>
+            </ol>
+
+            <h2>Step C: Build with Claude Code</h2>
+            <ol class="guide-step-list">
+              <li>Log in at <a href="https://claude.ai/" target="_blank" rel="noopener noreferrer">https://claude.ai/</a> and follow Anthropic's Claude Code setup guide.</li>
+              <li>Prepare a working folder.</li>
+              <li>Paste NENE Studio's <strong>Tool Content for Claude Code</strong>.</li>
+              <li>Send the sample prompt and save the generated files.</li>
+              <li>Open <code>index.html</code> in your browser.</li>
+            </ol>
+
+            <h2>Step D: Build with ChatGPT</h2>
+            <ol class="guide-step-list">
+              <li>Open <a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">https://chatgpt.com/</a> and log in.</li>
+              <li>Start a new chat and paste the NENE Studio blueprint.</li>
+              <li>Send the sample prompt and save the returned HTML / CSS / JS as separate files.</li>
+              <li>Put <code>index.html</code>, <code>style.css</code>, and <code>script.js</code> in the same folder and open the page.</li>
+            </ol>
+
+            <h2>Sample prompt to copy</h2>
+            <p>Paste this into your external AI tool.</p>
+            <pre class="code-block guide-prompt">This is a tool blueprint created in NENE Studio.
+Build a simple web tool based on this design for beginners.
+
+Requirements:
+- Use index.html / style.css / script.js
+- Japanese UI
+- URL field is memo only (do not fetch URL content automatically)
+- Process only pasted text entered by the user
+- Mobile-friendly layout
+- Clear Japanese error messages
+
+Blueprint:
+(Paste the full NENE Studio output here)</pre>
+
+            <h2>If something goes wrong</h2>
+            <ul>
+              <li><strong>Blueprint is too short</strong> … include the Detailed View content.</li>
+              <li><strong>Everything comes back in one file</strong> … ask the AI to split it into 3 files.</li>
+              <li><strong>It does not run</strong> … check the browser Console (F12) and send the error back to the AI.</li>
+              <li><strong>AI generation is required</strong> … the free blueprint alone does not include live AI generation. Use API settings later if needed.</li>
+            </ul>
+
+            <p class="guide-footer">With this method, <strong>NENE Studio OpenAI API cost stays ¥0</strong>. External AI costs depend on the service you choose (ChatGPT plan, Cursor, etc.).</p>
+`;
+
+const apikeyGuideEn = `
+            <div class="guide-callout">
+              <strong>BYOK plan (Bring Your Own Key)</strong>
+              <ul>
+                <li>Create blueprints <strong>plus</strong> AI generation with <strong>your API</strong></li>
+                <li>No operator OpenAI API cost</li>
+                <li><strong>Google Gemini free tier</strong> is the easiest way to start</li>
+              </ul>
+            </div>
+
+            <h2>Recommended: Google Gemini API (free tier available)</h2>
+            <ol class="guide-step-list">
+              <li>Open <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">https://aistudio.google.com/apikey</a></li>
+              <li>Sign in with Google</li>
+              <li>Click <strong>Create API key</strong></li>
+              <li>Copy the key (starts with <code>AIza...</code>)</li>
+              <li>Go to <strong>Settings</strong> → provider <strong>Google Gemini</strong> → paste the key → <strong>Save</strong></li>
+            </ol>
+
+            <h2>OpenAI API (pay as you go)</h2>
+            <ol class="guide-step-list">
+              <li>Open <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">https://platform.openai.com/api-keys</a></li>
+              <li>Create an account and log in (payment method may be required)</li>
+              <li>Click <strong>Create new secret key</strong></li>
+              <li>Copy the key (starts with <code>sk-...</code>)</li>
+              <li>Go to <strong>Settings</strong> → provider <strong>OpenAI</strong> → paste → save</li>
+            </ol>
+
+            <h2>If you are on a paid AI plan</h2>
+            <ul>
+              <li><strong>¥980/month</strong> … up to <strong>50</strong> operator API runs</li>
+              <li><strong>¥1250/month</strong> … up to <strong>100</strong> operator API runs</li>
+              <li>After the limit … set your own API key above</li>
+              <li>Or wait until <strong>next month</strong> (counter resets)</li>
+            </ul>
+
+            <h2>Notes</h2>
+            <ul>
+              <li>Never share your API key with others</li>
+              <li>Keys are stored only in <strong>this browser</strong> (sent only when generating)</li>
+              <li>Free tiers also have <strong>daily limits</strong></li>
+            </ul>
+`;
 
 const placeholderTranslations = {
   "例：朝の注目株チェックツール": "Example: Morning Stock Watch Tool",
@@ -712,6 +855,24 @@ const privacyPolicyEn = `
 
 const creationScreens = ["create", "proposal", "nodes", "blueprint", "export"];
 
+const PLAN_CATALOG = {
+  free: { price: 0, aiLimit: 0, labelJa: "無料プラン", labelEn: "Free plan" },
+  adfree: { price: 480, aiLimit: 0, labelJa: "480円プラン（広告カット）", labelEn: "¥480/month (ad-free)" },
+  ai50: { price: 980, aiLimit: 50, labelJa: "980円プラン（AI50回）", labelEn: "¥980/month (50 AI runs)" },
+  ai100: { price: 1250, aiLimit: 100, labelJa: "1250円プラン（AI100回）", labelEn: "¥1250/month (100 AI runs)" },
+};
+
+function getPlanLabel(plan, language = "ja") {
+  const entry = PLAN_CATALOG[plan] || PLAN_CATALOG.free;
+  return language === "en" ? entry.labelEn : entry.labelJa;
+}
+
+function formatAuthProvider(provider) {
+  if (provider === "google") return state.language === "en" ? "Google" : "Google";
+  if (provider === "apple") return state.language === "en" ? "Apple" : "Apple";
+  return state.language === "en" ? "Email" : "メール";
+}
+
 const state = {
   currentScreen: "create",
   selectedCategoryIndex: 0,
@@ -731,16 +892,20 @@ const state = {
   settings: {
     openaiKey: "",
     newsKey: "",
+    userApiKey: "",
+    userApiProvider: "gemini",
     plan: "free",
     paymentProvider: "Stripe Checkout + Stripe Billing",
-    premiumPriceYen: 780,
+    premiumPriceYen: 980,
     adFreeFlagAfterPayment: true,
     paymentStatus: "unpaid",
   },
   auth: {
     token: "",
     user: null,
+    providers: { google: { enabled: false, clientId: "" }, apple: { enabled: false, clientId: "" } },
   },
+  serverStatus: null,
   language: "ja",
   summaryEdits: {
     purpose: "",
@@ -774,7 +939,7 @@ const exportStatus = $("#export-status");
 const savedList = $("#saved-list");
 const nodeCanvas = $("#node-canvas");
 const settingsStatus = $("#settings-status");
-const assistStatus = $("#assist-status");
+const appStatus = $("#app-status");
 const agentProposals = $("#agent-proposals");
 const agentPreview = $("#agent-preview");
 const agentStatus = $("#agent-status");
@@ -785,6 +950,9 @@ const adContinue = $("#ad-continue");
 const authStatus = $("#auth-status");
 
 hydrateAuthState();
+loadAuthProviders();
+loadServerAuthStatus();
+hydrateUserApiKey();
 hydrateStripePaymentState();
 handleStripeReturn();
 renderCategories();
@@ -840,6 +1008,22 @@ function bindEvents() {
     button.addEventListener("click", () => activateScreen(button.dataset.screen));
   });
 
+  $$("[data-goto]").forEach((button) => {
+    button.addEventListener("click", () => activateScreen(button.dataset.goto));
+  });
+
+  $$("[data-select-plan]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const plan = button.dataset.selectPlan;
+      if (plan && PLAN_CATALOG[plan]) {
+        state.settings.plan = plan;
+        state.status = `${getPlanLabel(plan, state.language)}を選択しました。「設定」でStripe決済してください。`;
+        activateScreen("settings");
+        renderAll();
+      }
+    });
+  });
+
   $$(".language-button").forEach((button) => {
     button.addEventListener("click", () => {
       state.language = button.dataset.language;
@@ -856,6 +1040,16 @@ function bindEvents() {
   $("#login-button").addEventListener("click", () => submitAuth("login"));
   $("#register-button").addEventListener("click", () => submitAuth("register"));
   $("#logout-button").addEventListener("click", logoutUser);
+  $("#apple-login-button")?.addEventListener("click", signInWithApple);
+  $("#google-login-fallback")?.addEventListener("click", () => {
+    if (state.auth.providers.google.enabled) {
+      state.status = "Googleログインボタンの読み込み中です。少し待ってから再度お試しください。";
+    } else {
+      state.status = "Googleログインは GOOGLE_CLIENT_ID 未設定です。サーバーの .env に Client ID を入れて再起動してください。";
+    }
+    renderAll();
+    activateScreen("login");
+  });
 
   $$("#main-action").forEach((button) => {
     button.addEventListener("click", runMainAction);
@@ -925,6 +1119,14 @@ function bindEvents() {
     state.settings.newsKey = event.target.value.trim();
   });
 
+  $("#user-api-provider")?.addEventListener("change", (event) => {
+    state.settings.userApiProvider = event.target.value;
+  });
+
+  $("#user-api-key")?.addEventListener("input", (event) => {
+    state.settings.userApiKey = event.target.value.trim();
+  });
+
   $$(".proposal-card").forEach((card) => {
     card.addEventListener("click", () => selectProposal(Number(card.dataset.proposal)));
   });
@@ -977,19 +1179,25 @@ function bindEvents() {
   $$("input[name='plan']").forEach((input) => {
     input.addEventListener("change", () => {
       state.settings.plan = input.value;
-      if (input.value === "premium") {
-        state.status = "月額780円プランを選択しました。下のStripeボタンからカードまたは携帯払いで支払ってください。";
-      } else {
+      if (input.value === "free") {
         state.settings.paymentStatus = "unpaid";
         state.status = "無料プランに戻しました。出力前に広告が表示されます。";
+      } else {
+        state.status = `${getPlanLabel(input.value, state.language)}を選択しました。下のStripeボタンから支払ってください。`;
       }
       renderAll();
     });
   });
   $("#stripe-checkout-button").addEventListener("click", openStripeCheckout);
   $("#save-settings").addEventListener("click", () => {
-    const planText = state.settings.paymentStatus === "paid" ? "月額780円プラン" : "無料プラン";
-    state.status = `${planText}を保存しました。APIキーはサーバー側の環境変数で管理します。`;
+    saveUserApiKey();
+    const planText = state.auth.user?.isAdFree
+      ? getPlanLabel(state.auth.user.subscriptionPlan || state.settings.plan, state.language)
+      : getPlanLabel("free", state.language);
+    const keyNote = state.settings.userApiKey
+      ? " 自分のAPIキーをこの端末に保存しました。"
+      : "";
+    state.status = `${planText}の設定を保存しました。${keyNote}`.trim();
     renderAll();
   });
 
@@ -1027,12 +1235,9 @@ function activateScreen(screenId) {
   });
 
   const copySource = state.language === "en" ? screenCopyEn : screenCopy;
-  const [title, action, now, recommend, reason] = copySource[screenId];
+  const [title, action] = copySource[screenId] || copySource.create;
   $("#screen-title").textContent = title;
   $("#main-action").textContent = action;
-  $("#assist-now").textContent = now;
-  $("#assist-recommend").textContent = recommend;
-  $("#assist-reason").textContent = reason;
   renderAll();
 }
 
@@ -1043,6 +1248,7 @@ function runMainAction() {
     nodes: "blueprint",
     blueprint: "export",
     usage: "create",
+    implement: "create",
     saved: "nodes",
   };
 
@@ -1076,6 +1282,8 @@ function renderAll() {
   renderAgentBuilder();
   renderPaymentSettings();
   renderStatus();
+  renderAuthProviders();
+  renderServerAuthStatus();
   renderCreateProgress();
   renderLanguage();
 }
@@ -1084,6 +1292,8 @@ function renderLanguage() {
   const text = uiText[state.language];
   renderStaticLanguage();
   renderPrivacyLanguage();
+  renderImplementGuideLanguage();
+  renderApiKeyGuideLanguage();
   $$(".language-button").forEach((button) => {
     button.classList.toggle("active", button.dataset.language === state.language);
   });
@@ -1155,10 +1365,47 @@ function translateText(value) {
 }
 
 function renderPrivacyLanguage() {
-  const panel = document.querySelector(".policy-panel");
+  const panel = document.querySelector("#privacy .policy-panel");
   if (!panel) return;
   if (!panel.dataset.jaHtml) panel.dataset.jaHtml = panel.innerHTML;
   panel.innerHTML = state.language === "en" ? privacyPolicyEn : panel.dataset.jaHtml;
+}
+
+function renderImplementGuideLanguage() {
+  const panel = document.querySelector(".implement-guide-panel");
+  if (!panel) return;
+  if (!panel.dataset.jaHtml) panel.dataset.jaHtml = panel.innerHTML;
+  panel.innerHTML = state.language === "en" ? implementGuideEn : panel.dataset.jaHtml;
+}
+
+function renderApiKeyGuideLanguage() {
+  const panel = document.querySelector(".apikey-guide-panel");
+  if (!panel) return;
+  if (!panel.dataset.jaHtml) panel.dataset.jaHtml = panel.innerHTML;
+  panel.innerHTML = state.language === "en" ? apikeyGuideEn : panel.dataset.jaHtml;
+}
+
+function hydrateUserApiKey() {
+  state.settings.userApiKey = localStorage.getItem("neneUserApiKey") || "";
+  state.settings.userApiProvider = localStorage.getItem("neneUserApiProvider") || "gemini";
+  const providerSelect = $("#user-api-provider");
+  const keyInput = $("#user-api-key");
+  if (providerSelect) providerSelect.value = state.settings.userApiProvider;
+  if (keyInput && document.activeElement !== keyInput) keyInput.value = state.settings.userApiKey;
+}
+
+function saveUserApiKey() {
+  const provider = $("#user-api-provider")?.value || state.settings.userApiProvider || "gemini";
+  const key = $("#user-api-key")?.value.trim() || state.settings.userApiKey || "";
+  state.settings.userApiProvider = provider;
+  state.settings.userApiKey = key;
+  if (key) {
+    localStorage.setItem("neneUserApiKey", key);
+    localStorage.setItem("neneUserApiProvider", provider);
+  } else {
+    localStorage.removeItem("neneUserApiKey");
+    localStorage.removeItem("neneUserApiProvider");
+  }
 }
 
 function hydrateStripePaymentState() {
@@ -1194,6 +1441,157 @@ async function apiRequest(path, options = {}) {
     throw new Error(data.error || "サーバー処理に失敗しました。");
   }
   return data;
+}
+
+async function loadAuthProviders() {
+  try {
+    const data = await apiRequest("/auth/providers");
+    state.auth.providers = {
+      google: data.google || { enabled: false, clientId: "" },
+      apple: data.apple || { enabled: false, clientId: "" },
+    };
+    renderAuthProviders();
+  } catch {
+    // 未ログインでも取得できるが、サーバー停止時は無視
+  }
+}
+
+async function loadServerAuthStatus() {
+  try {
+    state.serverStatus = await apiRequest("/server/status");
+    renderServerAuthStatus();
+  } catch {
+    state.serverStatus = null;
+    renderServerAuthStatus();
+  }
+}
+
+function renderServerAuthStatus() {
+  const list = $("#server-auth-status");
+  if (!list) return;
+  const status = state.serverStatus;
+  if (!status) {
+    list.innerHTML = "<li>サーバーに接続できません。npm run dev で起動してください。</li>";
+    return;
+  }
+  const planLines = status.billing.plans.map((plan) => {
+    const label = getPlanLabel(plan.id, state.language);
+    const stripeOk = plan.stripeConfigured ? "Stripe設定済" : "Stripe未設定";
+    return `<li>${label}（${stripeOk}）</li>`;
+  }).join("");
+  const lines = [
+    `<li>メールログイン：${status.auth.email ? "利用可" : "不可"}</li>`,
+    `<li>Googleログイン：${status.auth.google ? "設定済" : "未設定（GOOGLE_CLIENT_ID）"}</li>`,
+    `<li>Appleログイン：${status.auth.apple ? "設定済" : "未設定（APPLE_CLIENT_ID）"}</li>`,
+    `<li>JWT（ログイン証）：${status.auth.jwtConfigured ? "設定済" : "開発用デフォルト"}</li>`,
+    `<li>Stripe：${status.billing.stripe ? "接続可" : "未設定"}</li>`,
+    planLines,
+  ];
+  list.innerHTML = lines.join("");
+}
+
+function renderAuthProviders() {
+  const panel = $("#oauth-login-panel");
+  const googleMount = $("#google-login-button");
+  const googleFallback = $("#google-login-fallback");
+  const googleNote = $("#google-login-note");
+  const appleButton = $("#apple-login-button");
+  if (!panel || !googleMount || !appleButton) return;
+
+  panel.hidden = false;
+  const { google, apple } = state.auth.providers;
+  appleButton.hidden = !apple.enabled;
+
+  if (google.enabled && window.google?.accounts?.id) {
+    googleMount.hidden = false;
+    googleFallback.hidden = true;
+    googleMount.innerHTML = "";
+    window.google.accounts.id.initialize({
+      client_id: google.clientId,
+      callback: handleGoogleCredential,
+      auto_select: false,
+    });
+    window.google.accounts.id.renderButton(googleMount, {
+      type: "standard",
+      theme: "outline",
+      size: "large",
+      text: "signin_with",
+      locale: state.language === "en" ? "en" : "ja",
+    });
+    if (googleNote) {
+      googleNote.textContent = state.language === "en"
+        ? "Sign in with Google. Your Google password is not stored on NENE Studio."
+        : "Google の画面で認証します。Google のパスワードは NENE Studio には保存されません。";
+    }
+  } else if (google.enabled) {
+    googleMount.hidden = true;
+    googleFallback.hidden = false;
+    window.setTimeout(renderAuthProviders, 400);
+  } else {
+    googleMount.hidden = true;
+    googleFallback.hidden = false;
+    if (googleNote) {
+      googleNote.textContent = state.language === "en"
+        ? "Google login requires GOOGLE_CLIENT_ID in the server .env file."
+        : "Googleログインにはサーバー .env の GOOGLE_CLIENT_ID 設定が必要です。";
+    }
+  }
+
+  if (apple.enabled && window.AppleID?.auth) {
+    window.AppleID.auth.init({
+      clientId: apple.clientId,
+      scope: "name email",
+      redirectURI: window.location.origin,
+      usePopup: true,
+    });
+  }
+}
+
+async function handleGoogleCredential(response) {
+  try {
+    const data = await apiRequest("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential: response.credential }),
+    });
+    await completeOAuthLogin(data, "Google");
+  } catch (error) {
+    state.status = error.message;
+    renderAll();
+    activateScreen("login");
+  }
+}
+
+async function signInWithApple() {
+  if (!state.auth.providers.apple.enabled || !window.AppleID?.auth) {
+    state.status = "Appleログインは現在利用できません。";
+    renderAll();
+    return;
+  }
+  try {
+    const result = await window.AppleID.auth.signIn();
+    const idToken = result?.authorization?.id_token;
+    if (!idToken) throw new Error("Appleログイン情報を取得できませんでした。");
+    const data = await apiRequest("/auth/apple", {
+      method: "POST",
+      body: JSON.stringify({ idToken }),
+    });
+    await completeOAuthLogin(data, "Apple");
+  } catch (error) {
+    if (error?.error === "popup_closed_by_user") return;
+    state.status = error.message || "Appleログインに失敗しました。";
+    renderAll();
+    activateScreen("login");
+  }
+}
+
+async function completeOAuthLogin(data, providerLabel) {
+  state.auth.token = data.token;
+  localStorage.setItem("neneAuthToken", data.token);
+  applyServerUser(data.user);
+  state.status = `${providerLabel}でログインしました。`;
+  await loadSavedToolsFromServer();
+  renderAll();
+  activateScreen("create");
 }
 
 async function submitAuth(mode) {
@@ -1255,19 +1653,52 @@ async function refreshCurrentUser() {
 
 function applyServerUser(user) {
   state.auth.user = user;
-  state.settings.paymentStatus = user?.isPaid ? "paid" : "unpaid";
-  state.settings.plan = user?.isPaid ? "premium" : "free";
+  state.settings.paymentStatus = user?.isAdFree ? "paid" : "unpaid";
+  state.settings.plan = user?.subscriptionPlan || "free";
 }
 
 function renderPaymentSettings() {
   const paymentStatus = $("#stripe-payment-status");
+  const activePlan = state.auth.user?.subscriptionPlan || "free";
   $$("input[name='plan']").forEach((input) => {
-    input.checked = input.value === state.settings.plan;
+    input.checked = state.auth.user?.isAdFree
+      ? input.value === activePlan
+      : input.value === state.settings.plan;
   });
   if (paymentStatus) {
-    paymentStatus.textContent = state.settings.paymentStatus === "paid"
-      ? "Stripe決済済みです。広告なしプランが有効です。"
-      : "未決済です。Stripeで支払い後、広告なしプランが有効になります。";
+    if (state.auth.user?.isAdFree) {
+      paymentStatus.textContent = state.language === "en"
+        ? `Stripe active: ${getPlanLabel(activePlan, "en")}.`
+        : `Stripe決済済み：${getPlanLabel(activePlan)}が有効です。`;
+    } else {
+      paymentStatus.textContent = state.language === "en"
+        ? "Unpaid. Choose a plan and pay with Stripe."
+        : "未決済です。プランを選び、Stripeで支払うと有効になります。";
+    }
+  }
+  const usageEl = $("#premium-ai-usage");
+  if (usageEl) {
+    const user = state.auth.user;
+    const limit = user?.aiUsageLimit ?? 0;
+    if (!user) {
+      usageEl.textContent = state.language === "en"
+        ? "Operator API usage: log in to view (980¥=50/month, 1250¥=100/month)."
+        : "今月の運営API生成：ログイン後に表示（980円＝50回/月、1250円＝100回/月）";
+    } else if (limit <= 0) {
+      usageEl.textContent = user.isAdFree && user.subscriptionPlan === "adfree"
+        ? (state.language === "en"
+          ? "¥480 plan: ad-free only. Set your API key or upgrade to ¥980/¥1250 for operator AI."
+          : "480円プラン：広告カットのみ。運営APIを使うには980円/1250円プランへ加入するか、自分のAPIキーを設定してください。")
+        : (state.language === "en"
+          ? "Free plan: blueprint only. Subscribe to ¥980/¥1250 or set your own API key."
+          : "無料プラン：設計図のみ。運営APIを使うには980円/1250円プランへ加入するか、自分のAPIキーを設定してください。");
+    } else {
+      const used = user.aiUsageCount ?? 0;
+      const remaining = user.aiUsageRemaining ?? Math.max(0, limit - used);
+      usageEl.textContent = state.language === "en"
+        ? `Operator API this month: ${used}/${limit} used (${remaining} remaining).`
+        : `今月の運営API生成：${used}/${limit} 回使用済み（残り ${remaining} 回）。上限超過後は自分のAPIキーまたは翌月まで。`;
+    }
   }
 }
 
@@ -1279,13 +1710,21 @@ async function openStripeCheckout() {
     return;
   }
 
+  const plan = state.settings.plan;
+  if (!PLAN_CATALOG[plan] || plan === "free") {
+    state.status = "有料プラン（480円 / 980円 / 1250円）を選んでからStripe決済してください。";
+    renderAll();
+    activateScreen("settings");
+    return;
+  }
+
   try {
     const data = await apiRequest("/billing/create-checkout-session", {
       method: "POST",
-      body: JSON.stringify({ plan: "premium" }),
+      body: JSON.stringify({ plan }),
     });
     window.location.href = data.url;
-    state.status = "Stripeの決済画面を開きました。カードまたは携帯払いで支払ってください。";
+    state.status = `${getPlanLabel(plan, state.language)}のStripe決済画面を開きました。`;
   } catch (error) {
     state.status = error.message;
   }
@@ -1839,6 +2278,8 @@ function buildRunnableToolFiles() {
     "      body: JSON.stringify({",
     "        systemPrompt: SYSTEM_PROMPT,",
     "        input: 'URLメモ（本文取得には使わない）:\\n' + sourceUrl + '\\n\\n本文・元情報:\\n' + input + '\\n\\n補足条件:\\n' + extra,",
+    "        userApiKey: localStorage.getItem('neneUserApiKey') || '',",
+    "        provider: localStorage.getItem('neneUserApiProvider') || 'gemini',",
     "      }),",
     "    });",
     "    if (!response.ok) {",
@@ -2056,7 +2497,7 @@ ${blueprintText}`,
 }
 
 async function copyExport() {
-  if (state.settings.paymentStatus !== "paid") {
+  if (!state.auth.user?.isAdFree) {
     showAdBeforeOutput(runOutput);
     return;
   }
@@ -2568,12 +3009,16 @@ function syncChoiceButtonsFromState() {
 }
 
 function renderStatus() {
-  assistStatus.textContent = state.status || "カテゴリや入力欄を変更すると、ツール作成内容に反映されます。";
+  if (appStatus) {
+    const message = state.status || "";
+    appStatus.textContent = message;
+    appStatus.hidden = !message;
+  }
   settingsStatus.textContent = state.currentScreen === "settings" ? state.status : "";
   agentStatus.textContent = state.currentScreen === "agent" ? state.status : "";
   if (authStatus) {
     authStatus.textContent = state.auth.user
-      ? `ログイン中：${state.auth.user.email} / 課金状態：${state.settings.paymentStatus === "paid" ? "広告なし" : "無料"}`
+      ? `ログイン中：${state.auth.user.email} / プラン：${getPlanLabel(state.auth.user.subscriptionPlan || "free", state.language)} / 方式：${formatAuthProvider(state.auth.user.authProvider)}`
       : "ログインしていません。";
   }
 }

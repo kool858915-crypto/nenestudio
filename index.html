@@ -27,6 +27,9 @@
           <button class="nav-item active" data-screen="create">作る</button>
           <button class="nav-item" data-screen="login">ログイン</button>
           <button class="nav-item" data-screen="usage">使い方</button>
+          <button class="nav-item" data-screen="implement">無料で実装</button>
+          <button class="nav-item" data-screen="plans">プラン</button>
+          <button class="nav-item" data-screen="apikey">APIキー設定</button>
           <button class="nav-item" data-screen="saved">保存済み</button>
           <button class="nav-item" data-screen="agent">AIエージェント作成</button>
           <button class="nav-item" data-screen="terms">利用規約</button>
@@ -45,6 +48,8 @@
           <button class="primary-action" id="main-action">AIツールを作成する</button>
         </section>
 
+        <p class="app-status-bar status-message" id="app-status" hidden aria-live="polite"></p>
+
         <section class="create-progress" id="create-progress" aria-label="作る手順">
           <button class="step-item active" data-step-screen="create"><span>1</span>内容を決める</button>
           <button class="step-item" data-step-screen="proposal"><span>2</span>提案を選ぶ</button>
@@ -53,24 +58,49 @@
           <button class="step-item" data-step-screen="export"><span>5</span>ツール作成</button>
         </section>
 
+        <div class="notice" id="investment-notice" hidden>
+          このツールは投資判断を補助するものです。売買の最終判断は利用者本人が行います。
+        </div>
+
         <section class="screen" id="login">
           <div class="section-heading">
             <p class="eyebrow">ログイン</p>
             <h2>メールアドレスでユーザーを判定します。</h2>
-            <p>保存済みツール、課金状態、広告なしフラグはサーバーのデータベースに保存します。</p>
+            <p>メール登録のほか、Google / Apple ログインにも対応します。アカウント情報はサーバーDBに安全に保存します。</p>
           </div>
           <div class="auth-grid">
             <article class="question-card compact-card">
               <p class="step-count">アカウント</p>
               <h2>ログイン / 新規登録</h2>
-              <label>メールアドレス<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
-              <label>パスワード<input id="auth-password" type="password" autocomplete="current-password" placeholder="8文字以上" /></label>
+              <div class="oauth-login-panel" id="oauth-login-panel">
+                <p class="oauth-login-label">外部アカウントでログイン</p>
+                <div class="oauth-button-row">
+                  <div id="google-login-button"></div>
+                  <button class="secondary oauth-google-fallback" id="google-login-fallback" type="button">Googleでログイン</button>
+                  <button class="secondary oauth-apple-button" id="apple-login-button" type="button" hidden>Appleでログイン</button>
+                </div>
+                <p class="oauth-login-note" id="google-login-note">Google / Apple の認証は各社の画面で行い、パスワードは NENE Studio には保存されません。</p>
+                <p class="oauth-divider">またはメールアドレス</p>
+              </div>
+              <div class="form-grid auth-form-fields">
+                <label>メールアドレス<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
+                <label>パスワード<input id="auth-password" type="password" autocomplete="current-password" placeholder="8文字以上" /></label>
+              </div>
               <div class="button-row">
                 <button class="primary" id="login-button" type="button">ログイン</button>
                 <button class="secondary" id="register-button" type="button">新規登録</button>
                 <button class="secondary" id="logout-button" type="button">ログアウト</button>
               </div>
               <p class="status-message" id="auth-status">ログインしていません。</p>
+            </article>
+            <article class="question-card compact-card">
+              <p class="step-count">サーバー連携</p>
+              <h2>ログイン・課金の裏設定</h2>
+              <p>メール/Google/Apple ログインと Stripe 課金は、すべてサーバーAPIが処理します。</p>
+              <ul class="server-status-list" id="server-auth-status">
+                <li>状態を確認中…</li>
+              </ul>
+              <p class="plan-note">Googleログインを使うには、サーバーの <code>.env</code> に <code>GOOGLE_CLIENT_ID</code> を設定してください。</p>
             </article>
             <article class="question-card compact-card">
               <p class="step-count">安全管理</p>
@@ -379,6 +409,222 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           </div>
         </section>
 
+        <section class="screen" id="implement">
+          <div class="section-heading">
+            <p class="eyebrow">Free Plan</p>
+            <h2>無料プラン：設計図を作り、Codex 等で実装する</h2>
+            <p>APIキーは不要です。NENE Studio で設計図を出力し、Cursor（Codex）・Claude Code・ChatGPT などの外部AIに渡して実装します。</p>
+          </div>
+
+          <article class="policy-panel implement-guide-panel">
+            <div class="guide-callout">
+              <strong>無料プランでできること</strong>
+              <ul>
+                <li>カテゴリ選択 → 提案 → 部品 → 設計書の作成（<strong>API不要</strong>）</li>
+                <li><strong>Codex用</strong> / <strong>Claude Code用</strong> の文案をダウンロード</li>
+                <li>実装作業は <strong>あなたが使う外部AI</strong> で行う（NENE Studio の API 代はかかりません）</li>
+                <li>出力前に広告が表示されます（480円以上の有料プランで広告なし）</li>
+              </ul>
+            </div>
+
+            <h2>手順A：NENE Studio で設計図を作る（約5〜10分）</h2>
+            <ol class="guide-step-list">
+              <li>左メニューの <strong>「作る」</strong> を押します。</li>
+              <li>作りたい <strong>カテゴリを1つ選び</strong>、右上 <strong>「次へ進む」</strong> を押します。</li>
+              <li><strong>質問1〜3</strong> はそのままでも、ボタンを変えてもOKです。各画面で <strong>「次へ進む」</strong> を押します。</li>
+              <li><strong>「提案を選びます」</strong> で使いたい案を1つ選び、<strong>「次へ進む」</strong> を押します。</li>
+              <li><strong>「作業の部品を組みます」</strong> で流れを確認し、<strong>「次へ進む」</strong> を押します。</li>
+              <li><strong>「作成内容を確認します」</strong> → <strong>「詳細表示」</strong> で全文を確認 → <strong>「次へ進む」</strong> を押します。</li>
+              <li><strong>「ツールを作成します」</strong> 画面で、次のどちらかを選びます。
+                <ul>
+                  <li><strong>Codex用ツール作成内容</strong> … Cursor（Codex）向け</li>
+                  <li><strong>Claude Code用ツール作成内容</strong> … Claude Code 向け</li>
+                </ul>
+              </li>
+              <li><strong>「ツールを作成する」</strong> を押します（無料プランは広告のあと出力）。</li>
+              <li>ダウンロードされたファイル、またはコピーした設計書を <strong>メモ帳などに保存</strong> しておきます。</li>
+            </ol>
+
+            <h2>手順B：Cursor（Codex）で実装する</h2>
+            <p>Cursor は AI 付きエディタです。設計書を貼り付けるだけで、ファイル作成を依頼できます。</p>
+            <ol class="guide-step-list">
+              <li><a href="https://cursor.com/" target="_blank" rel="noopener noreferrer">https://cursor.com/</a> を開き、Cursor をインストールします。</li>
+              <li>PC上に <strong>新しいフォルダ</strong> を作ります（例：<code>my-tool</code>）。</li>
+              <li>Cursor でそのフォルダを開きます。</li>
+              <li>チャット（Codex / Agent）を開き、NENE Studio の <strong>設計書全文</strong> を貼り付けます。</li>
+              <li>下の <strong>「依頼文例」</strong> をそのまま送ります。</li>
+              <li>生成された <code>index.html</code> などをフォルダに保存します。</li>
+              <li>フォルダ内の <code>index.html</code> をブラウザで開き、動作を確認します。</li>
+            </ol>
+
+            <h2>手順C：Claude Code で実装する</h2>
+            <ol class="guide-step-list">
+              <li><a href="https://claude.ai/" target="_blank" rel="noopener noreferrer">https://claude.ai/</a> にログインします（Claude Code / ターミナル連携は Anthropic の案内に従います）。</li>
+              <li>作業用フォルダを用意します。</li>
+              <li>NENE Studio の <strong>Claude Code用ツール作成内容</strong> を貼り付けます。</li>
+              <li>下の <strong>「依頼文例」</strong> を送り、ファイルを作成してもらいます。</li>
+              <li>できあがったファイルをフォルダに置き、<code>index.html</code> をブラウザで開きます。</li>
+            </ol>
+
+            <h2>手順D：ChatGPT で実装する</h2>
+            <ol class="guide-step-list">
+              <li><a href="https://chatgpt.com/" target="_blank" rel="noopener noreferrer">https://chatgpt.com/</a> を開き、ログインします。</li>
+              <li>新しいチャットを開始し、NENE Studio の設計書（Codex用または詳細表示の内容）を貼り付けます。</li>
+              <li>依頼文例を送り、返ってきた HTML / CSS / JS を <strong>ファイルに分けて保存</strong> します。</li>
+              <li>同じフォルダに <code>index.html</code>・<code>style.css</code>・<code>script.js</code> を置き、ブラウザで開きます。</li>
+            </ol>
+
+            <h2>コピペ用・依頼文例</h2>
+            <p>外部AIにそのまま貼って使える例文です。</p>
+            <pre class="code-block guide-prompt">以下は NENE Studio で作ったツール設計書です。
+この設計どおりに、初心者でも使えるシンプルな Web ツールを作ってください。
+
+必須条件：
+- index.html / style.css / script.js の3ファイル構成
+- 日本語UI
+- URL欄はメモ用のみ（URL本文の自動取得は禁止）
+- 実際に処理するのはユーザーが貼り付けた本文だけ
+- スマホでも見やすいレイアウト
+- エラー時は分かりやすい日本語メッセージ
+
+設計書：
+（ここに NENE Studio の出力全文を貼り付け）</pre>
+
+            <h2>うまくいかないとき</h2>
+            <ul>
+              <li><strong>設計書が短い</strong> … 「詳細表示」の内容まで含めて貼り付けてください。</li>
+              <li><strong>ファイルが1つにまとまる</strong> … 「3ファイルに分けて」と追加で依頼してください。</li>
+              <li><strong>動かない</strong> … ブラウザの開発者ツール（F12）の Console を確認し、エラー文をAIに渡して修正依頼します。</li>
+              <li><strong>APIが必要な機能</strong> … 無料設計図だけでは AI 生成は含まれません。APIキー設定は別途（設定画面・今後の案内）です。</li>
+            </ul>
+
+            <p class="guide-footer">この方法なら <strong>NENE Studio 側の OpenAI API 代は0円</strong> です。外部AIの利用料は、あなたが選んだサービス（ChatGPT プラン、Cursor 等）の条件に従います。</p>
+          </article>
+        </section>
+
+        <section class="screen" id="plans">
+          <div class="section-heading">
+            <p class="eyebrow">Plans</p>
+            <h2>プラン一覧</h2>
+            <p>設計図は無料。有料プランは広告カット（480円）または運営API付き（980円・1250円）。自分のAPIキー（BYOK）も使えます。</p>
+            <p class="price-disclaimer">※ 金額を確認しながらご使用ください。</p>
+          </div>
+          <div class="plan-tier-grid">
+            <article class="plan-tier-card">
+              <h3>無料</h3>
+              <ul class="plan-tree">
+                <li>設計図・Codex用文案を出力</li>
+                <li>→ 自分で Codex / ChatGPT 等で実装</li>
+              </ul>
+              <p class="plan-note">APIキー不要・出力前に広告あり</p>
+              <button class="secondary plan-link-button" type="button" data-goto="implement">無料で実装の手順を見る</button>
+            </article>
+            <article class="plan-tier-card highlight">
+              <h3>APIキー設定あり</h3>
+              <ul class="plan-tree">
+                <li>設計図を作成</li>
+                <li>＋ 自分のAPIでAI生成</li>
+                <li>→ Google Gemini 無料枠内なら実質0円</li>
+              </ul>
+              <p class="plan-note">キーは端末にのみ保存（BYOK）</p>
+              <button class="secondary plan-link-button" type="button" data-goto="apikey">APIキー取得手順</button>
+            </article>
+          </div>
+
+          <div class="section-heading plan-paid-heading">
+            <h2>有料プラン（Stripe・月額）</h2>
+          </div>
+          <div class="plan-tier-grid plan-paid-grid">
+            <article class="plan-tier-card">
+              <h3>480円 / 月</h3>
+              <ul class="plan-tree">
+                <li><strong>広告カット</strong>（出力前広告なし）</li>
+                <li>設計図作成はそのまま</li>
+                <li>AI生成は自前APIキーまたは上位プラン</li>
+              </ul>
+              <button class="secondary plan-link-button" type="button" data-select-plan="adfree">このプランを選ぶ</button>
+            </article>
+            <article class="plan-tier-card premium">
+              <h3>980円 / 月</h3>
+              <ul class="plan-tree">
+                <li>広告カット</li>
+                <li>＋ 運営APIで月 <strong>50回</strong> までAI生成</li>
+                <li>→ 51回目以降は <strong>自前API</strong> または <strong>翌月</strong></li>
+              </ul>
+              <button class="secondary plan-link-button" type="button" data-select-plan="ai50">このプランを選ぶ</button>
+            </article>
+            <article class="plan-tier-card premium">
+              <h3>1250円 / 月</h3>
+              <ul class="plan-tree">
+                <li>広告カット</li>
+                <li>＋ 運営APIで月 <strong>100回</strong> までAI生成</li>
+                <li>→ 101回目以降は <strong>自前API</strong> または <strong>翌月</strong></li>
+              </ul>
+              <button class="secondary plan-link-button" type="button" data-select-plan="ai100">このプランを選ぶ</button>
+            </article>
+          </div>
+          <div class="policy-panel plan-summary-panel">
+            <h2>選び方</h2>
+            <ul>
+              <li><strong>まず試す</strong> … 無料（設計図だけ）→ 左メニュー「無料で実装」</li>
+              <li><strong>広告だけ消したい</strong> … 480円/月（広告カット）</li>
+              <li><strong>手軽にAI生成</strong> … 980円/月（50回）または 1250円/月（100回）</li>
+              <li><strong>自分でAPI代</strong> … APIキー設定（BYOK）</li>
+            </ul>
+          </div>
+        </section>
+
+        <section class="screen" id="apikey">
+          <div class="section-heading">
+            <p class="eyebrow">BYOK</p>
+            <h2>自分のAPIキーでAI生成する</h2>
+            <p>URLを開いて手順どおり進めれば、誰でもキーを取得できます。取得後は「設定」に貼り付けます。</p>
+          </div>
+          <article class="policy-panel apikey-guide-panel">
+            <div class="guide-callout">
+              <strong>APIキー設定ありプラン</strong>
+              <ul>
+                <li>設計図作成 ＋ <strong>あなたのAPI</strong> でAI生成</li>
+                <li>運営者のOpenAI API代は<strong>かかりません</strong></li>
+                <li>Google Gemini なら<strong>無料枠</strong>内で試しやすい（おすすめ）</li>
+              </ul>
+            </div>
+
+            <h2>おすすめ：Google Gemini API（無料枠あり）</h2>
+            <ol class="guide-step-list">
+              <li><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">https://aistudio.google.com/apikey</a> を開く</li>
+              <li>Googleアカウントでログイン</li>
+              <li><strong>Create API key</strong>（APIキーを作成）を押す</li>
+              <li>表示されたキーをコピー（<code>AIza...</code> で始まる）</li>
+              <li>左メニュー <strong>「設定」</strong> → プロバイダー <strong>Google Gemini</strong> → APIキー欄に貼り付け → <strong>保存する</strong></li>
+            </ol>
+
+            <h2>OpenAI API（従量課金）</h2>
+            <ol class="guide-step-list">
+              <li><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">https://platform.openai.com/api-keys</a> を開く</li>
+              <li>アカウント作成・ログイン（支払い方法の登録が必要な場合あり）</li>
+              <li><strong>Create new secret key</strong> を押す</li>
+              <li>キーをコピー（<code>sk-...</code> で始まる）</li>
+              <li>「設定」→ プロバイダー <strong>OpenAI</strong> → 貼り付け → 保存</li>
+            </ol>
+
+            <h2>980円 / 1250円プランを使っている場合</h2>
+            <ul>
+              <li><strong>980円</strong> … 月 <strong>50回まで</strong> 運営API（キー不要）</li>
+              <li><strong>1250円</strong> … 月 <strong>100回まで</strong> 運営API（キー不要）</li>
+              <li>上限超過後 … 上記の自分のAPIキーを設定して生成</li>
+              <li>または <strong>翌月</strong> まで待つ（カウントリセット）</li>
+            </ul>
+
+            <h2>注意</h2>
+            <ul>
+              <li>APIキーは<strong>他人に見せない</strong>でください</li>
+              <li>キーは<strong>この端末のブラウザ</strong>にのみ保存します（サーバーには送りません※生成時のみ使用）</li>
+              <li>無料枠にも<strong>1日の上限</strong>があります</li>
+            </ul>
+          </article>
+        </section>
+
         <section class="screen" id="agent">
           <div class="section-heading">
             <p class="eyebrow">AIエージェント作成</p>
@@ -413,7 +659,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <li>URL本文を自動取得して処理する用途での利用</li>
             </ul>
             <h2>課金と解約</h2>
-            <p>広告なしプランはStripeのみで決済します。カード決済と、Stripeで有効化した携帯払いに対応します。解約、領収書、再請求はStripe Billingで管理します。</p>
+            <p>有料プランは Stripe のみで決済します（480円：広告カット／980円：AI50回／1250円：AI100回）。解約、領収書、再請求は Stripe Billing で管理します。※ 金額を確認しながらご使用ください。</p>
             <h2>ストア審査用説明</h2>
             <p>本アプリは、ユーザーがAIツールの構成を作成し、保存済みツールやAIエージェント案を管理する生産性アプリです。投資系の出力は情報整理を目的とし、売買助言や利益保証を行いません。</p>
             <p>ユーザー生成コンテンツは本人の入力に基づき、OpenAI APIキーはサーバー側で保護します。課金状態はStripe Webhookで検証し、クライアントURLだけでは有料機能を解放しません。</p>
@@ -504,53 +750,56 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
 
         <section class="screen" id="settings">
           <div class="settings-panel">
-            <h2>サーバー側APIキー設定</h2>
-            <p>OpenAI APIキー、Stripe秘密キー、Webhook署名キーはブラウザに入力せず、サーバーの `.env` で管理します。</p>
-            <p>ブラウザからはログイン情報だけを送り、AI生成や決済確認はサーバーAPIが実行します。</p>
+            <h2>プランとAPI設定</h2>
+            <p>無料＝設計図のみ／BYOK＝自分のAPI／有料＝480円（広告カット）・980円（AI50回）・1250円（AI100回）。詳細は「プラン」。</p>
+            <p class="price-disclaimer">※ 金額を確認しながらご使用ください。</p>
+
             <div class="plan-panel">
-              <h3>広告表示プラン</h3>
-              <label><input type="radio" name="plan" value="free" checked /> 無料プラン：出力前に広告が流れます</label>
-              <label><input type="radio" name="plan" value="premium" /> 月額780円プラン：広告なしで出力できます</label>
-              <p>広告なしプランはStripe決済完了後に有効になります。</p>
+              <h3>自分のAPIキー（BYOK）</h3>
+              <label>プロバイダー
+                <select id="user-api-provider">
+                  <option value="gemini">Google Gemini（無料枠あり・おすすめ）</option>
+                  <option value="openai">OpenAI</option>
+                </select>
+              </label>
+              <label>APIキー<input id="user-api-key" type="password" autocomplete="off" placeholder="設定するとこの端末に保存されます" /></label>
+              <p class="plan-note">取得手順は左メニュー <strong>「APIキー設定」</strong>。キーはブラウザの localStorage にのみ保存します。</p>
+            </div>
+
+            <div class="plan-panel">
+              <h3>有料プラン（Stripe）</h3>
+              <label><input type="radio" name="plan" value="free" checked /> 無料：設計図のみ（出力前に広告）</label>
+              <label><input type="radio" name="plan" value="adfree" /> 月額480円：広告カットのみ</label>
+              <label><input type="radio" name="plan" value="ai50" /> 月額980円：広告なし ＋ 運営APIで月50回までAI生成</label>
+              <label><input type="radio" name="plan" value="ai100" /> 月額1250円：広告なし ＋ 運営APIで月100回までAI生成</label>
+              <p id="premium-ai-usage">今月の運営API生成：ログイン後に表示されます</p>
+              <p class="plan-note">上限超過後は自分のAPIキーを設定するか、翌月までお待ちください。</p>
             </div>
             <div class="plan-panel">
-              <h3>支払い方法</h3>
-              <p>支払いはStripeのみです。Stripe Checkout + Stripe Billing で月額780円のサブスクを管理します。</p>
-              <p>カード決済と、Stripeで有効化した携帯払い（Apple Pay / Google Pay）に対応します。</p>
+              <h3>支払い（Stripe）</h3>
+              <p>支払いはStripeのみ。月額サブスク。カード・Apple Pay / Google Pay に対応。</p>
               <button class="primary" id="stripe-checkout-button" type="button">Stripeで支払う</button>
-              <p id="stripe-payment-status">未決済です。Stripeで支払い後、広告なしプランが有効になります。</p>
-              <p>決済完了はStripe Webhookでサーバーが確認します。URLだけでは広告なしになりません。</p>
+              <p id="stripe-payment-status">未決済です。プランを選び、Stripeで支払うと有効になります。</p>
+              <p>決済完了はStripe Webhookでサーバーが確認します。</p>
             </div>
             <button class="primary" id="save-settings">保存する</button>
             <p class="status-message" id="settings-status" aria-live="polite"></p>
           </div>
         </section>
       </main>
-
-      <aside class="assistant-panel">
-        <p class="eyebrow">AIアシスト</p>
-        <h2>今やること</h2>
-        <p id="assist-now">作りたいツールを1つ選んでください。</p>
-        <h3>おすすめ</h3>
-        <p id="assist-recommend">最初は「ニュース分析ツール」が作りやすいです。</p>
-        <h3>理由</h3>
-        <p id="assist-reason">入力が少なく、毎日使えて、収益化にもつなげやすいです。</p>
-        <h3>操作結果</h3>
-        <p id="assist-status">まだ操作はありません。</p>
-        <div class="notice" id="investment-notice" hidden>
-          このツールは投資判断を補助するものです。売買の最終判断は利用者本人が行います。
-        </div>
-      </aside>
     </div>
     <div class="ad-overlay" id="ad-overlay" hidden>
       <div class="ad-box">
         <p class="eyebrow">広告</p>
         <h2>無料プランのため、出力前に広告を表示しています。</h2>
-        <p>月額780円プランにすると、この広告は表示されません。</p>
+        <p>480円以上の有料プランにすると、この広告は表示されません。</p>
+        <p class="price-disclaimer">※ 金額を確認しながらご使用ください。</p>
         <div class="ad-visual">NENE Studio Pro</div>
         <button class="primary" id="ad-continue" disabled>あと 5 秒</button>
       </div>
     </div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js" async defer></script>
     <script src="./config.js"></script>
     <script src="./script.js"></script>
   </body>
