@@ -11,6 +11,11 @@
 > **Stripe 設定は今日は行わず、明日にする。**  
 > チャット再開時: 「`NEXT_SESSION.md` を読んで、Stripe 設定から続けて」
 
+> **Stripe プラグイン（Skills）インストール済（2026-06-30）**  
+> `npx skills add https://docs.stripe.com` → `.agents/skills/` に 4 スキル  
+> （stripe-best-practices / stripe-directory / stripe-projects / upgrade-stripe）  
+> Cursor 公式 MCP 付きプラグインは、必要なら IDE で `/add-plugin stripe` も追加可。
+
 ### Stripe（Render + Stripe ダッシュボード）
 
 1. Stripe で月額 **480円** / **1250円** の Price を作成（980円は設定済みの想定）
