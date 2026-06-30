@@ -38,7 +38,7 @@ Cloudflare Pages / Render では **Root directory は空欄（リポジトリ直
 
 ```env
 APP_BASE_URL=https://api.nenestudio.net
-PUBLIC_APP_URL=https://nenestudio.net
+PUBLIC_APP_URL=https://nenestudio.pages.dev
 CORS_ORIGIN=https://nenestudio.net,https://nenestudio.pages.dev
 JWT_SECRET=長いランダム文字列（32文字以上推奨）
 DATABASE_PATH=./server/nene-studio-db.json
@@ -71,6 +71,14 @@ APPLE_CLIENT_ID=（Apple ログインを使う場合のみ）
 2. Renderの `STRIPE_PRICE_ID_ADFREE` / `STRIPE_PRICE_ID_AI50` / `STRIPE_PRICE_ID_AI100` に各 Price ID を入れます。
 3. **Developers → Webhooks → Add endpoint** で以下を登録します。
 
+**DNS 未設定の間（今すぐ使う）:**
+
+```text
+https://nenestudio.onrender.com/api/stripe/webhook
+```
+
+**`api.nenestudio.net` 設定後:**
+
 ```text
 https://api.nenestudio.net/api/stripe/webhook
 ```
@@ -78,12 +86,27 @@ https://api.nenestudio.net/api/stripe/webhook
 4. 有効にするイベント:
 
 - `checkout.session.completed`
+- `customer.subscription.updated`
 - `customer.subscription.deleted`
 - `invoice.payment_failed`
 
 5. 表示された **Signing secret** を Render の `STRIPE_WEBHOOK_SECRET` に入れます。
 
-6. Stripe **Checkout** の成功URLはサーバー側で `https://nenestudio.net/index.html?stripe=success` に設定済みです。
+6. Render の `PUBLIC_APP_URL` を、決済後に戻す画面の URL に合わせます。
+
+**DNS 未設定の間:**
+
+```env
+PUBLIC_APP_URL=https://nenestudio.pages.dev
+```
+
+**`nenestudio.net` 設定後:**
+
+```env
+PUBLIC_APP_URL=https://nenestudio.net
+```
+
+Checkout の成功 URL は `${PUBLIC_APP_URL}/index.html?stripe=success` です。
 
 ---
 

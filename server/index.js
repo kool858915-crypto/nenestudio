@@ -84,7 +84,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (requ
     const user = store.users.find((item) => item.stripeSubscriptionId === subscription.id);
     if (user && subscription.status === "active") {
       user.subscriptionStatus = "active";
-      user.subscriptionPlan = resolvePlanFromPriceId(subscription.items?.data?.[0]?.price?.id) || user.subscriptionPlan || "ai50";
+      user.subscriptionPlan = resolvePlanFromPriceId(subscription.items?.data?.[0]?.price?.id) || user.subscriptionPlan || "free";
       saveStore();
     }
   }
@@ -112,6 +112,22 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (requ
 });
 
 app.use(express.json({ limit: "1mb" }));
+
+const STATIC_BLOCK_PATTERNS = [
+  /^\/server(?:\/|$)/i,
+  /^\/\.env/i,
+  /nene-studio-db\.json$/i,
+  /^\/\.git(?:\/|$)/i,
+  /^\/node_modules(?:\/|$)/i,
+];
+
+app.use((request, response, next) => {
+  if (STATIC_BLOCK_PATTERNS.some((pattern) => pattern.test(request.path))) {
+    return response.status(404).end();
+  }
+  return next();
+});
+
 app.use(express.static(appRoot));
 
 app.post("/api/auth/register", (request, response) => {
@@ -426,9 +442,9 @@ function normalizeSubscriptionPlan(user) {
 function resolvePlanFromCheckout(session) {
   const metadataPlan = session.metadata?.plan;
   if (metadataPlan && SUBSCRIPTION_PLANS[metadataPlan]) return metadataPlan;
-  return resolvePlanFromPriceId(session.display_items?.[0]?.price?.id)
-    || resolvePlanFromPriceId(session?.line_items?.data?.[0]?.price?.id)
-    || "ai50";
+  const pricePlan = resolvePlanFromPriceId(session.display_items?.[0]?.price?.id)
+    || resolvePlanFromPriceId(session?.line_items?.data?.[0]?.price?.id);
+  return pricePlan || "";
 }
 
 function resolvePlanFromPriceId(priceId) {
@@ -541,13 +557,14 @@ function findOrCreateOAuthUser({ provider, oauthId, email }) {
   return user;
 }
 
-function markUserPaid(userId, customerId, subscriptionId, status, plan = "ai50") {
+function markUserPaid(userId, customerId, subscriptionId, status, plan = "") {
   const user = store.users.find((item) => item.id === Number(userId));
   if (!user) return;
+  if (!SUBSCRIPTION_PLANS[plan]) return;
   user.stripeCustomerId = customerId || user.stripeCustomerId;
   user.stripeSubscriptionId = subscriptionId || user.stripeSubscriptionId;
   user.subscriptionStatus = status;
-  user.subscriptionPlan = SUBSCRIPTION_PLANS[plan] ? plan : "ai50";
+  user.subscriptionPlan = plan;
   saveStore();
 }
 

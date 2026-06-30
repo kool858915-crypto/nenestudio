@@ -1,3 +1,5 @@
 window.NENE_CONFIG = {
-  apiBase: "https://api.nenestudio.net/api",
+  // DNS 設定後: https://api.nenestudio.net/api
+  apiBase: "https://nenestudio.onrender.com/api",
+  apiBaseFallback: "https://nenestudio.onrender.com/api",
 };
