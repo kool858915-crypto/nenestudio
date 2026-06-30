@@ -39,7 +39,7 @@ Cloudflare Pages / Render では **Root directory は空欄（リポジトリ直
 ```env
 APP_BASE_URL=https://api.nenestudio.net
 PUBLIC_APP_URL=https://nenestudio.net
-CORS_ORIGIN=https://nenestudio.net
+CORS_ORIGIN=https://nenestudio.net,https://nenestudio.pages.dev
 JWT_SECRET=長いランダム文字列（32文字以上推奨）
 DATABASE_PATH=./server/nene-studio-db.json
 STRIPE_SECRET_KEY=sk_live_...
@@ -50,7 +50,11 @@ STRIPE_PRICE_ID_AI100=price_...（月額1250円・AI100回）
 # 互換用（未設定時 ai50 のフォールバック）
 STRIPE_PRICE_ID=price_...
 OPENAI_API_KEY=sk-proj-...
+GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com
+APPLE_CLIENT_ID=（Apple ログインを使う場合のみ）
 ```
+
+> **Google ログイン**を使う場合は `GOOGLE_CLIENT_ID` が必須です。詳細は下記 **「Google ログイン設定」** を参照。
 
 6. Renderの **Settings → Custom Domains** で `api.nenestudio.net` を追加します。
 7. Renderが表示する **CNAME** をCloudflare DNSに追加します。
@@ -80,6 +84,98 @@ https://api.nenestudio.net/api/stripe/webhook
 5. 表示された **Signing secret** を Render の `STRIPE_WEBHOOK_SECRET` に入れます。
 
 6. Stripe **Checkout** の成功URLはサーバー側で `https://nenestudio.net/index.html?stripe=success` に設定済みです。
+
+---
+
+## 3.5 Google ログイン設定
+
+**利用者は Client ID 不要です。** 運営者が Google Cloud とサーバー `.env` / Render に **1回だけ** 設定します。  
+アプリ側のコード（Google ボタン → ID トークン → `/api/auth/google` で検証）は **実装済み** です。
+
+### あなた（運営者）が Google Cloud で行う作業
+
+1. [Google Cloud Console](https://console.cloud.google.com/) に **Google アカウントでログイン**
+2. プロジェクトを選択（なければ **新規プロジェクト** 作成。例: `NENE Studio`）
+3. **API とサービス → OAuth 同意画面**
+   - ユーザーの種類: **外部**（一般公開向け）
+   - アプリ名: `NENE Studio`
+   - ユーザーサポートメール / デベロッパーの連絡先: 自分のメール
+   - スコープ: 追加不要（Google ログインボタンが `email` / `profile` / `openid` を使う）
+   - **テスト** のままの場合 → **テストユーザー** に自分の Gmail を追加（未追加だとログイン不可）
+   - 一般公開する場合 → **公開** に変更（Google の審査が必要な場合あり）
+4. **API とサービス → 認証情報 → 認証情報を作成 → OAuth クライアント ID**
+   - アプリケーションの種類: **ウェブアプリケーション**
+   - 名前: `NENE Studio Web`
+   - **承認済みの JavaScript 生成元**（ここが重要・リダイレクト URI ではない）:
+
+     ```text
+     http://localhost:8787
+     https://nenestudio.net
+     https://nenestudio.pages.dev
+     ```
+
+   - **承認済みのリダイレクト URI**: 空で OK（本アプリは Google Identity Services のボタン方式）
+   - **入れない**: `https://api.nenestudio.net`（API 用・ログイン画面ではない）
+5. 作成後、表示される **クライアント ID**（`....apps.googleusercontent.com`）をコピー
+
+### あなた（運営者）がサーバーで行う作業
+
+**ローカル（まずここで試す）**
+
+1. `nene-studio-wireframe/.env` を開く
+2. 次の1行を追加または更新:
+
+   ```env
+   GOOGLE_CLIENT_ID=ここにクライアントIDを貼る
+   ```
+
+3. サーバー再起動:
+
+   ```bash
+   npm run dev
+   ```
+
+4. ブラウザで `http://localhost:8787` → ログイン画面  
+   - 右側「ログイン・課金の裏設定」に **Googleログイン：設定済** と出れば OK  
+   - **Google でログイン** ボタン（公式ボタン）が表示され、クリックでログインできる
+
+**本番（Render）**
+
+1. Render → サービス → **Environment** → `GOOGLE_CLIENT_ID` を同じ Client ID で追加
+2. `CORS_ORIGIN` にフロントの URL が含まれていることを確認:
+
+   ```env
+   CORS_ORIGIN=https://nenestudio.net,https://nenestudio.pages.dev
+   ```
+
+3. サービスを **再デプロイ**（Manual Deploy または env 保存で自動）
+
+### Pages（pages.dev）から API を使うまでの暫定設定
+
+`api.nenestudio.net` の DNS が未設定でも、`config.js` は Render 直 URL にフォールバックします。  
+そのため Render の **Environment** に次を必ず入れてください:
+
+```env
+CORS_ORIGIN=https://nenestudio.net,https://nenestudio.pages.dev
+```
+
+保存後、Render が再デプロイされれば https://nenestudio.pages.dev からログイン・課金 API が使えます。
+
+---
+
+```powershell
+curl http://localhost:8787/api/auth/providers
+# google.enabled が true、clientId が設定値ならサーバー側 OK
+```
+
+### よくあるエラー
+
+| 症状 | 原因 | 対処 |
+|------|------|------|
+| `origin_mismatch` / 403 | JavaScript 生成元に現在の URL がない | Cloud Console で `http://localhost:8787` 等を追加 |
+| `Googleログインはサーバー設定が未完了` | `.env` 未設定 or 再起動忘れ | `GOOGLE_CLIENT_ID` 設定 → `npm run dev` 再起動 |
+| `access_denied` / テストユーザー | 同意画面が「テスト」で自分が未登録 | テストユーザーに Gmail 追加、または公開申請 |
+| 本番 Pages だけ失敗 | API が `api.nenestudio.net` 未公開 or CORS | Render ドメイン・`CORS_ORIGIN` を確認 |
 
 ---
 
@@ -132,9 +228,10 @@ $env:CLOUDFLARE_ACCOUNT_ID="..."
 
 1. `https://nenestudio.net` が開く
 2. ログイン / 新規登録ができる
-3. `https://api.nenestudio.net/api/auth/me` がログイン後に応答する（ブラウザからは直接叩かない）
-4. Stripeテスト決済 → Webhook → 広告なしプランが有効になる
-5. PWAとして「インストール」できる
+3. **Google ログイン**（`GOOGLE_CLIENT_ID` 設定後）ができる
+4. `https://api.nenestudio.net/api/auth/me` がログイン後に応答する（ブラウザからは直接叩かない）
+5. Stripeテスト決済 → Webhook → 広告なしプランが有効になる
+6. PWAとして「インストール」できる
 
 ---
 

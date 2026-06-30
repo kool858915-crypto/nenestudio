@@ -928,7 +928,14 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
-const API_BASE = window.NENE_CONFIG?.apiBase || "/api";
+let resolvedApiBase = window.NENE_CONFIG?.apiBase || "/api";
+const apiBaseFallback = window.NENE_CONFIG?.apiBaseFallback || "";
+
+function getApiBaseCandidates() {
+  return [resolvedApiBase, apiBaseFallback].filter(
+    (base, index, list) => base && list.indexOf(base) === index,
+  );
+}
 
 const categoryGrid = $("#category-grid");
 const investmentNotice = $("#investment-notice");
@@ -1042,6 +1049,15 @@ function bindEvents() {
   $("#logout-button").addEventListener("click", logoutUser);
   $("#apple-login-button")?.addEventListener("click", signInWithApple);
   $("#google-login-fallback")?.addEventListener("click", () => {
+    if (state.auth.providers.google.enabled && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          state.status = "Googleログイン画面を表示できませんでした。ポップアップブロックを解除するか、ページを再読み込みしてください。";
+          renderAll();
+        }
+      });
+      return;
+    }
     if (state.auth.providers.google.enabled) {
       state.status = "Googleログインボタンの読み込み中です。少し待ってから再度お試しください。";
     } else {
@@ -1432,15 +1448,30 @@ async function apiRequest(path, options = {}) {
   if (state.auth.token) {
     headers.Authorization = `Bearer ${state.auth.token}`;
   }
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error || "サーバー処理に失敗しました。");
+  const bases = getApiBaseCandidates();
+  let lastError = null;
+
+  for (let index = 0; index < bases.length; index += 1) {
+    const base = bases[index];
+    try {
+      const response = await fetch(`${base}${path}`, {
+        ...options,
+        headers,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "サーバー処理に失敗しました。");
+      }
+      resolvedApiBase = base;
+      return data;
+    } catch (error) {
+      lastError = error;
+      const canRetry = index < bases.length - 1 && error instanceof TypeError;
+      if (!canRetry) break;
+    }
   }
-  return data;
+
+  throw lastError || new Error("サーバーに接続できません。");
 }
 
 async function loadAuthProviders() {
