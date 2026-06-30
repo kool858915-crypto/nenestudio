@@ -242,7 +242,7 @@ const uiText = {
 };
 
 const textTranslations = {
-  "MVPワイヤーフレーム": "MVP Wireframe",
+  "NENE Studio": "NENE Studio",
   "内容を決める": "Decide Content",
   "提案を選ぶ": "Choose Proposal",
   "部品を組む": "Build Parts",
