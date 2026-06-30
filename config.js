@@ -3,8 +3,8 @@ window.NENE_CONFIG = {
   apiBase:
     location.hostname === "localhost" || location.hostname === "127.0.0.1"
       ? "/api"
-      : "https://api.nenestudio.net/api",
-  // api.nenestudio.net の DNS 未設定時のフォールバック（Render 直 URL）
-  // Render の CORS_ORIGIN に https://nenestudio.pages.dev を含めてください
+      : "https://nenestudio.onrender.com/api",
+  // カスタムドメイン DNS 設定後に切り替え:
+  // apiBase: "https://api.nenestudio.net/api",
   apiBaseFallback: "https://nenestudio.onrender.com/api",
 };

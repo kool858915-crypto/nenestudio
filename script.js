@@ -1298,10 +1298,10 @@ function renderAll() {
   renderAgentBuilder();
   renderPaymentSettings();
   renderStatus();
-  renderAuthProviders();
-  renderServerAuthStatus();
   renderCreateProgress();
   renderLanguage();
+  renderAuthProviders();
+  renderServerAuthStatus();
 }
 
 function renderLanguage() {
@@ -1346,7 +1346,7 @@ function translateTextNodes(root) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       const parent = node.parentElement;
-      if (!parent || ["SCRIPT", "STYLE", "TEXTAREA", "INPUT"].includes(parent.tagName)) {
+      if (!parent || parent.closest("[data-no-translate]") || ["SCRIPT", "STYLE", "TEXTAREA", "INPUT"].includes(parent.tagName)) {
         return NodeFilter.FILTER_REJECT;
       }
       return node.nodeValue.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
@@ -1466,8 +1466,8 @@ async function apiRequest(path, options = {}) {
       return data;
     } catch (error) {
       lastError = error;
-      const canRetry = index < bases.length - 1 && error instanceof TypeError;
-      if (!canRetry) break;
+      if (index < bases.length - 1) continue;
+      break;
     }
   }
 
@@ -1483,7 +1483,7 @@ async function loadAuthProviders() {
     };
     renderAuthProviders();
   } catch {
-    // 未ログインでも取得できるが、サーバー停止時は無視
+    window.setTimeout(loadAuthProviders, 2000);
   }
 }
 

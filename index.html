@@ -79,7 +79,7 @@
                   <button class="secondary oauth-google-fallback" id="google-login-fallback" type="button">Googleでログイン</button>
                   <button class="secondary oauth-apple-button" id="apple-login-button" type="button" hidden>Appleでログイン</button>
                 </div>
-                <p class="oauth-login-note" id="google-login-note">Google / Apple の認証は各社の画面で行い、パスワードは NENE Studio には保存されません。</p>
+                <p class="oauth-login-note" id="google-login-note" data-no-translate>Google / Apple の認証は各社の画面で行い、パスワードは NENE Studio には保存されません。</p>
                 <p class="oauth-divider">またはメールアドレス</p>
               </div>
               <div class="form-grid auth-form-fields">
@@ -100,7 +100,7 @@
               <ul class="server-status-list" id="server-auth-status">
                 <li>状態を確認中…</li>
               </ul>
-              <p class="plan-note">Googleログインを使うには、サーバーの <code>.env</code> に <code>GOOGLE_CLIENT_ID</code> を設定してください。</p>
+              <p class="plan-note" id="google-setup-note" data-no-translate>Googleログインの状態は上のボタンと右の「裏設定」で確認できます。</p>
             </article>
             <article class="question-card compact-card">
               <p class="step-count">安全管理</p>
