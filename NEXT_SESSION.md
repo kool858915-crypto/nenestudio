@@ -1,8 +1,34 @@
 # NENE Studio — 作業メモ
 
-> 最終更新: 2026-06-30  
+> 最終更新: 2026-06-30（Stripe 設定は **明日** に延期）  
 > 公開: https://nenestudio.pages.dev  
 > API: https://nenestudio.onrender.com/api
+
+---
+
+## 明日やること（メモ）
+
+> **Stripe 設定は今日は行わず、明日にする。**  
+> チャット再開時: 「`NEXT_SESSION.md` を読んで、Stripe 設定から続けて」
+
+### Stripe（Render + Stripe ダッシュボード）
+
+1. Stripe で月額 **480円** / **1250円** の Price を作成（980円は設定済みの想定）
+2. Render → `nenestudio` → **Environment** に追加:
+   - `STRIPE_PRICE_ID_ADFREE` = 480円 Price ID
+   - `STRIPE_PRICE_ID_AI100` = 1250円 Price ID
+   - `PUBLIC_APP_URL` = `https://nenestudio.pages.dev`
+   - `STRIPE_WEBHOOK_SECRET` = Webhook 作成後の secret
+3. Stripe → Webhooks → エンドポイント:
+
+```text
+https://nenestudio.onrender.com/api/stripe/webhook
+```
+
+4. イベント: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
+5. 保存後、Pages で 480 / 980 / 1250 円プランのテスト決済
+
+詳細手順: `DEPLOYMENT.md` セクション 3
 
 ---
 
@@ -21,9 +47,9 @@
 
 ## 次にやること（優先順）
 
-### 1. Stripe 3プラン完成（Render Environment）
+### 1. Stripe 3プラン完成（Render Environment）— **明日実施**
 
-現状 Render: **980円（ai50）のみ Stripe 設定済**。480円・1250円は未設定。
+> ⏸ 2026-06-30: 本人指示により **明日に延期**。上記「明日やること」を参照。
 
 | KEY | 内容 |
 |-----|------|
@@ -96,4 +122,11 @@ PUBLIC_APP_URL=https://nenestudio.net
 
 ---
 
-*次の作業: **Stripe 480/1250 の Price ID** または **Cloudflare DNS** から。*
+*次の作業（明日）: **Stripe 設定**。その後 **Cloudflare DNS（nenestudio.net）**。*
+
+---
+
+## 今日までに完了（2026-06-30）
+
+- Pages 公開・Google ログイン・CORS・API 接続
+- サーバー DB 静的配信ブロック、README / 手順書更新
