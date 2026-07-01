@@ -904,6 +904,8 @@ const state = {
     token: "",
     user: null,
     providers: { google: { enabled: false, clientId: "" }, apple: { enabled: false, clientId: "" } },
+    feedback: { type: "info", message: "" },
+    loading: false,
   },
   serverStatus: null,
   language: "ja",
@@ -1046,7 +1048,11 @@ function bindEvents() {
 
   $("#login-button").addEventListener("click", () => submitAuth("login"));
   $("#register-button").addEventListener("click", () => submitAuth("register"));
-  $("#logout-button").addEventListener("click", logoutUser);
+  $("#logout-button")?.addEventListener("click", logoutUser);
+  $("#auth-go-create")?.addEventListener("click", () => {
+    setAuthFeedback("");
+    activateScreen("create");
+  });
   $("#apple-login-button")?.addEventListener("click", signInWithApple);
   $("#google-login-fallback")?.addEventListener("click", () => {
     if (state.auth.providers.google.enabled && window.google?.accounts?.id) {
@@ -1298,10 +1304,11 @@ function renderAll() {
   renderAgentBuilder();
   renderPaymentSettings();
   renderStatus();
-  renderCreateProgress();
-  renderLanguage();
   renderAuthProviders();
   renderServerAuthStatus();
+  renderCreateProgress();
+  renderLanguage();
+  renderAuthUi();
 }
 
 function renderLanguage() {
@@ -1619,21 +1626,123 @@ async function completeOAuthLogin(data, providerLabel) {
   state.auth.token = data.token;
   localStorage.setItem("neneAuthToken", data.token);
   applyServerUser(data.user);
-  state.status = `${providerLabel}でログインしました。`;
+  const successMessage = `${providerLabel}でログインしました。`;
+  state.status = successMessage;
+  setAuthFeedback(successMessage, "success");
   await loadSavedToolsFromServer();
   renderAll();
-  activateScreen("create");
+  activateScreen("login");
+}
+
+function setAuthFeedback(message, type = "info") {
+  state.auth.feedback = message
+    ? { type, message }
+    : { type: "info", message: "" };
+}
+
+function setAuthLoading(loading) {
+  state.auth.loading = loading;
+}
+
+function renderAuthUi() {
+  const loggedInPanel = $("#auth-logged-in-panel");
+  const guestPanel = $("#auth-guest-panel");
+  const feedback = $("#auth-feedback");
+  const user = state.auth.user;
+  const isLoggedIn = Boolean(user);
+
+  if (loggedInPanel) loggedInPanel.hidden = !isLoggedIn;
+  if (guestPanel) guestPanel.hidden = isLoggedIn;
+
+  const loginTitle = $("#login-screen-title");
+  const loginDesc = $("#login-screen-desc");
+  const authCardTitle = $("#auth-card-title");
+  if (loginTitle) {
+    loginTitle.textContent = isLoggedIn
+      ? (state.language === "en" ? "You are signed in." : "ログイン済みです。")
+      : (state.language === "en" ? "Sign in with your email address." : "メールアドレスでユーザーを判定します。");
+  }
+  if (loginDesc) {
+    loginDesc.textContent = isLoggedIn
+      ? (state.language === "en" ? "Your account is active. Continue to Build or sign out below." : "アカウントは有効です。下のボタンから作る画面へ進むか、ログアウトできます。")
+      : (state.language === "en" ? "Use email registration, Google, or Apple sign-in." : "メール登録のほか、Google / Apple ログインにも対応します。");
+  }
+  if (authCardTitle) {
+    authCardTitle.textContent = isLoggedIn
+      ? (state.language === "en" ? "Account" : "アカウント情報")
+      : (state.language === "en" ? "Sign in / Register" : "ログイン / 新規登録");
+  }
+
+  if (isLoggedIn) {
+    const emailEl = $("#auth-logged-in-email");
+    const planEl = $("#auth-logged-in-plan");
+    const providerEl = $("#auth-logged-in-provider");
+    if (emailEl) emailEl.textContent = user.email;
+    if (planEl) planEl.textContent = getPlanLabel(user.subscriptionPlan || "free", state.language);
+    if (providerEl) providerEl.textContent = formatAuthProvider(user.authProvider);
+  }
+
+  if (feedback) {
+    const { type, message } = state.auth.feedback;
+    if (message) {
+      feedback.hidden = false;
+      feedback.className = `auth-feedback auth-feedback-${type}`;
+      feedback.textContent = message;
+    } else {
+      feedback.hidden = true;
+      feedback.textContent = "";
+    }
+  }
+
+  const loginButton = $("#login-button");
+  const registerButton = $("#register-button");
+  const loadingLabel = state.language === "en" ? "Processing..." : "処理中…";
+  if (loginButton) {
+    loginButton.disabled = state.auth.loading;
+    loginButton.textContent = state.auth.loading ? loadingLabel : (state.language === "en" ? "Sign in" : "ログイン");
+  }
+  if (registerButton) {
+    registerButton.disabled = state.auth.loading;
+    registerButton.textContent = state.auth.loading ? loadingLabel : (state.language === "en" ? "Register" : "新規登録");
+  }
+
+  if (authStatus) {
+    if (isLoggedIn) {
+      authStatus.textContent = state.language === "en"
+        ? "Signed in. Use the green panel above."
+        : "ログイン済みです。上の緑色パネルを確認してください。";
+    } else if (state.auth.feedback.message) {
+      authStatus.textContent = state.auth.feedback.message;
+    } else {
+      authStatus.textContent = state.language === "en"
+        ? "Not signed in. Enter email and password (8+ chars)."
+        : "未ログインです。メールとパスワード（8文字以上）を入力してください。";
+    }
+  }
+
+  const loginNav = document.querySelector('.nav-item[data-screen="login"]');
+  if (loginNav) {
+    loginNav.textContent = isLoggedIn
+      ? (state.language === "en" ? "Account ✓" : "ログイン ✓")
+      : (state.language === "en" ? "Login" : "ログイン");
+  }
 }
 
 async function submitAuth(mode) {
   const email = $("#auth-email").value.trim();
   const password = $("#auth-password").value;
   if (!email || password.length < 8) {
-    state.status = "メールアドレスと8文字以上のパスワードを入力してください。";
+    const message = "メールアドレスと8文字以上のパスワードを入力してください。";
+    state.status = message;
+    setAuthFeedback(message, "error");
     renderAll();
     activateScreen("login");
     return;
   }
+
+  setAuthLoading(true);
+  setAuthFeedback(state.language === "en" ? "Contacting server..." : "サーバーに接続しています…", "info");
+  renderAll();
 
   try {
     const data = await apiRequest(`/auth/${mode}`, {
@@ -1643,15 +1752,25 @@ async function submitAuth(mode) {
     state.auth.token = data.token;
     localStorage.setItem("neneAuthToken", data.token);
     applyServerUser(data.user);
-    const successMessage = mode === "register" ? "新規登録してログインしました。" : "ログインしました。";
+    const successMessage = mode === "register"
+      ? "新規登録が完了しました。ログイン状態です。"
+      : "ログインしました。";
     state.status = successMessage;
+    setAuthFeedback(successMessage, "success");
+    $("#auth-password").value = "";
     await loadSavedToolsFromServer();
-    if (state.auth.user) state.status = successMessage;
+    if (state.auth.user) {
+      state.status = successMessage;
+      setAuthFeedback(successMessage, "success");
+    }
   } catch (error) {
     state.status = error.message;
+    setAuthFeedback(error.message, "error");
+  } finally {
+    setAuthLoading(false);
   }
   renderAll();
-  activateScreen(state.auth.user ? "create" : "login");
+  activateScreen("login");
 }
 
 function logoutUser() {
@@ -1660,7 +1779,9 @@ function logoutUser() {
   state.settings.paymentStatus = "unpaid";
   state.settings.plan = "free";
   localStorage.removeItem("neneAuthToken");
-  state.status = "ログアウトしました。";
+  const message = "ログアウトしました。";
+  state.status = message;
+  setAuthFeedback(message, "info");
   renderAll();
   activateScreen("login");
 }
@@ -3049,15 +3170,6 @@ function renderStatus() {
   }
   settingsStatus.textContent = state.currentScreen === "settings" ? state.status : "";
   agentStatus.textContent = state.currentScreen === "agent" ? state.status : "";
-  if (authStatus) {
-    if (state.auth.user) {
-      authStatus.textContent = `ログイン中：${state.auth.user.email} / プラン：${getPlanLabel(state.auth.user.subscriptionPlan || "free", state.language)} / 方式：${formatAuthProvider(state.auth.user.authProvider)}`;
-    } else if (state.status) {
-      authStatus.textContent = state.status;
-    } else {
-      authStatus.textContent = "ログインしていません。";
-    }
-  }
 }
 
 function escapeHtml(value) {
