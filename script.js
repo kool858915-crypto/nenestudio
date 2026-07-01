@@ -1643,13 +1643,15 @@ async function submitAuth(mode) {
     state.auth.token = data.token;
     localStorage.setItem("neneAuthToken", data.token);
     applyServerUser(data.user);
-    state.status = mode === "register" ? "新規登録してログインしました。" : "ログインしました。";
+    const successMessage = mode === "register" ? "新規登録してログインしました。" : "ログインしました。";
+    state.status = successMessage;
     await loadSavedToolsFromServer();
+    if (state.auth.user) state.status = successMessage;
   } catch (error) {
     state.status = error.message;
   }
   renderAll();
-  activateScreen("login");
+  activateScreen(state.auth.user ? "create" : "login");
 }
 
 function logoutUser() {
@@ -3048,9 +3050,13 @@ function renderStatus() {
   settingsStatus.textContent = state.currentScreen === "settings" ? state.status : "";
   agentStatus.textContent = state.currentScreen === "agent" ? state.status : "";
   if (authStatus) {
-    authStatus.textContent = state.auth.user
-      ? `ログイン中：${state.auth.user.email} / プラン：${getPlanLabel(state.auth.user.subscriptionPlan || "free", state.language)} / 方式：${formatAuthProvider(state.auth.user.authProvider)}`
-      : "ログインしていません。";
+    if (state.auth.user) {
+      authStatus.textContent = `ログイン中：${state.auth.user.email} / プラン：${getPlanLabel(state.auth.user.subscriptionPlan || "free", state.language)} / 方式：${formatAuthProvider(state.auth.user.authProvider)}`;
+    } else if (state.status) {
+      authStatus.textContent = state.status;
+    } else {
+      authStatus.textContent = "ログインしていません。";
+    }
   }
 }
 

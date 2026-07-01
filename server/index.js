@@ -137,8 +137,15 @@ app.post("/api/auth/register", (request, response) => {
   }
 
   const normalizedEmail = email.toLowerCase();
-  if (store.users.some((user) => user.email === normalizedEmail)) {
-    return response.status(409).json({ error: "このメールアドレスはすでに登録されています。" });
+  const existing = store.users.find((user) => user.email === normalizedEmail);
+  if (existing) {
+    if (existing.authProvider === "google") {
+      return response.status(409).json({ error: "このメールアドレスは Google 登録済みです。Google でログインしてください。" });
+    }
+    if (existing.authProvider === "apple") {
+      return response.status(409).json({ error: "このメールアドレスは Apple 登録済みです。Apple でログインしてください。" });
+    }
+    return response.status(409).json({ error: "このメールアドレスはすでに登録されています。ログインをお試しください。" });
   }
 
   const user = createUserRecord({
