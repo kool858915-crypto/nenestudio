@@ -105,10 +105,12 @@
   }
 
   function trackA8Impression(banner) {
+    const pixelUrl = String(banner.pixelUrl || "").trim();
     const match = String(banner.linkUrl || "").match(/a8mat=([^&]+)/);
-    if (!match) return;
+    const src = pixelUrl || (match ? `https://www18.a8.net/0.gif?a8mat=${match[1]}` : "");
+    if (!src) return;
     const pixel = document.createElement("img");
-    pixel.src = `https://www18.a8.net/0.gif?a8mat=${match[1]}`;
+    pixel.src = src;
     pixel.alt = "";
     pixel.width = 1;
     pixel.height = 1;

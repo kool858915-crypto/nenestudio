@@ -40,8 +40,9 @@ window.NENE_ADS = {
       },
       {
         linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28DJG2+348+5YZ76",
-        alt: "ロリポップ！レンタルサーバー",
+        alt: "ロリポップ！",
         type: "text",
+        pixelUrl: "https://www17.a8.net/0.gif?a8mat=4B7USY+28DJG2+348+5YZ76",
       },
     ],
   },
