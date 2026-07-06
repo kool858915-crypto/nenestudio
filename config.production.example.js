@@ -1,5 +1,12 @@
-window.NENE_CONFIG = {
-  // DNS 設定後: https://api.nenestudio.net/api
-  apiBase: "https://nenestudio.onrender.com/api",
-  apiBaseFallback: "https://nenestudio.onrender.com/api",
-};
+(function initNeneConfig() {
+  const hostname = location.hostname;
+  const isCustomDomain =
+    hostname === "nenestudio.net" || hostname === "www.nenestudio.net";
+  const renderApi = "https://nenestudio.onrender.com/api";
+  const customApi = "https://api.nenestudio.net/api";
+
+  window.NENE_CONFIG = {
+    apiBase: isCustomDomain ? customApi : renderApi,
+    apiBaseFallback: renderApi,
+  };
+})();

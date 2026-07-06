@@ -23,6 +23,8 @@ const corsOrigins = (process.env.CORS_ORIGIN || publicAppUrl)
   .map((origin) => origin.trim())
   .filter(Boolean);
 const jwtSecret = process.env.JWT_SECRET || "dev-only-change-me";
+const isProduction = process.env.NODE_ENV === "production";
+assertProductionSecurity();
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const databasePath = path.resolve(appRoot, process.env.DATABASE_PATH || "./server/nene-studio-db.json");
 
@@ -388,7 +390,32 @@ app.post("/api/ai/generate", requireAuth, async (request, response) => {
 
 app.listen(port, () => {
   console.log(`NENE Studio server running at ${appBaseUrl}`);
+  logDatabasePersistenceWarning();
 });
+
+function assertProductionSecurity() {
+  if (!isProduction) return;
+  if (!jwtSecret || jwtSecret === "dev-only-change-me") {
+    console.error("FATAL: JWT_SECRET が未設定です。Render Environment にランダムな長い文字列を設定してください。");
+    process.exit(1);
+  }
+}
+
+function logDatabasePersistenceWarning() {
+  if (!isProduction) return;
+  const defaultRelativePath = path.resolve(appRoot, "./server/nene-studio-db.json");
+  const onEphemeralStorage = databasePath === defaultRelativePath
+    || databasePath.startsWith(appRoot + path.sep);
+  if (onEphemeralStorage) {
+    console.warn(
+      "[WARN] DATABASE_PATH がアプリ本体と同じ領域です。"
+      + " Render 無料プランでは再デプロイ時にユーザーデータが消える可能性があります。"
+      + " Starter 以上 + 永続ディスク（render.yaml 参照）か DATABASE_PATH=/var/data/nene-studio-db.json を検討してください。",
+    );
+  } else {
+    console.log(`[INFO] DATABASE_PATH=${databasePath}（永続ディスク想定）`);
+  }
+}
 
 function requireAuth(request, response, next) {
   const token = request.headers.authorization?.replace(/^Bearer\s+/i, "");

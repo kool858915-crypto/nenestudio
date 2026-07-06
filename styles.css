@@ -564,6 +564,46 @@ button {
   line-height: 1.6;
 }
 
+.auth-form {
+  display: grid;
+  gap: 12px;
+}
+
+.auth-remember-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+  font-size: 0.94rem;
+}
+
+.auth-remember-row input {
+  margin-top: 4px;
+}
+
+.password-field-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.password-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.password-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
 .auth-status-message {
   color: var(--muted);
   font-weight: 600;

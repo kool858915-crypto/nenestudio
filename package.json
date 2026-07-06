@@ -11,6 +11,8 @@
     "start": "node server/index.js",
     "check": "node --check script.js && node --check server/index.js",
     "verify:auth": "node scripts/verify-auth.mjs",
+    "verify:dns": "node scripts/verify-dns.mjs",
+    "verify:production": "node scripts/verify-production.mjs",
     "setup:stripe": "node scripts/setup-stripe.mjs"
   },
   "dependencies": {

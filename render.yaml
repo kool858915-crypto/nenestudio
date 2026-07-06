@@ -2,7 +2,13 @@ services:
   - type: web
     name: nene-studio-api
     env: node
+    # 無料プラン: JSON DB は再デプロイで消える可能性あり（server 起動時に WARN ログ）
+    # 永続化する場合は plan を starter 以上にし、下の disk を有効化:
     plan: free
+    # disk:
+    #   name: nene-data
+    #   mountPath: /var/data
+    #   sizeGB: 1
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -20,6 +26,8 @@ services:
         generateValue: true
       - key: DATABASE_PATH
         value: ./server/nene-studio-db.json
+        # 永続ディスク利用時:
+        # value: /var/data/nene-studio-db.json
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

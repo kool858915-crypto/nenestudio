@@ -7,7 +7,8 @@ import Stripe from "stripe";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const envPath = path.join(root, ".env");
-const webhookUrl = process.env.STRIPE_WEBHOOK_URL || "https://nenestudio.onrender.com/api/stripe/webhook";
+const webhookUrl = process.env.STRIPE_WEBHOOK_URL
+  || "https://api.nenestudio.net/api/stripe/webhook";
 
 const PLANS = [
   { envKey: "STRIPE_PRICE_ID_ADFREE", name: "NENE Studio 広告カット", amount: 480, plan: "adfree" },
@@ -122,7 +123,7 @@ async function main() {
   } else {
     console.log("STRIPE_WEBHOOK_SECRET=(Dashboard → Webhooks → 署名シークレットをコピー)");
   }
-  console.log(`PUBLIC_APP_URL=https://nenestudio.pages.dev`);
+  console.log(`PUBLIC_APP_URL=https://nenestudio.net`);
   console.log("\n.env を更新しました。");
 }
 

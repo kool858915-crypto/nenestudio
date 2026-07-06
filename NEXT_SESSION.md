@@ -1,39 +1,33 @@
 # NENE Studio — 作業メモ
 
-> 最終更新: 2026-06-30（Stripe 設定は **明日** に延期）  
-> 公開: https://nenestudio.pages.dev  
-> API: https://nenestudio.onrender.com/api
+> 最終更新: 2026-07-06  
+> 公開: https://nenestudio.net  
+> API: https://api.nenestudio.net/api
 
 ---
 
-## 明日やること（メモ）
+## 今すぐ Render に貼る（Environment）
 
-> **Stripe 設定は今日は行わず、明日にする。**  
-> チャット再開時: 「`NEXT_SESSION.md` を読んで、Stripe 設定から続けて」
-
-> **Stripe プラグイン（Skills）インストール済（2026-06-30）**  
-> `npx skills add https://docs.stripe.com` → `.agents/skills/` に 4 スキル  
-> （stripe-best-practices / stripe-directory / stripe-projects / upgrade-stripe）  
-> Cursor 公式 MCP 付きプラグインは、必要なら IDE で `/add-plugin stripe` も追加可。
-
-### Stripe（Render + Stripe ダッシュボード）
-
-1. Stripe で月額 **480円** / **1250円** の Price を作成（980円は設定済みの想定）
-2. Render → `nenestudio` → **Environment** に追加:
-   - `STRIPE_PRICE_ID_ADFREE` = 480円 Price ID
-   - `STRIPE_PRICE_ID_AI100` = 1250円 Price ID
-   - `PUBLIC_APP_URL` = `https://nenestudio.pages.dev`
-   - `STRIPE_WEBHOOK_SECRET` = Webhook 作成後の secret
-3. Stripe → Webhooks → エンドポイント:
-
-```text
-https://nenestudio.onrender.com/api/stripe/webhook
+```env
+APP_BASE_URL=https://api.nenestudio.net
+PUBLIC_APP_URL=https://nenestudio.net
+CORS_ORIGIN=https://nenestudio.net,https://nenestudio.pages.dev
+STRIPE_WEBHOOK_SECRET=（.env の whsec_... をコピー・2026-07-06 更新）
 ```
 
-4. イベント: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-5. 保存後、Pages で 480 / 980 / 1250 円プランのテスト決済
+> Stripe Webhook URL: `https://api.nenestudio.net/api/stripe/webhook`  
+> `npm run setup:stripe` で再作成済み（ローカル `.env` 参照）
 
-詳細手順: `DEPLOYMENT.md` セクション 3
+---
+
+## Google OAuth（本人作業）
+
+[Google Cloud Console](https://console.cloud.google.com/) → OAuth クライアント → **承認済み JavaScript 生成元** に追加:
+
+```text
+https://nenestudio.net
+https://nenestudio.pages.dev
+```
 
 ---
 
@@ -41,97 +35,32 @@ https://nenestudio.onrender.com/api/stripe/webhook
 
 | 項目 | 状態 |
 |------|------|
-| Cloudflare Pages 自動デプロイ | OK |
-| Google ログイン（ローカル + Render） | OK |
-| CORS（pages.dev + nenestudio.net） | OK |
-| 3段階課金 UI（480/980/1250） | OK |
-| API → Render 直 URL 接続 | OK |
-| UI 表記（Wireframe → NENE Studio） | OK |
+| `nenestudio.net`（Pages） | ✅ Active |
+| `api.nenestudio.net`（Render） | ✅ DNS + API 200 |
+| NS（Xserver → Cloudflare） | ✅ |
+| Stripe 3プラン | ✅ |
+| Stripe Webhook（api ドメイン） | ✅ ローカル設定済み → Render に secret 貼付要 |
+| `config.js` ドメイン自動切替 | ✅ コード済み → **Git push 後に本番反映** |
 
 ---
 
-## 次にやること（優先順）
+## 確認コマンド
 
-### 1. Stripe 3プラン完成（Render Environment）— **明日実施**
-
-> ⏸ 2026-06-30: 本人指示により **明日に延期**。上記「明日やること」を参照。
-
-| KEY | 内容 |
-|-----|------|
-| `STRIPE_PRICE_ID_ADFREE` | Stripe で月額 **480円** Price を作成 → ID を貼る |
-| `STRIPE_PRICE_ID_AI50` | 設定済みの想定 |
-| `STRIPE_PRICE_ID_AI100` | Stripe で月額 **1250円** Price を作成 → ID を貼る |
-
-**Stripe Webhook（今すぐ）:**
-
-```text
-https://nenestudio.onrender.com/api/stripe/webhook
-```
-
-イベント: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`
-
-**決済後リダイレクト用:**
-
-```env
-PUBLIC_APP_URL=https://nenestudio.pages.dev
+```bash
+npm run verify:dns
+npm run verify:production
 ```
 
 ---
 
-### 2. 独自ドメイン `nenestudio.net`（Cloudflare）
+## 任意（後回し OK）
 
-1. Cloudflare → **Add a site** → `nenestudio.net`
-2. レジストラのネームサーバーを Cloudflare に変更
-3. **Pages** → Custom domains → `nenestudio.net`
-4. **Render** → Custom domains → `api.nenestudio.net`
-5. DNS に Render / Pages の CNAME を追加
-6. 完了後 Render env を更新:
-
-```env
-APP_BASE_URL=https://api.nenestudio.net
-PUBLIC_APP_URL=https://nenestudio.net
-```
-
-7. `config.js` の apiBase を `https://api.nenestudio.net/api` に切替（コメント参照）
-8. Stripe Webhook URL を `https://api.nenestudio.net/api/stripe/webhook` に変更
-
----
-
-### 3. Google OAuth 一般公開（任意）
-
-テストユーザー以外もログインさせる場合 → Google Cloud → OAuth 同意画面を **公開** に。
-
----
-
-### 4. AdSense 申請前（任意）
-
-- [ ] `nenestudio.net` で公開
-- [ ] 利用規約・プライバシーポリシー確認
-- [ ] お問い合わせ先 `contact@nenestudio.net`（Email Routing）
+- Render DB 永続化（Starter + disk）
+- Google OAuth 一般公開
+- AdSense（Email Routing: contact@nenestudio.net）
 
 ---
 
 ## 料金（変更禁止）
 
-480円 / 980円 / 1250円 — 詳細は README.md
-
----
-
-## 参考
-
-| ファイル | 内容 |
-|----------|------|
-| `DEPLOYMENT.md` | 公開・Stripe・Google 手順 |
-| `README.md` | 概要・料金 |
-| `.env.example` | 環境変数一覧 |
-
----
-
-*次の作業（明日）: **Stripe 設定**。その後 **Cloudflare DNS（nenestudio.net）**。*
-
----
-
-## 今日までに完了（2026-06-30）
-
-- Pages 公開・Google ログイン・CORS・API 接続
-- サーバー DB 静的配信ブロック、README / 手順書更新
+480円 / 980円 / 1250円

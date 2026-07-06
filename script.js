@@ -563,7 +563,7 @@ const textTranslations = {
   "保存済みツールを順番に実行する": "Run saved tools in order",
   "各ツールの結果をまとめる": "Combine each tool result",
   "として出力する": "as the output",
-  "このAIエージェント案は保存済みツールを参考にした試作品用の作成内容です。": "This AI agent draft is prototype output based on saved tools.",
+  "このAIエージェント案は保存済みツールを参考にした作成案です。": "This AI agent draft is based on your saved tools.",
   "作りたいツールを1つ選んでください。": "Choose one tool you want to create.",
   "まだ操作はありません。": "No actions yet.",
   "このツールは投資判断を補助するものです。売買の最終判断は利用者本人が行います。": "This tool supports investment decisions. The user makes the final buy/sell decision.",
@@ -643,7 +643,7 @@ const textTranslations = {
   "1250円プラン（AI100回）": "¥1250/month (100 AI runs)",
   "無料プラン": "Free plan",
   "を保存しました。APIキーは必要になったら入力してください。": " saved. Enter API keys when needed.",
-  "を保存しました。この試作品では画面を閉じるまで保持します。": " saved. This prototype keeps it until the screen is closed.",
+  "を保存しました。この端末のブラウザに保存されます。": " saved. Stored in this browser on your device.",
   "と": " and ",
   "を読み込みました。": " loaded.",
   "を追加しました。": " added.",
@@ -896,7 +896,6 @@ const state = {
     userApiProvider: "gemini",
     plan: "free",
     paymentProvider: "Stripe Checkout + Stripe Billing",
-    premiumPriceYen: 980,
     adFreeFlagAfterPayment: true,
     paymentStatus: "unpaid",
   },
@@ -927,6 +926,82 @@ const state = {
   createdAgent: null,
   status: "",
 };
+
+const AUTH_TOKEN_KEY = "neneAuthToken";
+const AUTH_REMEMBER_KEY = "neneRememberLogin";
+const AUTH_EMAIL_KEY = "neneAuthEmail";
+const SELECTED_PLAN_KEY = "neneSelectedPlan";
+
+function shouldRememberLogin() {
+  const checkbox = $("#auth-remember-me");
+  if (checkbox) return checkbox.checked;
+  return localStorage.getItem(AUTH_REMEMBER_KEY) !== "false";
+}
+
+function readAuthToken() {
+  return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY) || "";
+}
+
+function persistAuthToken(token) {
+  const remember = shouldRememberLogin();
+  localStorage.setItem(AUTH_REMEMBER_KEY, remember ? "true" : "false");
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  const storage = remember ? localStorage : sessionStorage;
+  storage.setItem(AUTH_TOKEN_KEY, token);
+  const email = $("#auth-email")?.value.trim();
+  if (remember && email) {
+    localStorage.setItem(AUTH_EMAIL_KEY, email);
+  }
+}
+
+function clearAuthToken() {
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+}
+
+function hydrateSavedAuthEmail() {
+  const savedEmail = localStorage.getItem(AUTH_EMAIL_KEY);
+  const emailInput = $("#auth-email");
+  if (savedEmail && emailInput && !emailInput.value) {
+    emailInput.value = savedEmail;
+  }
+  const rememberInput = $("#auth-remember-me");
+  if (rememberInput) {
+    rememberInput.checked = localStorage.getItem(AUTH_REMEMBER_KEY) !== "false";
+  }
+}
+
+function setPasswordAutocomplete(mode) {
+  const passwordInput = $("#auth-password");
+  if (!passwordInput) return;
+  passwordInput.autocomplete = mode === "register" ? "new-password" : "current-password";
+}
+
+async function offerPasswordSave(email, password) {
+  if (!window.PasswordCredential || !shouldRememberLogin()) return;
+  try {
+    await navigator.credentials.store(new PasswordCredential({
+      id: email,
+      password,
+      name: email,
+    }));
+  } catch {
+    // ブラウザ設定やユーザー操作で拒否される場合がある
+  }
+}
+
+function togglePasswordVisibility() {
+  const passwordInput = $("#auth-password");
+  const toggle = $("#auth-password-toggle");
+  if (!passwordInput || !toggle) return;
+  const show = passwordInput.type === "password";
+  passwordInput.type = show ? "text" : "password";
+  toggle.textContent = show
+    ? (state.language === "en" ? "Hide" : "隠す")
+    : (state.language === "en" ? "Show" : "表示");
+  toggle.setAttribute("aria-label", show ? "パスワードを隠す" : "パスワードを表示");
+}
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => Array.from(document.querySelectorAll(selector));
@@ -1046,8 +1121,18 @@ function bindEvents() {
     button.addEventListener("click", () => activateScreen(button.dataset.stepScreen));
   });
 
-  $("#login-button").addEventListener("click", () => submitAuth("login"));
-  $("#register-button").addEventListener("click", () => submitAuth("register"));
+  $("#auth-form")?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (state.auth.loading) return;
+    const mode = event.submitter?.id === "register-button" ? "register" : "login";
+    submitAuth(mode);
+  });
+  $("#login-button")?.addEventListener("mousedown", () => setPasswordAutocomplete("login"));
+  $("#register-button")?.addEventListener("mousedown", () => setPasswordAutocomplete("register"));
+  $("#auth-password-toggle")?.addEventListener("click", togglePasswordVisibility);
+  $("#auth-remember-me")?.addEventListener("change", (event) => {
+    localStorage.setItem(AUTH_REMEMBER_KEY, event.target.checked ? "true" : "false");
+  });
   $("#logout-button")?.addEventListener("click", logoutUser);
   $("#auth-go-create")?.addEventListener("click", () => {
     setAuthFeedback("");
@@ -1201,6 +1286,7 @@ function bindEvents() {
   $$("input[name='plan']").forEach((input) => {
     input.addEventListener("change", () => {
       state.settings.plan = input.value;
+      persistSelectedPlan(input.value);
       if (input.value === "free") {
         state.settings.paymentStatus = "unpaid";
         state.status = "無料プランに戻しました。出力前に広告が表示されます。";
@@ -1432,19 +1518,45 @@ function saveUserApiKey() {
 }
 
 function hydrateStripePaymentState() {
+  const savedPlan = localStorage.getItem(SELECTED_PLAN_KEY);
+  if (savedPlan && PLAN_CATALOG[savedPlan] && savedPlan !== "free") {
+    state.settings.plan = savedPlan;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const stripeResult = params.get("stripe");
+  if (stripeResult === "cancel") {
+    state.status = state.language === "en"
+      ? "Stripe checkout was cancelled."
+      : "Stripe決済をキャンセルしました。";
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+function persistSelectedPlan(plan) {
+  if (plan && PLAN_CATALOG[plan] && plan !== "free") {
+    localStorage.setItem(SELECTED_PLAN_KEY, plan);
+  } else {
+    localStorage.removeItem(SELECTED_PLAN_KEY);
+  }
 }
 
 function handleStripeReturn() {
   const params = new URLSearchParams(window.location.search);
   if (params.get("stripe") === "success" || params.get("payment") === "success") {
     state.status = "Stripe決済後の状態をサーバーに確認しています。";
-    refreshCurrentUser();
+    refreshCurrentUser().then(() => {
+      if (state.auth.user?.subscriptionPlan && state.auth.user.subscriptionPlan !== "free") {
+        persistSelectedPlan(state.auth.user.subscriptionPlan);
+      }
+    });
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
 function hydrateAuthState() {
-  state.auth.token = localStorage.getItem("neneAuthToken") || "";
+  state.auth.token = readAuthToken();
+  hydrateSavedAuthEmail();
 }
 
 async function apiRequest(path, options = {}) {
@@ -1624,7 +1736,7 @@ async function signInWithApple() {
 
 async function completeOAuthLogin(data, providerLabel) {
   state.auth.token = data.token;
-  localStorage.setItem("neneAuthToken", data.token);
+  persistAuthToken(data.token);
   applyServerUser(data.user);
   const successMessage = `${providerLabel}でログインしました。`;
   state.status = successMessage;
@@ -1696,7 +1808,23 @@ function renderAuthUi() {
 
   const loginButton = $("#login-button");
   const registerButton = $("#register-button");
+  const rememberLabel = $("#auth-remember-label");
+  const formHint = $("#auth-form-hint");
+  const passwordToggle = $("#auth-password-toggle");
   const loadingLabel = state.language === "en" ? "Processing..." : "処理中…";
+  if (rememberLabel) {
+    rememberLabel.textContent = state.language === "en"
+      ? "Save sign-in info (stay signed in and use browser password save)"
+      : "ログイン情報を保存（次回自動ログイン・ブラウザのパスワード保存）";
+  }
+  if (formHint) {
+    formHint.innerHTML = state.language === "en"
+      ? "New here? click <strong>Register</strong>. Already registered? click <strong>Sign in</strong>. Your browser can save the password."
+      : "初めての方は <strong>新規登録</strong>、登録済みの方は <strong>ログイン</strong> を押してください。パスワードはブラウザ（Chrome / Edge 等）に保存できます。";
+  }
+  if (passwordToggle && $("#auth-password")?.type === "password") {
+    passwordToggle.textContent = state.language === "en" ? "Show" : "表示";
+  }
   if (loginButton) {
     loginButton.disabled = state.auth.loading;
     loginButton.textContent = state.auth.loading ? loadingLabel : (state.language === "en" ? "Sign in" : "ログイン");
@@ -1745,13 +1873,15 @@ async function submitAuth(mode) {
   renderAll();
 
   try {
+    setPasswordAutocomplete(mode);
     const data = await apiRequest(`/auth/${mode}`, {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
     state.auth.token = data.token;
-    localStorage.setItem("neneAuthToken", data.token);
+    persistAuthToken(data.token);
     applyServerUser(data.user);
+    await offerPasswordSave(email, password);
     const successMessage = mode === "register"
       ? "新規登録が完了しました。ログイン状態です。"
       : "ログインしました。";
@@ -1778,7 +1908,8 @@ function logoutUser() {
   state.auth.user = null;
   state.settings.paymentStatus = "unpaid";
   state.settings.plan = "free";
-  localStorage.removeItem("neneAuthToken");
+  clearAuthToken();
+  hydrateSavedAuthEmail();
   const message = "ログアウトしました。";
   state.status = message;
   setAuthFeedback(message, "info");
@@ -1809,6 +1940,9 @@ function applyServerUser(user) {
   state.auth.user = user;
   state.settings.paymentStatus = user?.isAdFree ? "paid" : "unpaid";
   state.settings.plan = user?.subscriptionPlan || "free";
+  if (user?.isAdFree && user.subscriptionPlan && user.subscriptionPlan !== "free") {
+    persistSelectedPlan(user.subscriptionPlan);
+  }
 }
 
 function renderPaymentSettings() {
@@ -1877,6 +2011,7 @@ async function openStripeCheckout() {
       method: "POST",
       body: JSON.stringify({ plan }),
     });
+    persistSelectedPlan(plan);
     window.location.href = data.url;
     state.status = `${getPlanLabel(plan, state.language)}のStripe決済画面を開きました。`;
   } catch (error) {
@@ -2408,7 +2543,7 @@ function buildRunnableToolFiles() {
     'generateButton.addEventListener("click", generateResult);',
     "",
     "async function generateResult() {",
-    "  const token = localStorage.getItem('neneAuthToken') || '';",
+    "  const token = localStorage.getItem('neneAuthToken') || sessionStorage.getItem('neneAuthToken') || '';",
     "  const sourceUrl = sourceUrlInput.value.trim();",
     "  const input = toolInput.value.trim();",
     "  const extra = toolExtra.value.trim();",
@@ -3076,7 +3211,7 @@ workflow:
   3. 各ツールの結果をまとめる
   4. ${idea.output}として出力する
 output: ${idea.output}
-note: このAIエージェント案は保存済みツールを参考にした試作品用の作成内容です。`;
+note: このAIエージェント案は保存済みツールを参考にした作成案です。`;
 }
 
 async function createAgent() {

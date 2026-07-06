@@ -100,15 +100,28 @@
                   <p class="oauth-login-note" id="google-login-note" data-no-translate>Google / Apple の認証は各社の画面で行い、パスワードは NENE Studio には保存されません。</p>
                   <p class="oauth-divider">またはメールアドレス</p>
                 </div>
-                <div class="form-grid auth-form-fields">
-                  <label>メールアドレス<input id="auth-email" type="email" autocomplete="email" placeholder="you@example.com" /></label>
-                  <label>パスワード<input id="auth-password" type="password" autocomplete="current-password" placeholder="8文字以上" /></label>
-                </div>
-                <p class="auth-form-hint">初めての方は <strong>新規登録</strong>、登録済みの方は <strong>ログイン</strong> を押してください。</p>
-                <div class="button-row auth-action-row">
-                  <button class="primary" id="login-button" type="button">ログイン</button>
-                  <button class="secondary" id="register-button" type="button">新規登録</button>
-                </div>
+                <form id="auth-form" class="auth-form" method="post" action="#" novalidate>
+                  <div class="form-grid auth-form-fields">
+                    <label>メールアドレス
+                      <input id="auth-email" name="email" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com" />
+                    </label>
+                    <label>パスワード
+                      <span class="password-field-wrap">
+                        <input id="auth-password" name="password" type="password" autocomplete="current-password" placeholder="8文字以上" />
+                        <button class="password-toggle" id="auth-password-toggle" type="button" aria-label="パスワードを表示">表示</button>
+                      </span>
+                    </label>
+                  </div>
+                  <label class="auth-remember-row">
+                    <input id="auth-remember-me" name="remember" type="checkbox" checked />
+                    <span id="auth-remember-label">ログイン情報を保存（次回自動ログイン・ブラウザのパスワード保存）</span>
+                  </label>
+                  <p class="auth-form-hint" id="auth-form-hint">初めての方は <strong>新規登録</strong>、登録済みの方は <strong>ログイン</strong> を押してください。パスワードはブラウザ（Chrome / Edge 等）に保存できます。</p>
+                  <div class="button-row auth-action-row">
+                    <button class="primary" id="login-button" type="submit">ログイン</button>
+                    <button class="secondary" id="register-button" type="submit">新規登録</button>
+                  </div>
+                </form>
                 <p class="status-message auth-status-message" id="auth-status">未ログインです。メールとパスワード（8文字以上）を入力してください。</p>
               </div>
             </article>
