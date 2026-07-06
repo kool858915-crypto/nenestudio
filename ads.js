@@ -17,9 +17,13 @@
   function getA8Banners(config) {
     const a8 = config.a8 || {};
     if (Array.isArray(a8.banners) && a8.banners.length > 0) {
-      return a8.banners.filter((banner) => (
-        isConfigured(banner.linkUrl) && isConfigured(banner.imageUrl)
-      ));
+      return a8.banners.filter((banner) => {
+        if (!isConfigured(banner.linkUrl)) return false;
+        return isConfigured(banner.imageUrl)
+          || banner.type === "text"
+          || isConfigured(banner.alt)
+          || isConfigured(banner.text);
+      });
     }
     if (isConfigured(a8.linkUrl) && isConfigured(a8.imageUrl)) {
       return [{
@@ -31,6 +35,13 @@
       }];
     }
     return [];
+  }
+
+  function isTextBanner(banner) {
+    return banner.type === "text" || (
+      !isConfigured(banner.imageUrl)
+      && (isConfigured(banner.alt) || isConfigured(banner.text))
+    );
   }
 
   function shuffle(items) {
@@ -86,9 +97,10 @@
     link.href = banner.linkUrl;
     link.target = "_blank";
     link.rel = "noopener sponsored";
-    link.textContent = banner.alt || "スポンサー広告を見る";
+    link.textContent = banner.alt || banner.text || "スポンサー広告を見る";
     slot.appendChild(link);
     slot.classList.add("ad-slot-loaded");
+    trackA8Impression(banner);
     return true;
   }
 
@@ -157,17 +169,24 @@
     return true;
   }
 
+  async function renderA8Entry(slot, banner) {
+    if (isTextBanner(banner)) {
+      return renderA8TextLink(slot, banner);
+    }
+    return renderA8Banner(slot, banner);
+  }
+
   async function renderA8(slot, config) {
     const banners = getA8Banners(config);
     if (banners.length === 0) return false;
 
     for (const banner of shuffle(banners)) {
       clearSlot(slot);
-      if (await renderA8Banner(slot, banner)) return true;
+      if (await renderA8Entry(slot, banner)) return true;
     }
 
     clearSlot(slot);
-    return renderA8TextLink(slot, banners[0]);
+    return false;
   }
 
   async function renderMediaNet(slot, config) {

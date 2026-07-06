@@ -38,6 +38,11 @@ window.NENE_ADS = {
         height: 60,
         alt: "ムームードメイン",
       },
+      {
+        linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28DJG2+348+5YZ76",
+        alt: "ロリポップ！レンタルサーバー",
+        type: "text",
+      },
     ],
   },
 
