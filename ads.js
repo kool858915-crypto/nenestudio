@@ -10,7 +10,7 @@
   function clearSlot(slot) {
     if (!slot) return;
     slot.innerHTML = "";
-    slot.classList.remove("ad-slot-loaded");
+    slot.classList.remove("ad-slot-loaded", "ad-slot-leaderboard");
   }
 
   function loadScriptOnce(id, src, attrs = {}) {
@@ -90,12 +90,12 @@
     const img = document.createElement("img");
     img.src = a8.imageUrl;
     img.alt = a8.alt || "スポンサー広告";
-    img.width = 728;
-    img.height = 90;
+    img.className = "ad-banner-leaderboard";
     img.loading = "eager";
     img.decoding = "async";
     img.referrerPolicy = "strict-origin-when-cross-origin";
 
+    slot.classList.add("ad-slot-leaderboard");
     link.appendChild(img);
     slot.appendChild(link);
 
