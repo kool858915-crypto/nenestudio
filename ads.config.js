@@ -28,8 +28,8 @@ window.NENE_ADS = {
   },
 
   a8: {
-    linkUrl: "",
-    imageUrl: "",
+    linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USX+DG1FLE+50+2HV61T",
+    imageUrl: "https://www26.a8.net/svt/bgt?aid=260706993813&wid=001&eno=01&mid=s00000000018015094000&mc=1",
     alt: "スポンサー広告",
   },
 
