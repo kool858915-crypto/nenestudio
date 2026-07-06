@@ -1179,7 +1179,7 @@ button {
 .ad-slot {
   display: grid;
   place-items: center;
-  min-height: 250px;
+  min-height: 90px;
   margin: 12px 0;
   border-radius: 10px;
   overflow: hidden;
@@ -1200,9 +1200,23 @@ button {
 .ad-affiliate img {
   display: block;
   width: 100%;
-  max-width: 320px;
+  max-width: 728px;
+  height: auto;
   margin: 0 auto;
   border-radius: 8px;
+}
+
+.ad-affiliate-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  padding: 16px 20px;
+  border-radius: 10px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(77, 163, 255, 0.18), rgba(84, 211, 154, 0.16));
 }
 
 .ad-fallback {

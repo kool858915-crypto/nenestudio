@@ -1,4 +1,4 @@
-const CACHE_NAME = "nene-studio-v7";
+const CACHE_NAME = "nene-studio-v8";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -10,6 +10,8 @@ const APP_SHELL = [
   "./manifest.webmanifest",
   "./assets/icon.svg",
 ];
+
+const NETWORK_FIRST_PATHS = ["/ads.config.js", "/ads.js", "/config.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -30,6 +32,19 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.pathname.startsWith("/api/")) return;
+
+  const isNetworkFirst = NETWORK_FIRST_PATHS.some((path) => (
+    requestUrl.pathname.endsWith(path)
+  ));
+
+  if (isNetworkFirst) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => response)
+        .catch(() => caches.match(event.request)),
+    );
+    return;
+  }
 
   event.respondWith(
     caches.match(event.request).then((cached) => (

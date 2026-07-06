@@ -49,7 +49,35 @@
     return true;
   }
 
-  function renderA8(slot, config) {
+  function renderA8TextLink(slot, config) {
+    const a8 = config.a8 || {};
+    if (!isConfigured(a8.linkUrl)) return false;
+
+    const link = document.createElement("a");
+    link.className = "ad-affiliate ad-affiliate-text";
+    link.href = a8.linkUrl;
+    link.target = "_blank";
+    link.rel = "noopener sponsored";
+    link.textContent = a8.alt || "スポンサー広告を見る";
+    slot.appendChild(link);
+    slot.classList.add("ad-slot-loaded");
+    return true;
+  }
+
+  function trackA8Impression(config) {
+    const a8 = config.a8 || {};
+    const match = String(a8.linkUrl || "").match(/a8mat=([^&]+)/);
+    if (!match) return;
+    const pixel = document.createElement("img");
+    pixel.src = `https://www18.a8.net/0.gif?a8mat=${match[1]}`;
+    pixel.alt = "";
+    pixel.width = 1;
+    pixel.height = 1;
+    pixel.hidden = true;
+    document.body.appendChild(pixel);
+  }
+
+  async function renderA8(slot, config) {
     const a8 = config.a8 || {};
     if (!isConfigured(a8.linkUrl) || !isConfigured(a8.imageUrl)) return false;
 
@@ -62,11 +90,33 @@
     const img = document.createElement("img");
     img.src = a8.imageUrl;
     img.alt = a8.alt || "スポンサー広告";
+    img.width = 728;
+    img.height = 90;
     img.loading = "eager";
     img.decoding = "async";
+    img.referrerPolicy = "strict-origin-when-cross-origin";
 
     link.appendChild(img);
     slot.appendChild(link);
+
+    const loaded = await new Promise((resolve) => {
+      let settled = false;
+      const finish = (ok) => {
+        if (settled) return;
+        settled = true;
+        resolve(ok);
+      };
+      img.addEventListener("load", () => finish(img.naturalWidth > 0 && img.naturalHeight > 0));
+      img.addEventListener("error", () => finish(false));
+      window.setTimeout(() => finish(img.complete && img.naturalWidth > 0), 3000);
+    });
+
+    if (!loaded) {
+      link.remove();
+      return renderA8TextLink(slot, config);
+    }
+
+    trackA8Impression(config);
     slot.classList.add("ad-slot-loaded");
     return true;
   }
@@ -151,7 +201,7 @@
     clearSlot(slot);
     if (await renderMediaNet(slot, config)) return "medianet";
     clearSlot(slot);
-    if (renderA8(slot, config)) return "a8";
+    if (await renderA8(slot, config)) return "a8";
     clearSlot(slot);
     renderFallback(slot, config);
     return "fallback";
