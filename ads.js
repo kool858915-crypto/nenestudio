@@ -10,7 +10,36 @@
   function clearSlot(slot) {
     if (!slot) return;
     slot.innerHTML = "";
-    slot.classList.remove("ad-slot-loaded", "ad-slot-leaderboard");
+    slot.classList.remove("ad-slot-loaded", "ad-slot-leaderboard", "ad-slot-banner");
+    slot.style.removeProperty("--ad-aspect-ratio");
+  }
+
+  function getA8Banners(config) {
+    const a8 = config.a8 || {};
+    if (Array.isArray(a8.banners) && a8.banners.length > 0) {
+      return a8.banners.filter((banner) => (
+        isConfigured(banner.linkUrl) && isConfigured(banner.imageUrl)
+      ));
+    }
+    if (isConfigured(a8.linkUrl) && isConfigured(a8.imageUrl)) {
+      return [{
+        linkUrl: a8.linkUrl,
+        imageUrl: a8.imageUrl,
+        width: Number(a8.width) || 728,
+        height: Number(a8.height) || 90,
+        alt: a8.alt || "スポンサー広告",
+      }];
+    }
+    return [];
+  }
+
+  function shuffle(items) {
+    const list = [...items];
+    for (let i = list.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
   }
 
   function loadScriptOnce(id, src, attrs = {}) {
@@ -49,24 +78,22 @@
     return true;
   }
 
-  function renderA8TextLink(slot, config) {
-    const a8 = config.a8 || {};
-    if (!isConfigured(a8.linkUrl)) return false;
+  function renderA8TextLink(slot, banner) {
+    if (!isConfigured(banner.linkUrl)) return false;
 
     const link = document.createElement("a");
     link.className = "ad-affiliate ad-affiliate-text";
-    link.href = a8.linkUrl;
+    link.href = banner.linkUrl;
     link.target = "_blank";
     link.rel = "noopener sponsored";
-    link.textContent = a8.alt || "スポンサー広告を見る";
+    link.textContent = banner.alt || "スポンサー広告を見る";
     slot.appendChild(link);
     slot.classList.add("ad-slot-loaded");
     return true;
   }
 
-  function trackA8Impression(config) {
-    const a8 = config.a8 || {};
-    const match = String(a8.linkUrl || "").match(/a8mat=([^&]+)/);
+  function trackA8Impression(banner) {
+    const match = String(banner.linkUrl || "").match(/a8mat=([^&]+)/);
     if (!match) return;
     const pixel = document.createElement("img");
     pixel.src = `https://www18.a8.net/0.gif?a8mat=${match[1]}`;
@@ -77,25 +104,32 @@
     document.body.appendChild(pixel);
   }
 
-  async function renderA8(slot, config) {
-    const a8 = config.a8 || {};
-    if (!isConfigured(a8.linkUrl) || !isConfigured(a8.imageUrl)) return false;
+  function applyBannerLayout(slot, banner) {
+    const width = Number(banner.width) || 728;
+    const height = Number(banner.height) || 90;
+    slot.style.setProperty("--ad-aspect-ratio", `${width} / ${height}`);
+    slot.classList.add(height <= 60 ? "ad-slot-banner" : "ad-slot-leaderboard");
+  }
+
+  async function renderA8Banner(slot, banner) {
+    if (!isConfigured(banner.linkUrl) || !isConfigured(banner.imageUrl)) return false;
+
+    applyBannerLayout(slot, banner);
 
     const link = document.createElement("a");
     link.className = "ad-affiliate";
-    link.href = a8.linkUrl;
+    link.href = banner.linkUrl;
     link.target = "_blank";
     link.rel = "noopener sponsored";
 
     const img = document.createElement("img");
-    img.src = a8.imageUrl;
-    img.alt = a8.alt || "スポンサー広告";
-    img.className = "ad-banner-leaderboard";
+    img.src = banner.imageUrl;
+    img.alt = banner.alt || "スポンサー広告";
+    img.className = "ad-banner-image";
     img.loading = "eager";
     img.decoding = "async";
     img.referrerPolicy = "strict-origin-when-cross-origin";
 
-    slot.classList.add("ad-slot-leaderboard");
     link.appendChild(img);
     slot.appendChild(link);
 
@@ -113,12 +147,27 @@
 
     if (!loaded) {
       link.remove();
-      return renderA8TextLink(slot, config);
+      slot.classList.remove("ad-slot-leaderboard", "ad-slot-banner");
+      slot.style.removeProperty("--ad-aspect-ratio");
+      return false;
     }
 
-    trackA8Impression(config);
+    trackA8Impression(banner);
     slot.classList.add("ad-slot-loaded");
     return true;
+  }
+
+  async function renderA8(slot, config) {
+    const banners = getA8Banners(config);
+    if (banners.length === 0) return false;
+
+    for (const banner of shuffle(banners)) {
+      clearSlot(slot);
+      if (await renderA8Banner(slot, banner)) return true;
+    }
+
+    clearSlot(slot);
+    return renderA8TextLink(slot, banners[0]);
   }
 
   async function renderMediaNet(slot, config) {

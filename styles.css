@@ -1185,8 +1185,21 @@ button {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.ad-slot-leaderboard {
+.ad-slot-leaderboard,
+.ad-slot-banner {
   padding: 10px;
+}
+
+.ad-slot-leaderboard .ad-affiliate img,
+.ad-slot-banner .ad-affiliate img,
+.ad-banner-image {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  aspect-ratio: var(--ad-aspect-ratio, 728 / 90);
+  object-fit: fill;
+  border-radius: 8px;
 }
 
 .ad-slot .adsbygoogle,
@@ -1199,25 +1212,6 @@ button {
   display: block;
   width: 100%;
   line-height: 0;
-}
-
-.ad-slot-leaderboard .ad-affiliate img {
-  display: block;
-  width: 100%;
-  max-width: none;
-  height: auto;
-  aspect-ratio: 728 / 90;
-  object-fit: fill;
-  border-radius: 8px;
-}
-
-.ad-affiliate img {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  margin: 0 auto;
-  border-radius: 8px;
 }
 
 .ad-affiliate-text {

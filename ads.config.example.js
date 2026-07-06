@@ -18,9 +18,22 @@ window.NENE_ADS = {
     size: "300x250",
   },
   a8: {
-    linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
-    imageUrl: "https://www28.a8.net/svt/bgt?aid=...",
-    alt: "スポンサー広告",
+    banners: [
+      {
+        linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
+        imageUrl: "https://www28.a8.net/svt/bgt?aid=...",
+        width: 728,
+        height: 90,
+        alt: "スポンサー広告 A",
+      },
+      {
+        linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
+        imageUrl: "https://www24.a8.net/svt/bgt?aid=...",
+        width: 468,
+        height: 60,
+        alt: "スポンサー広告 B",
+      },
+    ],
   },
   fallback: {
     title: "NENE Studio 有料プラン",
