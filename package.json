@@ -13,6 +13,7 @@
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:dns": "node scripts/verify-dns.mjs",
     "verify:production": "node scripts/verify-production.mjs",
+    "test:stripe": "node scripts/test-stripe-payment.mjs",
     "setup:stripe": "node scripts/setup-stripe.mjs"
   },
   "dependencies": {
@@ -23,5 +24,8 @@
     "google-auth-library": "^10.9.0",
     "jsonwebtoken": "^9.0.3",
     "stripe": "^17.7.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
   }
 }

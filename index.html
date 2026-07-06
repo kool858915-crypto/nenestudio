@@ -736,7 +736,15 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
             <p>本サービスでは、AI API、クラウドストレージ、データベース、アクセス解析ツール、エラー監視ツールなどを利用する場合があります。外部サービスの仕様変更、障害、停止、料金変更、API制限などにより損害が発生した場合、本サービス運営者の責めに帰すべき事由がない限り責任を負いません。</p>
 
             <h2>第7条　Cookieの利用</h2>
-            <p>本サービスでは、利便性向上、利用状況の確認、不正利用防止のためにCookieを利用する場合があります。Cookieを無効にした場合、一部機能が正常に利用できない場合があります。</p>
+            <p>本サービスでは、利便性向上、利用状況の確認、不正利用防止、広告配信のためにCookie（ブラウザに保存される小さなデータ）を利用する場合があります。Cookieを無効にした場合、一部機能が正常に利用できない場合があります。</p>
+
+            <h2>第7条の2　広告の配信（Google AdSense / Media.net / A8.net）</h2>
+            <p>無料プランでは、出力前に第三者配信の広告を表示する場合があります。現在は Media.net および A8.net を利用しています。将来、Google AdSense を追加する場合があります。各事業者は Cookie や広告識別子を用いることがあります。</p>
+            <ul>
+              <li>Google AdSense のオプトアウト: <a href="https://www.google.com/settings/ads" target="_blank" rel="noopener">Google 広告設定</a></li>
+              <li>Google パートナー サイトでの Cookie について: <a href="https://policies.google.com/technologies/ads?hl=ja" target="_blank" rel="noopener">Google の広告ポリシー</a></li>
+            </ul>
+            <p>有料プラン（480円/月以上）では、出力前広告は表示されません。広告のクリックを促す表示や操作は行いません。</p>
 
             <h2>第8条　安全管理措置</h2>
             <p>本サービスは、個人情報の漏えい、紛失、改ざん、不正アクセスを防ぐため、アクセス制限、暗号化、パスワード管理、APIキー管理、ログ管理、不正アクセス対策、バックアップ、委託先管理などの合理的な安全管理措置を行います。</p>
@@ -761,7 +769,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
 
             <h2>第15条　問い合わせ窓口</h2>
             <p>運営者名：NENE Studio<br />所在地：メールでのお問い合わせ時にご案内します<br />メールアドレス：<a href="mailto:contact@nenestudio.net">contact@nenestudio.net</a><br />受付時間：平日 10:00〜18:00（土日祝除く、返信は2営業日以内）</p>
-            <p>制定日：2026年6月26日<br />最終更新日：2026年6月26日</p>
+            <p>制定日：2026年6月26日<br />最終更新日：2026年7月6日</p>
           </article>
         </section>
 
@@ -826,10 +834,14 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         <h2>無料プランのため、出力前に広告を表示しています。</h2>
         <p>480円以上の有料プランにすると、この広告は表示されません。</p>
         <p class="price-disclaimer">※ 金額を確認しながらご使用ください。</p>
-        <div class="ad-visual">NENE Studio Pro</div>
+        <p class="ad-label">広告（Media.net / A8.net）</p>
+        <div class="ad-slot" id="ad-slot" aria-label="広告"></div>
+        <p class="ad-disclosure">リンクをクリックすると、運営者に報酬が発生する場合があります（CPC/成果報酬）。</p>
         <button class="primary" id="ad-continue" disabled>あと 5 秒</button>
       </div>
     </div>
+    <script src="./ads.config.js"></script>
+    <script src="./ads.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js" async defer></script>
     <script src="./config.js"></script>

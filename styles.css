@@ -1170,6 +1170,66 @@ button {
   font-weight: 900;
 }
 
+.ad-label {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.ad-slot {
+  display: grid;
+  place-items: center;
+  min-height: 250px;
+  margin: 12px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.ad-slot .adsbygoogle,
+.ad-slot iframe {
+  width: 100%;
+  max-width: 100%;
+}
+
+.ad-affiliate {
+  display: block;
+  width: 100%;
+}
+
+.ad-affiliate img {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  margin: 0 auto;
+  border-radius: 8px;
+}
+
+.ad-fallback {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-height: 120px;
+  padding: 18px;
+  border-radius: 10px;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text);
+  background: linear-gradient(135deg, rgba(77, 163, 255, 0.22), rgba(84, 211, 154, 0.2));
+}
+
+.ad-fallback span {
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.ad-disclosure {
+  margin: 0 0 12px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
 .saved-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

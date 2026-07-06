@@ -9,3 +9,6 @@
 
 /config.js
   Cache-Control: no-cache
+
+/ads.config.js
+  Cache-Control: no-cache

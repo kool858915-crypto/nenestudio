@@ -833,7 +833,9 @@ const privacyPolicyEn = `
   <h2>Article 6. External Services</h2>
   <p>The Service may use AI APIs, cloud storage, databases, analytics tools, and error monitoring tools. The operator is not responsible for damages caused by external service changes, outages, price changes, API restrictions, account suspension, or data loss unless attributable to the operator.</p>
   <h2>Article 7. Cookies</h2>
-  <p>The Service may use cookies to improve convenience, understand usage, and prevent misuse. Some functions may not work correctly if cookies are disabled.</p>
+  <p>The Service may use cookies to improve convenience, understand usage, prevent misuse, and deliver ads. Some functions may not work correctly if cookies are disabled.</p>
+  <h2>Article 7-2. Advertising (Media.net / A8.net; AdSense planned later)</h2>
+  <p>On the free plan, third-party ads may appear before export. We currently use Media.net and A8.net. Google AdSense may be added later. Paid plans (from ¥480/month) do not show pre-export ads.</p>
   <h2>Article 8. Security Measures</h2>
   <p>The Service implements reasonable security measures such as access control, encryption, password management, API key management, log management, unauthorized access prevention, backups, and vendor management.</p>
   <h2>Article 9. Retention Period</h2>
@@ -2826,15 +2828,22 @@ async function runOutput() {
 }
 
 function showAdBeforeOutput(callback) {
-  let seconds = 5;
+  const waitSeconds = window.NeneAds?.getWaitSeconds?.() ?? 5;
+  let seconds = waitSeconds;
   adOverlay.hidden = false;
   adContinue.disabled = true;
-  adContinue.textContent = `あと ${seconds} 秒`;
-  const timer = setInterval(() => {
+  adContinue.textContent = seconds > 0 ? `あと ${seconds} 秒` : "出力へ進む";
+
+  const adSlot = $("#ad-slot");
+  if (adSlot && window.NeneAds?.loadSlot) {
+    window.NeneAds.loadSlot(adSlot).catch(() => {});
+  }
+
+  const timer = window.setInterval(() => {
     seconds -= 1;
     adContinue.textContent = seconds > 0 ? `あと ${seconds} 秒` : "出力へ進む";
     if (seconds <= 0) {
-      clearInterval(timer);
+      window.clearInterval(timer);
       adContinue.disabled = false;
     }
   }, 1000);
@@ -2842,6 +2851,7 @@ function showAdBeforeOutput(callback) {
   adContinue.onclick = () => {
     adOverlay.hidden = true;
     adContinue.onclick = null;
+    window.clearInterval(timer);
     callback();
   };
 }
