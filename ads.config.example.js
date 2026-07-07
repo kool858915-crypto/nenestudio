@@ -37,7 +37,7 @@ window.NENE_ADS = {
   },
   fallback: {
     title: "NENE Studio 有料プラン",
-    message: "480円/月から出力前の広告を非表示にできます。",
+    message: "480円/月から、スポンサーなしですぐ出力できます。",
     linkUrl: "https://nenestudio.net/index.html#settings",
   },
 };
