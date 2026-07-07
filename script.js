@@ -1135,6 +1135,9 @@ function bindEvents() {
       state.status = state.language === "en" ? "Language changed to English." : "表示言語を日本語に変更しました。";
       renderAll();
       activateScreen(state.currentScreen);
+      if (state.currentScreen === "login") {
+        renderAuthProviders({ forceLocale: true });
+      }
     });
   });
 
@@ -1368,6 +1371,9 @@ function activateScreen(screenId) {
   $("#screen-title").textContent = title;
   $("#main-action").textContent = action;
   renderAll();
+  if (screenId === "login") {
+    ensureAuthProvidersUi();
+  }
 }
 
 function runMainAction() {
@@ -1411,7 +1417,6 @@ function renderAll() {
   renderAgentBuilder();
   renderPaymentSettings();
   renderStatus();
-  renderAuthProviders();
   renderServerAuthStatus();
   renderCreateProgress();
   renderLanguage();
@@ -1629,6 +1634,82 @@ async function apiRequest(path, options = {}) {
   throw lastError || new Error("サーバーに接続できません。");
 }
 
+const oauthUiState = {
+  googleScriptPromise: null,
+  appleScriptPromise: null,
+  googleClientId: "",
+  googleLocale: "",
+  googleInitialized: false,
+  appleClientId: "",
+  appleInitialized: false,
+  ensurePromise: null,
+};
+
+function loadScriptOnce(id, src) {
+  const existing = document.getElementById(id);
+  if (existing?.dataset.loaded === "true") {
+    return Promise.resolve();
+  }
+  if (existing) {
+    return new Promise((resolve, reject) => {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error(`script load failed: ${src}`)), { once: true });
+    });
+  }
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = id;
+    script.src = src;
+    script.async = true;
+    script.defer = true;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      resolve();
+    }, { once: true });
+    script.addEventListener("error", () => reject(new Error(`script load failed: ${src}`)), { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+function loadGoogleScriptOnce() {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  if (!oauthUiState.googleScriptPromise) {
+    oauthUiState.googleScriptPromise = loadScriptOnce(
+      "nene-google-gsi",
+      "https://accounts.google.com/gsi/client",
+    );
+  }
+  return oauthUiState.googleScriptPromise;
+}
+
+function loadAppleScriptOnce() {
+  if (window.AppleID?.auth) return Promise.resolve();
+  if (!oauthUiState.appleScriptPromise) {
+    oauthUiState.appleScriptPromise = loadScriptOnce(
+      "nene-apple-auth",
+      "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js",
+    );
+  }
+  return oauthUiState.appleScriptPromise;
+}
+
+async function ensureAuthProvidersUi() {
+  if (oauthUiState.ensurePromise) return oauthUiState.ensurePromise;
+  oauthUiState.ensurePromise = (async () => {
+    const { google, apple } = state.auth.providers;
+    const loaders = [];
+    if (google.enabled) loaders.push(loadGoogleScriptOnce());
+    if (apple.enabled) loaders.push(loadAppleScriptOnce());
+    if (loaders.length > 0) {
+      await Promise.allSettled(loaders);
+    }
+    renderAuthProviders();
+  })().finally(() => {
+    oauthUiState.ensurePromise = null;
+  });
+  return oauthUiState.ensurePromise;
+}
+
 async function loadAuthProviders() {
   try {
     const data = await apiRequest("/auth/providers");
@@ -1636,7 +1717,9 @@ async function loadAuthProviders() {
       google: data.google || { enabled: false, clientId: "" },
       apple: data.apple || { enabled: false, clientId: "" },
     };
-    renderAuthProviders();
+    if (state.currentScreen === "login") {
+      await ensureAuthProvidersUi();
+    }
   } catch {
     window.setTimeout(loadAuthProviders, 2000);
   }
@@ -1676,7 +1759,7 @@ function renderServerAuthStatus() {
   list.innerHTML = lines.join("");
 }
 
-function renderAuthProviders() {
+function renderAuthProviders(options = {}) {
   const panel = $("#oauth-login-panel");
   const googleMount = $("#google-login-button");
   const googleFallback = $("#google-login-fallback");
@@ -1688,31 +1771,42 @@ function renderAuthProviders() {
   const { google, apple } = state.auth.providers;
   appleButton.hidden = !apple.enabled;
 
-  if (google.enabled && window.google?.accounts?.id) {
+  const locale = state.language === "en" ? "en" : "ja";
+  const googleReady = google.enabled && window.google?.accounts?.id;
+  const googleUnchanged = googleReady
+    && oauthUiState.googleInitialized
+    && oauthUiState.googleClientId === google.clientId
+    && oauthUiState.googleLocale === locale
+    && googleMount.firstElementChild
+    && !options.forceLocale;
+
+  if (googleUnchanged) {
     googleMount.hidden = false;
     googleFallback.hidden = true;
+  } else if (googleReady) {
+    if (!oauthUiState.googleInitialized || oauthUiState.googleClientId !== google.clientId) {
+      window.google.accounts.id.initialize({
+        client_id: google.clientId,
+        callback: handleGoogleCredential,
+        auto_select: false,
+      });
+      oauthUiState.googleInitialized = true;
+      oauthUiState.googleClientId = google.clientId;
+    }
     googleMount.innerHTML = "";
-    window.google.accounts.id.initialize({
-      client_id: google.clientId,
-      callback: handleGoogleCredential,
-      auto_select: false,
-    });
     window.google.accounts.id.renderButton(googleMount, {
       type: "standard",
       theme: "outline",
       size: "large",
       text: "signin_with",
-      locale: state.language === "en" ? "en" : "ja",
+      locale,
     });
-    if (googleNote) {
-      googleNote.textContent = state.language === "en"
-        ? "Sign in with Google. Your Google password is not stored on NENE Studio."
-        : "Google の画面で認証します。Google のパスワードは NENE Studio には保存されません。";
-    }
+    oauthUiState.googleLocale = locale;
+    googleMount.hidden = false;
+    googleFallback.hidden = true;
   } else if (google.enabled) {
     googleMount.hidden = true;
     googleFallback.hidden = false;
-    window.setTimeout(renderAuthProviders, 400);
   } else {
     googleMount.hidden = true;
     googleFallback.hidden = false;
@@ -1723,13 +1817,23 @@ function renderAuthProviders() {
     }
   }
 
+  if (googleNote && google.enabled) {
+    googleNote.textContent = state.language === "en"
+      ? "Sign in with Google. Your Google password is not stored on NENE Studio."
+      : "Google の画面で認証します。Google のパスワードは NENE Studio には保存されません。";
+  }
+
   if (apple.enabled && window.AppleID?.auth) {
-    window.AppleID.auth.init({
-      clientId: apple.clientId,
-      scope: "name email",
-      redirectURI: window.location.origin,
-      usePopup: true,
-    });
+    if (!oauthUiState.appleInitialized || oauthUiState.appleClientId !== apple.clientId) {
+      window.AppleID.auth.init({
+        clientId: apple.clientId,
+        scope: "name email",
+        redirectURI: window.location.origin,
+        usePopup: true,
+      });
+      oauthUiState.appleInitialized = true;
+      oauthUiState.appleClientId = apple.clientId;
+    }
   }
 }
 
