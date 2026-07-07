@@ -9,6 +9,14 @@ import jwt from "jsonwebtoken";
 import Stripe from "stripe";
 import { OAuth2Client } from "google-auth-library";
 import appleSignin from "apple-signin-auth";
+import {
+  AUTH_COOKIE_NAME,
+  SECURITY_HEADERS,
+  buildAuthCookie,
+  buildClearAuthCookie,
+  isPublicStaticPath,
+  parseCookies,
+} from "./security.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,6 +32,8 @@ const corsOrigins = (process.env.CORS_ORIGIN || publicAppUrl)
   .filter(Boolean);
 const jwtSecret = process.env.JWT_SECRET || "dev-only-change-me";
 const isProduction = process.env.NODE_ENV === "production";
+const cookieDomain = process.env.COOKIE_DOMAIN || "";
+const requirePersistentDb = process.env.REQUIRE_PERSISTENT_DB === "true";
 assertProductionSecurity();
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
 const databasePath = path.resolve(appRoot, process.env.DATABASE_PATH || "./server/nene-studio-db.json");
@@ -46,10 +56,18 @@ const googleOAuthClient = process.env.GOOGLE_CLIENT_ID
   : null;
 
 app.use((request, response, next) => {
+  Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
+    response.setHeader(key, value);
+  });
+  return next();
+});
+
+app.use((request, response, next) => {
   const origin = request.headers.origin;
   if (origin && (corsOrigins.includes(origin) || corsOrigins.includes("*"))) {
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Vary", "Origin");
+    response.setHeader("Access-Control-Allow-Credentials", "true");
   }
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Stripe-Signature");
@@ -115,25 +133,18 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (requ
 
 app.use(express.json({ limit: "1mb" }));
 
-const STATIC_BLOCK_PATTERNS = [
-  /^\/server(?:\/|$)/i,
-  /^\/\.env/i,
-  /nene-studio-db\.json$/i,
-  /^\/\.git(?:\/|$)/i,
-  /^\/node_modules(?:\/|$)/i,
-];
-
 app.use((request, response, next) => {
-  if (STATIC_BLOCK_PATTERNS.some((pattern) => pattern.test(request.path))) {
-    return response.status(404).end();
+  if (!isPublicStaticPath(request.path)) {
+    return next();
   }
-  return next();
+  if (request.path === "/" || request.path === "") {
+    return response.sendFile(path.join(appRoot, "index.html"));
+  }
+  return response.sendFile(path.join(appRoot, request.path.replace(/^\//, "")));
 });
 
-app.use(express.static(appRoot));
-
 app.post("/api/auth/register", (request, response) => {
-  const { email, password } = request.body || {};
+  const { email, password, remember } = request.body || {};
   if (!isValidEmail(email) || !isValidPassword(password)) {
     return response.status(400).json({ error: "メールアドレスと8文字以上のパスワードを入力してください。" });
   }
@@ -157,11 +168,11 @@ app.post("/api/auth/register", (request, response) => {
   });
   store.users.push(user);
   saveStore();
-  return response.json(createAuthPayload(user));
+  return sendAuthResponse(request, response, user, remember !== false);
 });
 
 app.post("/api/auth/login", (request, response) => {
-  const { email, password } = request.body || {};
+  const { email, password, remember } = request.body || {};
   const user = store.users.find((item) => item.email === String(email || "").toLowerCase());
   if (!user || user.authProvider === "google" || user.authProvider === "apple") {
     return response.status(401).json({ error: "メールアドレスまたはパスワードが違います。Google / Apple ログインをお試しください。" });
@@ -169,7 +180,12 @@ app.post("/api/auth/login", (request, response) => {
   if (!user.passwordHash || !bcrypt.compareSync(String(password || ""), user.passwordHash)) {
     return response.status(401).json({ error: "メールアドレスまたはパスワードが違います。" });
   }
-  return response.json(createAuthPayload(user));
+  return sendAuthResponse(request, response, user, remember !== false);
+});
+
+app.post("/api/auth/logout", (request, response) => {
+  response.setHeader("Set-Cookie", buildClearAuthCookie({ isProduction, cookieDomain }));
+  return response.json({ ok: true });
 });
 
 app.get("/api/auth/providers", (request, response) => {
@@ -227,7 +243,7 @@ app.post("/api/auth/google", async (request, response) => {
       oauthId: payload.sub,
       email: payload.email,
     });
-    return response.json(createAuthPayload(user));
+    return sendAuthResponse(request, response, user, request.body?.remember !== false);
   } catch (error) {
     return response.status(401).json({ error: error.message || "Googleログインの確認に失敗しました。" });
   }
@@ -254,7 +270,7 @@ app.post("/api/auth/apple", async (request, response) => {
       oauthId: payload.sub,
       email: payload.email,
     });
-    return response.json(createAuthPayload(user));
+    return sendAuthResponse(request, response, user, request.body?.remember !== false);
   } catch (error) {
     return response.status(401).json({ error: error.message || "Appleログインの確認に失敗しました。" });
   }
@@ -399,14 +415,23 @@ function assertProductionSecurity() {
     console.error("FATAL: JWT_SECRET が未設定です。Render Environment にランダムな長い文字列を設定してください。");
     process.exit(1);
   }
+  if (requirePersistentDb && isDatabaseOnEphemeralStorage()) {
+    console.error(
+      "FATAL: REQUIRE_PERSISTENT_DB=true ですが DATABASE_PATH が永続ディスク外です。"
+      + " render.yaml の disk と DATABASE_PATH=/var/data/nene-studio-db.json を有効化してください。",
+    );
+    process.exit(1);
+  }
+}
+
+function isDatabaseOnEphemeralStorage() {
+  const defaultRelativePath = path.resolve(appRoot, "./server/nene-studio-db.json");
+  return databasePath === defaultRelativePath || databasePath.startsWith(appRoot + path.sep);
 }
 
 function logDatabasePersistenceWarning() {
   if (!isProduction) return;
-  const defaultRelativePath = path.resolve(appRoot, "./server/nene-studio-db.json");
-  const onEphemeralStorage = databasePath === defaultRelativePath
-    || databasePath.startsWith(appRoot + path.sep);
-  if (onEphemeralStorage) {
+  if (isDatabaseOnEphemeralStorage()) {
     console.warn(
       "[WARN] DATABASE_PATH がアプリ本体と同じ領域です。"
       + " Render 無料プランでは再デプロイ時にユーザーデータが消える可能性があります。"
@@ -417,8 +442,36 @@ function logDatabasePersistenceWarning() {
   }
 }
 
+function sendAuthResponse(request, response, user, remember) {
+  const token = jwt.sign({ sub: user.id }, jwtSecret, { expiresIn: "30d" });
+  response.setHeader(
+    "Set-Cookie",
+    buildAuthCookie(token, remember, { isProduction, cookieDomain }),
+  );
+  const payload = { user: publicUser(user) };
+  if (shouldReturnTokenInBody(request)) {
+    payload.token = token;
+  }
+  return response.json(payload);
+}
+
+function shouldReturnTokenInBody(request) {
+  const origin = request.headers.origin;
+  if (!origin) return false;
+  if (!cookieDomain) return true;
+  try {
+    const hostname = new URL(origin).hostname;
+    const normalizedCookieDomain = cookieDomain.replace(/^\./, "");
+    return hostname !== normalizedCookieDomain && !hostname.endsWith(`.${normalizedCookieDomain}`);
+  } catch {
+    return true;
+  }
+}
+
 function requireAuth(request, response, next) {
-  const token = request.headers.authorization?.replace(/^Bearer\s+/i, "");
+  const cookies = parseCookies(request);
+  const token = cookies[AUTH_COOKIE_NAME]
+    || request.headers.authorization?.replace(/^Bearer\s+/i, "");
   if (!token) {
     return response.status(401).json({ error: "ログインが必要です。" });
   }

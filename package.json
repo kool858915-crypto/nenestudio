@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js",
+    "build:static": "node scripts/build-static.mjs",
+    "verify:static": "node scripts/verify-static-build.mjs",
+    "predeploy:cloudflare": "npm run build:static && npm run verify:static",
     "check": "node --check script.js && node --check server/index.js",
     "verify:auth": "node scripts/verify-auth.mjs",
     "verify:dns": "node scripts/verify-dns.mjs",

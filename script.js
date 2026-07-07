@@ -933,6 +933,8 @@ const AUTH_TOKEN_KEY = "neneAuthToken";
 const AUTH_REMEMBER_KEY = "neneRememberLogin";
 const AUTH_EMAIL_KEY = "neneAuthEmail";
 const SELECTED_PLAN_KEY = "neneSelectedPlan";
+const USER_API_KEY = "neneUserApiKey";
+const USER_API_PROVIDER_KEY = "neneUserApiProvider";
 
 function shouldRememberLogin() {
   const checkbox = $("#auth-remember-me");
@@ -940,26 +942,40 @@ function shouldRememberLogin() {
   return localStorage.getItem(AUTH_REMEMBER_KEY) !== "false";
 }
 
-function readAuthToken() {
-  return localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY) || "";
+function migrateLegacyClientSecrets() {
+  const legacyToken = localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY);
+  if (legacyToken) {
+    state.auth.token = legacyToken;
+  }
+  localStorage.removeItem(AUTH_TOKEN_KEY);
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+
+  const legacyApiKey = localStorage.getItem(USER_API_KEY);
+  const legacyProvider = localStorage.getItem(USER_API_PROVIDER_KEY);
+  if (legacyApiKey && !sessionStorage.getItem(USER_API_KEY)) {
+    sessionStorage.setItem(USER_API_KEY, legacyApiKey);
+  }
+  if (legacyProvider && !sessionStorage.getItem(USER_API_PROVIDER_KEY)) {
+    sessionStorage.setItem(USER_API_PROVIDER_KEY, legacyProvider);
+  }
+  localStorage.removeItem(USER_API_KEY);
+  localStorage.removeItem(USER_API_PROVIDER_KEY);
+}
+
+function readSessionApiKey() {
+  return sessionStorage.getItem(USER_API_KEY) || "";
+}
+
+function readSessionApiProvider() {
+  return sessionStorage.getItem(USER_API_PROVIDER_KEY) || "gemini";
 }
 
 function persistAuthToken(token) {
-  const remember = shouldRememberLogin();
-  localStorage.setItem(AUTH_REMEMBER_KEY, remember ? "true" : "false");
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
-  const storage = remember ? localStorage : sessionStorage;
-  storage.setItem(AUTH_TOKEN_KEY, token);
-  const email = $("#auth-email")?.value.trim();
-  if (remember && email) {
-    localStorage.setItem(AUTH_EMAIL_KEY, email);
-  }
+  state.auth.token = token || "";
 }
 
 function clearAuthToken() {
-  localStorage.removeItem(AUTH_TOKEN_KEY);
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  state.auth.token = "";
 }
 
 function hydrateSavedAuthEmail() {
@@ -1047,9 +1063,7 @@ prepareNodes();
 bindEvents();
 renderAll();
 registerServiceWorker();
-if (state.auth.token) {
-  refreshCurrentUser().then(loadSavedToolsFromServer).then(renderAll).catch(() => {});
-}
+restoreAuthSession().then(renderAll).catch(() => {});
 
 function renderCategories() {
   categoryGrid.innerHTML = "";
@@ -1497,8 +1511,8 @@ function renderApiKeyGuideLanguage() {
 }
 
 function hydrateUserApiKey() {
-  state.settings.userApiKey = localStorage.getItem("neneUserApiKey") || "";
-  state.settings.userApiProvider = localStorage.getItem("neneUserApiProvider") || "gemini";
+  state.settings.userApiKey = readSessionApiKey();
+  state.settings.userApiProvider = readSessionApiProvider();
   const providerSelect = $("#user-api-provider");
   const keyInput = $("#user-api-key");
   if (providerSelect) providerSelect.value = state.settings.userApiProvider;
@@ -1511,11 +1525,11 @@ function saveUserApiKey() {
   state.settings.userApiProvider = provider;
   state.settings.userApiKey = key;
   if (key) {
-    localStorage.setItem("neneUserApiKey", key);
-    localStorage.setItem("neneUserApiProvider", provider);
+    sessionStorage.setItem(USER_API_KEY, key);
+    sessionStorage.setItem(USER_API_PROVIDER_KEY, provider);
   } else {
-    localStorage.removeItem("neneUserApiKey");
-    localStorage.removeItem("neneUserApiProvider");
+    sessionStorage.removeItem(USER_API_KEY);
+    sessionStorage.removeItem(USER_API_PROVIDER_KEY);
   }
 }
 
@@ -1557,8 +1571,22 @@ function handleStripeReturn() {
 }
 
 function hydrateAuthState() {
-  state.auth.token = readAuthToken();
+  migrateLegacyClientSecrets();
   hydrateSavedAuthEmail();
+}
+
+async function restoreAuthSession() {
+  try {
+    const data = await apiRequest("/auth/me");
+    applyServerUser(data.user);
+    state.auth.authenticated = true;
+    await loadSavedToolsFromServer();
+  } catch {
+    state.auth.authenticated = false;
+    if (!state.auth.token) {
+      state.auth.user = null;
+    }
+  }
 }
 
 async function apiRequest(path, options = {}) {
@@ -1578,6 +1606,7 @@ async function apiRequest(path, options = {}) {
       const response = await fetch(`${base}${path}`, {
         ...options,
         headers,
+        credentials: "include",
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -1737,8 +1766,8 @@ async function signInWithApple() {
 }
 
 async function completeOAuthLogin(data, providerLabel) {
-  state.auth.token = data.token;
-  persistAuthToken(data.token);
+  if (data.token) persistAuthToken(data.token);
+  state.auth.authenticated = true;
   applyServerUser(data.user);
   const successMessage = `${providerLabel}でログインしました。`;
   state.status = successMessage;
@@ -1878,11 +1907,20 @@ async function submitAuth(mode) {
     setPasswordAutocomplete(mode);
     const data = await apiRequest(`/auth/${mode}`, {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        email,
+        password,
+        remember: shouldRememberLogin(),
+      }),
     });
-    state.auth.token = data.token;
-    persistAuthToken(data.token);
+    if (data.token) persistAuthToken(data.token);
+    state.auth.authenticated = true;
     applyServerUser(data.user);
+    localStorage.setItem(AUTH_REMEMBER_KEY, shouldRememberLogin() ? "true" : "false");
+    const emailValue = $("#auth-email")?.value.trim();
+    if (shouldRememberLogin() && emailValue) {
+      localStorage.setItem(AUTH_EMAIL_KEY, emailValue);
+    }
     await offerPasswordSave(email, password);
     const successMessage = mode === "register"
       ? "新規登録が完了しました。ログイン状態です。"
@@ -1905,8 +1943,14 @@ async function submitAuth(mode) {
   activateScreen("login");
 }
 
-function logoutUser() {
+async function logoutUser() {
+  try {
+    await apiRequest("/auth/logout", { method: "POST" });
+  } catch {
+    // オフライン等でもローカル状態はクリアする
+  }
   state.auth.token = "";
+  state.auth.authenticated = false;
   state.auth.user = null;
   state.settings.paymentStatus = "unpaid";
   state.settings.plan = "free";
@@ -1920,19 +1964,18 @@ function logoutUser() {
 }
 
 async function refreshCurrentUser() {
-  if (!state.auth.token) {
-    state.status = "決済状態を確認するにはログインしてください。";
-    renderAll();
-    activateScreen("login");
-    return;
-  }
   try {
     const data = await apiRequest("/auth/me");
     applyServerUser(data.user);
+    state.auth.authenticated = true;
     state.status = state.settings.paymentStatus === "paid"
       ? "Stripe Webhookで広告なしプランが確認できました。"
       : "決済完了待ちです。Stripe処理完了後に再度確認してください。";
   } catch (error) {
+    state.auth.authenticated = false;
+    if (!state.auth.token) {
+      state.auth.user = null;
+    }
     state.status = error.message;
   }
   renderAll();
@@ -2545,14 +2588,9 @@ function buildRunnableToolFiles() {
     'generateButton.addEventListener("click", generateResult);',
     "",
     "async function generateResult() {",
-    "  const token = localStorage.getItem('neneAuthToken') || sessionStorage.getItem('neneAuthToken') || '';",
     "  const sourceUrl = sourceUrlInput.value.trim();",
     "  const input = toolInput.value.trim();",
     "  const extra = toolExtra.value.trim();",
-    "  if (!token) {",
-    `    statusText.textContent = ${JSON.stringify(toolLabels.statusNoKey)};`,
-    "    return;",
-    "  }",
     "  if (!input) {",
     `    statusText.textContent = ${JSON.stringify(toolLabels.statusNoInput)};`,
     "    return;",
@@ -2562,15 +2600,13 @@ function buildRunnableToolFiles() {
     "  try {",
     "    const response = await fetch('/api/ai/generate', {",
     "      method: 'POST',",
-    "      headers: {",
-    "        'Content-Type': 'application/json',",
-    "        Authorization: 'Bearer ' + token,",
-    "      },",
+    "      credentials: 'include',",
+    "      headers: { 'Content-Type': 'application/json' },",
     "      body: JSON.stringify({",
     "        systemPrompt: SYSTEM_PROMPT,",
     "        input: 'URLメモ（本文取得には使わない）:\\n' + sourceUrl + '\\n\\n本文・元情報:\\n' + input + '\\n\\n補足条件:\\n' + extra,",
-    "        userApiKey: localStorage.getItem('neneUserApiKey') || '',",
-    "        provider: localStorage.getItem('neneUserApiProvider') || 'gemini',",
+    "        userApiKey: sessionStorage.getItem('neneUserApiKey') || '',",
+    "        provider: sessionStorage.getItem('neneUserApiProvider') || 'gemini',",
     "      }),",
     "    });",
     "    if (!response.ok) {",

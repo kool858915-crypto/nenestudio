@@ -1,0 +1,19 @@
+# 手動 wrangler 実行時の安全網（通常は dist/ のみデプロイ）
+.env
+.env.*
+JWT_SECRET.local.txt
+server/
+scripts/
+.github/
+.agents/
+node_modules/
+package.json
+package-lock.json
+render.yaml
+DEPLOYMENT.md
+NEXT_SESSION.md
+README.md
+skills-lock.json
+*.example.js
+.git/
+.wrangler/

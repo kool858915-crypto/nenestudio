@@ -20,5 +20,12 @@ if (-not $ApiToken -or -not $AccountId) {
 $env:CLOUDFLARE_API_TOKEN = $ApiToken
 $env:CLOUDFLARE_ACCOUNT_ID = $AccountId
 
-npx --yes wrangler pages deploy . --project-name=nenestudio --branch=main
+Write-Host "静的ファイルのみ dist/ にビルドします（server/.env/DB は含めません）..."
+npm run build:static
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+npm run verify:static
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+npx --yes wrangler pages deploy dist --project-name=nenestudio --branch=main
 Write-Host "完了。Cloudflare Pages → nenestudio → Custom domains で nenestudio.net を追加してください。"
