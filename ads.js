@@ -44,13 +44,12 @@
     );
   }
 
-  function shuffle(items) {
-    const list = [...items];
-    for (let i = list.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [list[i], list[j]] = [list[j], list[i]];
-    }
-    return list;
+  function pickBanners(banners) {
+    return [...banners].sort((a, b) => {
+      const areaA = (Number(a.width) || 0) * (Number(a.height) || 0);
+      const areaB = (Number(b.width) || 0) * (Number(b.height) || 0);
+      return areaB - areaA;
+    });
   }
 
   function loadScriptOnce(id, src, attrs = {}) {
@@ -122,7 +121,7 @@
     const width = Number(banner.width) || 728;
     const height = Number(banner.height) || 90;
     slot.style.setProperty("--ad-aspect-ratio", `${width} / ${height}`);
-    slot.classList.add(height <= 60 ? "ad-slot-banner" : "ad-slot-leaderboard");
+    slot.classList.add(width >= 600 ? "ad-slot-leaderboard" : "ad-slot-banner");
   }
 
   async function renderA8Banner(slot, banner) {
@@ -182,7 +181,7 @@
     const banners = getA8Banners(config);
     if (banners.length === 0) return false;
 
-    for (const banner of shuffle(banners)) {
+    for (const banner of pickBanners(banners)) {
       clearSlot(slot);
       if (await renderA8Entry(slot, banner)) return true;
     }

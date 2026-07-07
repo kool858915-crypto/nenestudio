@@ -1145,12 +1145,12 @@ button {
 }
 
 .ad-box {
-  width: min(780px, calc(100vw - 36px));
+  width: min(1024px, calc(100vw - 20px));
   border: 1px solid rgba(84, 211, 154, 0.5);
   border-radius: 12px;
   background: #111827;
   box-shadow: var(--shadow);
-  padding: 22px;
+  padding: 24px;
 }
 
 .ad-box p {
@@ -1179,7 +1179,7 @@ button {
 .ad-slot {
   display: block;
   width: 100%;
-  margin: 12px 0;
+  margin: 14px 0;
   border-radius: 10px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
@@ -1187,7 +1187,24 @@ button {
 
 .ad-slot-leaderboard,
 .ad-slot-banner {
-  padding: 10px;
+  padding: 12px;
+}
+
+.ad-slot-leaderboard {
+  min-height: clamp(140px, 22vw, 220px);
+}
+
+.ad-slot-banner {
+  min-height: clamp(120px, 18vw, 180px);
+}
+
+.ad-slot-leaderboard .ad-affiliate,
+.ad-slot-banner .ad-affiliate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: inherit;
 }
 
 .ad-slot-leaderboard .ad-affiliate img,
@@ -1195,10 +1212,12 @@ button {
 .ad-banner-image {
   display: block;
   width: 100%;
-  max-width: none;
+  max-width: 100%;
   height: auto;
+  min-height: clamp(110px, 16vw, 200px);
   aspect-ratio: var(--ad-aspect-ratio, 728 / 90);
-  object-fit: fill;
+  object-fit: contain;
+  object-position: center;
   border-radius: 8px;
 }
 
