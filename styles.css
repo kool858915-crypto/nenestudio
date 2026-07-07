@@ -1183,42 +1183,33 @@ button {
   border-radius: 10px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.04);
+  min-height: 90px;
 }
 
 .ad-slot-leaderboard,
 .ad-slot-banner {
-  padding: 12px;
+  display: grid;
+  padding: 0;
+  min-height: unset;
+  aspect-ratio: var(--ad-aspect-ratio, 728 / 90);
+  background: transparent;
 }
 
-.ad-slot-leaderboard {
-  min-height: clamp(140px, 22vw, 220px);
-}
-
-.ad-slot-banner {
-  min-height: clamp(120px, 18vw, 180px);
-}
-
-.ad-slot-leaderboard .ad-affiliate,
-.ad-slot-banner .ad-affiliate {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: inherit;
-}
-
-.ad-slot-leaderboard .ad-affiliate img,
-.ad-slot-banner .ad-affiliate img,
-.ad-banner-image {
+.ad-slot-leaderboard > .ad-affiliate,
+.ad-slot-banner > .ad-affiliate {
   display: block;
   width: 100%;
-  max-width: 100%;
-  height: auto;
-  min-height: clamp(110px, 16vw, 200px);
-  aspect-ratio: var(--ad-aspect-ratio, 728 / 90);
-  object-fit: contain;
-  object-position: center;
-  border-radius: 8px;
+  height: 100%;
+  line-height: 0;
+}
+
+.ad-slot-leaderboard .ad-banner-image,
+.ad-slot-banner .ad-banner-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border-radius: 0;
 }
 
 .ad-slot .adsbygoogle,
