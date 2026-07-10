@@ -1,9 +1,7 @@
 /**
  * 設定例 — 本番は ads.config.js を編集
  *
- * フェーズ1: a8 のみ入力（他は空欄）
- * フェーズ2: medianet を追加
- * フェーズ3: adsense を追加
+ * 現在の本番: ロリポップ！ / ムームードメイン のみ
  */
 window.NENE_ADS = {
   enabled: true,
@@ -21,17 +19,18 @@ window.NENE_ADS = {
     banners: [
       {
         linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
-        imageUrl: "https://www28.a8.net/svt/bgt?aid=...",
-        width: 728,
-        height: 90,
-        alt: "スポンサー広告 A",
-      },
-      {
-        linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
         imageUrl: "https://www24.a8.net/svt/bgt?aid=...",
         width: 468,
         height: 60,
-        alt: "スポンサー広告 B",
+        alt: "ムームードメイン",
+      },
+      {
+        linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
+        imageUrl: "https://www22.a8.net/svt/bgt?aid=...",
+        width: 234,
+        height: 60,
+        alt: "ロリポップ！",
+        pixelUrl: "https://www15.a8.net/0.gif?a8mat=...",
       },
     ],
   },

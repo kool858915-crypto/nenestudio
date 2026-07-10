@@ -344,7 +344,8 @@ const textTranslations = {
   "有料プラン（480円/月〜）なら、広告なしですぐ出力できます。": "Paid plans (from ¥480/month) let you output instantly without ads.",
   "気になるサービスがあれば、ぜひチェックしてみてください。": "Feel free to check out anything that catches your eye.",
   "スポンサー": "Sponsor",
-  "スポンサー（Media.net / A8.net）": "Sponsors (Media.net / A8.net)",
+  "スポンサー（ロリポップ！ / ムームードメイン）": "Sponsors (Lolipop / Muuumu Domain)",
+  "続ける": "continue",
   "480円プラン：広告カットのみ": "¥480/month plan: ad-free output only",
   "980円プラン：広告なし＋運営API月50回": "¥980/month plan: ad-free + 50 operator AI runs/month",
   "1250円プラン：広告なし＋運営API月100回": "¥1250/month plan: ad-free + 100 operator AI runs/month",
@@ -2975,9 +2976,14 @@ async function runOutput() {
 function showAdBeforeOutput(callback) {
   const waitSeconds = window.NeneAds?.getWaitSeconds?.() ?? 5;
   let seconds = waitSeconds;
+  const countdown = $("#ad-countdown");
+  const countdownNumber = $("#ad-countdown-number");
   adOverlay.hidden = false;
   adContinue.disabled = true;
-  adContinue.textContent = seconds > 0 ? `あと ${seconds} 秒` : "出力へ進む";
+  adContinue.hidden = true;
+  adContinue.textContent = state.language === "en" ? "continue" : "続ける";
+  if (countdown) countdown.hidden = false;
+  if (countdownNumber) countdownNumber.textContent = String(Math.max(0, seconds));
 
   const adSlot = $("#ad-slot");
   if (adSlot && window.NeneAds?.loadSlot) {
@@ -2986,9 +2992,11 @@ function showAdBeforeOutput(callback) {
 
   const timer = window.setInterval(() => {
     seconds -= 1;
-    adContinue.textContent = seconds > 0 ? `あと ${seconds} 秒` : "出力へ進む";
+    if (countdownNumber) countdownNumber.textContent = String(Math.max(0, seconds));
     if (seconds <= 0) {
       window.clearInterval(timer);
+      if (countdown) countdown.hidden = true;
+      adContinue.hidden = false;
       adContinue.disabled = false;
     }
   }, 1000);

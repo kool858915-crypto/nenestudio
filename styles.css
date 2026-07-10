@@ -1151,11 +1151,72 @@ button {
   background: #111827;
   box-shadow: var(--shadow);
   padding: 24px;
+  position: relative;
 }
 
 .ad-box p {
   color: var(--muted);
   line-height: 1.7;
+}
+
+.ad-countdown {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(77, 163, 255, 0.28), rgba(84, 211, 154, 0.22));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #f8fafc;
+}
+
+.ad-countdown[hidden] {
+  display: none;
+}
+
+.ad-countdown-label,
+.ad-countdown-unit {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.ad-countdown-number {
+  min-width: 1.4em;
+  text-align: center;
+  font-size: clamp(2.8rem, 8vw, 4.2rem);
+  font-weight: 900;
+  line-height: 1;
+  color: #fff;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.ad-continue-subtle {
+  display: block;
+  margin: 18px auto 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(148, 163, 184, 0.55);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.ad-continue-subtle:disabled,
+.ad-continue-subtle[hidden] {
+  display: none;
+}
+
+.ad-continue-subtle:hover {
+  color: rgba(148, 163, 184, 0.85);
+  opacity: 1;
 }
 
 .ad-visual {

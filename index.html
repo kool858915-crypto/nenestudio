@@ -830,13 +830,18 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
     </div>
     <div class="ad-overlay" id="ad-overlay" hidden>
       <div class="ad-box">
+        <div class="ad-countdown" id="ad-countdown" aria-live="polite">
+          <span class="ad-countdown-label">あと</span>
+          <span class="ad-countdown-number" id="ad-countdown-number">5</span>
+          <span class="ad-countdown-unit">秒</span>
+        </div>
         <p class="eyebrow">スポンサー</p>
         <h2>出力前に、おすすめサービスをご紹介しています。</h2>
         <p>有料プラン（480円/月〜）なら、広告なしですぐ出力できます。</p>
-        <p class="ad-label">スポンサー（Media.net / A8.net）</p>
+        <p class="ad-label">スポンサー（ロリポップ！ / ムームードメイン）</p>
         <div class="ad-slot" id="ad-slot" aria-label="スポンサー"></div>
         <p class="ad-disclosure">気になるサービスがあれば、ぜひチェックしてみてください。</p>
-        <button class="primary" id="ad-continue" disabled>あと 5 秒</button>
+        <button class="ad-continue-subtle" id="ad-continue" type="button" disabled>続ける</button>
       </div>
     </div>
     <script src="./ads.config.js"></script>

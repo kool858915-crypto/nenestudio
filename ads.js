@@ -45,11 +45,12 @@
   }
 
   function pickBanners(banners) {
-    return [...banners].sort((a, b) => {
-      const areaA = (Number(a.width) || 0) * (Number(a.height) || 0);
-      const areaB = (Number(b.width) || 0) * (Number(b.height) || 0);
-      return areaB - areaA;
-    });
+    const list = [...banners];
+    for (let i = list.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [list[i], list[j]] = [list[j], list[i]];
+    }
+    return list;
   }
 
   function loadScriptOnce(id, src, attrs = {}) {
