@@ -16,3 +16,7 @@
 
 /ads.config.js
   Cache-Control: no-cache
+
+/ads.txt
+  Cache-Control: no-cache
+  Content-Type: text/plain; charset=utf-8

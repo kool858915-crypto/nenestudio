@@ -17,6 +17,7 @@ const PUBLIC_FILES = [
   "config.js",
   "ads.js",
   "ads.config.js",
+  "ads.txt",
   "manifest.webmanifest",
   "sw.js",
   "_headers",

@@ -79,6 +79,7 @@ export const PUBLIC_STATIC_FILES = new Set([
   "/config.js",
   "/ads.js",
   "/ads.config.js",
+  "/ads.txt",
   "/manifest.webmanifest",
   "/sw.js",
   "/robots.txt",

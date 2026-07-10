@@ -15,6 +15,7 @@ const ALLOWED_TOP_LEVEL = new Set([
   "config.js",
   "ads.js",
   "ads.config.js",
+  "ads.txt",
   "manifest.webmanifest",
   "sw.js",
   "_headers",
