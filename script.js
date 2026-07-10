@@ -3100,23 +3100,26 @@ function createZipBlob(fileMap) {
   const localParts = [];
   const centralParts = [];
   let offset = 0;
-  // Bit 11 = UTF-8 filenames (Language encoding flag)
-  const utf8Flag = 0x0800;
   const dosDateTime = zipDosDateTime(new Date());
+  // Windows Explorer fails (0x80004005) without explicit directory entries.
+  // Keep ASCII path names and omit UTF-8 flag for maximum Explorer compatibility.
+  const entries = buildZipEntries(fileMap);
 
-  Object.entries(fileMap).forEach(([path, content]) => {
-    const nameBytes = encoder.encode(path.replace(/\\/g, "/"));
-    const dataBytes = encoder.encode(String(content ?? ""));
-    const crc = crc32(dataBytes);
+  entries.forEach((entry) => {
+    const nameBytes = encoder.encode(entry.name);
+    const dataBytes = entry.isDirectory ? new Uint8Array(0) : encoder.encode(String(entry.content ?? ""));
+    const crc = entry.isDirectory ? 0 : crc32(dataBytes);
+    const externalAttrs = entry.isDirectory ? 0x00000010 : 0;
     const localHeader = makeZipHeader(0x04034b50, [
-      20, utf8Flag, 0, dosDateTime.time, dosDateTime.date,
+      10, 0, 0, dosDateTime.time, dosDateTime.date,
       crc, dataBytes.length, dataBytes.length, nameBytes.length, 0,
     ]);
-    localParts.push(localHeader, nameBytes, dataBytes);
+    localParts.push(localHeader, nameBytes);
+    if (dataBytes.length > 0) localParts.push(dataBytes);
 
     const centralHeader = makeZipHeader(0x02014b50, [
-      20, 20, utf8Flag, 0, dosDateTime.time, dosDateTime.date,
-      crc, dataBytes.length, dataBytes.length, nameBytes.length, 0, 0, 0, 0, 0, offset,
+      20, 10, 0, 0, dosDateTime.time, dosDateTime.date,
+      crc, dataBytes.length, dataBytes.length, nameBytes.length, 0, 0, 0, 0, externalAttrs, offset,
     ]);
     centralParts.push(centralHeader, nameBytes);
     offset += localHeader.length + nameBytes.length + dataBytes.length;
@@ -3124,12 +3127,37 @@ function createZipBlob(fileMap) {
 
   const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
   const centralOffset = offset;
-  const fileCount = Object.keys(fileMap).length;
+  const fileCount = entries.length;
   const endHeader = makeZipHeader(0x06054b50, [
     0, 0, fileCount, fileCount, centralSize, centralOffset, 0,
   ]);
 
   return new Blob([...localParts, ...centralParts, endHeader], { type: "application/zip" });
+}
+
+function buildZipEntries(fileMap) {
+  const directories = new Set();
+  const files = [];
+
+  Object.entries(fileMap).forEach(([rawPath, content]) => {
+    // Windows Explorer expects backslash separators in ZIP entry names.
+    const normalized = String(rawPath || "").replace(/\\/g, "/").replace(/^\/+/, "");
+    if (!normalized || normalized.endsWith("/")) return;
+    const parts = normalized.split("/");
+    for (let index = 1; index < parts.length; index += 1) {
+      directories.add(`${parts.slice(0, index).join("\\")}\\`);
+    }
+    files.push({
+      name: parts.join("\\"),
+      content,
+      isDirectory: false,
+    });
+  });
+
+  return [
+    ...[...directories].sort().map((name) => ({ name, content: "", isDirectory: true })),
+    ...files,
+  ];
 }
 
 function zipDosDateTime(date) {

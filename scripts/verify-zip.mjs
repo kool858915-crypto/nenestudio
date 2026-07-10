@@ -1,120 +1,94 @@
 /**
  * ZIP 生成ロジックの解凍検証（script.js と同じヘッダー仕様）。
+ * Expand-Archive と Windows Shell（エクスプローラー相当）の両方で確認する。
  */
 import fs from "node:fs";
 import path from "node:path";
-import { execSync } from "node:child_process";
-import { fileURLToPath } from "node:url";
+import { execFileSync } from "node:child_process";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
 const zipPath = path.join(root, "test-fixed.zip");
 const outDir = path.join(root, "test-unzip2");
+const shellOutDir = path.join(root, "test-shell-unzip");
 
-function makeZipHeader(signature, values) {
-  const fieldSizes = {
-    0x04034b50: [2, 2, 2, 2, 2, 4, 4, 4, 2, 2],
-    0x02014b50: [2, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2, 2, 2, 2, 4, 4],
-    0x06054b50: [2, 2, 2, 2, 4, 4, 2],
-  }[signature];
-  if (!fieldSizes || values.length !== fieldSizes.length) {
-    throw new Error(`ZIP header mismatch for 0x${signature.toString(16)}`);
-  }
-  const size = 4 + fieldSizes.reduce((sum, bytes) => sum + bytes, 0);
-  const buffer = new ArrayBuffer(size);
-  const view = new DataView(buffer);
-  let pointer = 0;
-  view.setUint32(pointer, signature, true);
-  pointer += 4;
-  values.forEach((value, index) => {
-    const bytes = fieldSizes[index];
-    if (bytes === 2) view.setUint16(pointer, value & 0xffff, true);
-    else view.setUint32(pointer, value >>> 0, true);
-    pointer += bytes;
-  });
-  return new Uint8Array(buffer);
-}
-
-function crc32(bytes) {
-  let crc = -1;
-  const crcTable = Array.from({ length: 256 }, (_, index) => {
-    let c = index;
-    for (let k = 0; k < 8; k += 1) {
-      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    }
-    return c >>> 0;
-  });
-  for (let index = 0; index < bytes.length; index += 1) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[index]) & 0xff];
-  }
-  return (crc ^ -1) >>> 0;
-}
-
-function zipDosDateTime(date) {
-  const year = Math.max(1980, date.getFullYear());
-  const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
-  const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
-  return { time: dosTime & 0xffff, date: dosDate & 0xffff };
-}
-
-function createZipBuffer(fileMap) {
-  const encoder = new TextEncoder();
-  const localParts = [];
-  const centralParts = [];
-  let offset = 0;
-  const utf8Flag = 0x0800;
-  const dosDateTime = zipDosDateTime(new Date());
-
-  Object.entries(fileMap).forEach(([entryPath, content]) => {
-    const nameBytes = encoder.encode(entryPath.replace(/\\/g, "/"));
-    const dataBytes = encoder.encode(String(content ?? ""));
-    const crc = crc32(dataBytes);
-    const localHeader = makeZipHeader(0x04034b50, [
-      20, utf8Flag, 0, dosDateTime.time, dosDateTime.date,
-      crc, dataBytes.length, dataBytes.length, nameBytes.length, 0,
-    ]);
-    localParts.push(localHeader, nameBytes, dataBytes);
-    const centralHeader = makeZipHeader(0x02014b50, [
-      20, 20, utf8Flag, 0, dosDateTime.time, dosDateTime.date,
-      crc, dataBytes.length, dataBytes.length, nameBytes.length, 0, 0, 0, 0, 0, offset,
-    ]);
-    centralParts.push(centralHeader, nameBytes);
-    offset += localHeader.length + nameBytes.length + dataBytes.length;
-  });
-
-  const centralSize = centralParts.reduce((sum, part) => sum + part.length, 0);
-  const fileCount = Object.keys(fileMap).length;
-  const endHeader = makeZipHeader(0x06054b50, [
-    0, 0, fileCount, fileCount, centralSize, offset, 0,
-  ]);
-  return Buffer.concat([...localParts, ...centralParts, endHeader].map((part) => Buffer.from(part)));
-}
+const script = fs.readFileSync(path.join(root, "script.js"), "utf8");
+const start = script.indexOf("function createZipBlob");
+const end = script.indexOf("function fallbackCopy");
+if (start < 0 || end < 0) throw new Error("ZIP helpers not found");
+const chunk = script.slice(start, end);
+const moduleSource = chunk
+  .replace(/^function /gm, "export function ")
+  .replace(/^const crcTable/m, "export const crcTable");
+const helperPath = path.join(root, "_zip_helpers.mjs");
+fs.writeFileSync(helperPath, moduleSource);
+const { createZipBlob } = await import(`${pathToFileURL(helperPath).href}?t=${Date.now()}`);
 
 const files = {
-  "README.md": "# テスト",
+  "README.md": "# テスト\n使い方を確認します。",
   "index.html": "<!doctype html><html><body>ok</body></html>",
   "style.css": "body{color:red}",
   "script.js": "console.log('ok')",
   "config/api_keys.example": "KEY=xxx",
   "prompts/main_prompt.md": "日本語プロンプト",
+  "workflow/nodes.md": "1. step",
+  "output/sample_output.md": "sample",
 };
 
+const blob = createZipBlob(files);
+const buf = Buffer.from(await blob.arrayBuffer());
+fs.writeFileSync(zipPath, buf);
+
 fs.rmSync(outDir, { recursive: true, force: true });
-fs.writeFileSync(zipPath, createZipBuffer(files));
-execSync(
-  `powershell -NoProfile -Command "Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${outDir.replace(/'/g, "''")}' -Force"`,
-  { stdio: "inherit" },
-);
+execFileSync("powershell", [
+  "-NoProfile",
+  "-Command",
+  `Expand-Archive -LiteralPath '${zipPath.replace(/'/g, "''")}' -DestinationPath '${outDir.replace(/'/g, "''")}' -Force`,
+], { stdio: "inherit" });
 
 for (const [name, expected] of Object.entries(files)) {
   const actual = fs.readFileSync(path.join(outDir, name), "utf8");
   if (actual !== expected) {
-    console.error(`[NG] ${name}`);
-    console.error(" expected:", JSON.stringify(expected));
-    console.error(" actual  :", JSON.stringify(actual));
+    console.error(`[NG Expand-Archive] ${name}`);
     process.exit(1);
   }
-  console.log(`[OK] ${name}`);
+  console.log(`[OK Expand-Archive] ${name}`);
 }
 
-console.log("[verify-zip] Expand-Archive succeeded with correct contents.");
+// Shell.Application は日本語パスで NameSpace が null になることがあるため ASCII パスで検証
+const asciiZip = "C:\\Temp\\nene-verify.zip";
+const asciiOut = "C:\\Temp\\nene-verify-out";
+fs.mkdirSync("C:\\Temp", { recursive: true });
+fs.copyFileSync(zipPath, asciiZip);
+fs.rmSync(asciiOut, { recursive: true, force: true });
+fs.mkdirSync(asciiOut, { recursive: true });
+const psPath = path.join(root, "_shell_extract.ps1");
+fs.writeFileSync(psPath, `
+$ErrorActionPreference = 'Stop'
+$shell = New-Object -ComObject Shell.Application
+$zip = $shell.NameSpace('${asciiZip}')
+$dest = $shell.NameSpace('${asciiOut}')
+if ($null -eq $zip) { throw 'zip namespace null' }
+if ($null -eq $dest) { throw 'dest namespace null' }
+$dest.CopyHere($zip.Items(), 20)
+$deadline = (Get-Date).AddSeconds(8)
+do {
+  Start-Sleep -Milliseconds 200
+} while (-not (Test-Path '${asciiOut}\\README.md') -and (Get-Date) -lt $deadline)
+if (-not (Test-Path '${asciiOut}\\README.md')) { throw 'Shell extract missing README.md' }
+if (-not (Test-Path '${asciiOut}\\config\\api_keys.example')) { throw 'Shell extract missing nested file' }
+`, "utf8");
+execFileSync("powershell", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", psPath], { stdio: "inherit" });
+
+const shellReadme = fs.readFileSync(path.join(asciiOut, "README.md"), "utf8");
+if (shellReadme !== files["README.md"]) {
+  console.error("[NG Shell] README.md mismatch");
+  process.exit(1);
+}
+console.log("[OK Shell] README.md + nested files");
+console.log("[verify-zip] Expand-Archive and Windows Shell extract succeeded.");
+
+fs.unlinkSync(helperPath);
+fs.unlinkSync(psPath);
+fs.rmSync(shellOutDir, { recursive: true, force: true });
