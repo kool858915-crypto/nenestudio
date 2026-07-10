@@ -4,7 +4,7 @@
 window.NENE_ADS = {
   enabled: true,
   waitSeconds: 5,
-  adsense: { client: "", slot: "" },
+  adsense: { client: "ca-pub-XXXXXXXXXXXXXXXX", slot: "" },
   medianet: { cid: "", tagId: "", size: "300x250" },
   a8: {
     banners: [

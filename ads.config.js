@@ -1,14 +1,15 @@
 /**
  * NENE Studio 広告設定
  *
- * ロリポップ！ / ムームードメイン（A8.net）のみ
+ * AdSense（サイト全体）+ A8（ムームー / ロリポップ）
+ * 広告ユニット（slot）を作ったら adsense.slot に ID を入れる
  */
 window.NENE_ADS = {
   enabled: true,
   waitSeconds: 5,
 
   adsense: {
-    client: "",
+    client: "ca-pub-9344128846274010",
     slot: "",
   },
 

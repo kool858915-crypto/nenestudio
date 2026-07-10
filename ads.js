@@ -159,6 +159,73 @@
     return true;
   }
 
+  function loadScriptOnce(id, src, attrs = {}) {
+    if (document.getElementById(id)) return Promise.resolve();
+    const existing = document.querySelector(`script[src^="${src.split("?")[0]}"]`);
+    if (existing) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.id = id;
+      script.src = src;
+      script.async = true;
+      Object.entries(attrs).forEach(([key, value]) => {
+        script.setAttribute(key, value);
+      });
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error(`script load failed: ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  async function ensureAdSenseScript(client) {
+    if (window.adsbygoogle) return true;
+    try {
+      await loadScriptOnce(
+        "nene-adsense-script",
+        `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${encodeURIComponent(client)}`,
+        { crossorigin: "anonymous" },
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function renderAdSense(slot, config) {
+    const adsense = config.adsense || {};
+    if (!isConfigured(adsense.client) || !isConfigured(adsense.slot)) return false;
+    if (!(await ensureAdSenseScript(adsense.client))) return false;
+
+    const ins = document.createElement("ins");
+    ins.className = "adsbygoogle";
+    ins.style.display = "block";
+    ins.style.minHeight = "120px";
+    ins.setAttribute("data-ad-client", adsense.client);
+    ins.setAttribute("data-ad-slot", adsense.slot);
+    ins.setAttribute("data-ad-format", "auto");
+    ins.setAttribute("data-full-width-responsive", "true");
+    slot.appendChild(ins);
+
+    try {
+      (window.adsbygoogle = window.adsbygoogle || []).push({});
+      await wait(2500);
+      const status = ins.getAttribute("data-adsbygoogle-status");
+      if (status === "filled") {
+        slot.classList.add("ad-slot-loaded");
+        return true;
+      }
+      ins.remove();
+      return false;
+    } catch {
+      ins.remove();
+      return false;
+    }
+  }
+
   async function loadSlot(slot) {
     const config = getConfig();
     clearSlot(slot);
@@ -167,10 +234,11 @@
       return "disabled";
     }
 
+    if (await renderAdSense(slot, config)) return "adsense";
+    clearSlot(slot);
     if (await renderA8(slot, config)) return "a8";
     clearSlot(slot);
     if (renderFallback(slot, config)) return "fallback";
-    // 最後の手段: 設定済みバナーをテキストで全部出す
     const banners = getA8Banners(config);
     if (banners.length > 0) {
       slot.classList.add("ad-slot-stack", "ad-slot-loaded");

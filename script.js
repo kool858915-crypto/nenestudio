@@ -841,7 +841,7 @@ const privacyPolicyEn = `
   <h2>Article 7. Cookies</h2>
   <p>The Service may use cookies to improve convenience, understand usage, prevent misuse, and deliver ads. Some functions may not work correctly if cookies are disabled.</p>
   <h2>Article 7-2. Advertising (Media.net / A8.net; AdSense planned later)</h2>
-  <p>On the free plan, third-party ads may appear before export. We currently use Media.net and A8.net. Google AdSense may be added later. Paid plans (from ¥480/month) do not show pre-export ads.</p>
+  <p>On the free plan, third-party ads may appear before export. We currently use Google AdSense and A8.net. Paid plans (from ¥480/month) do not show pre-export ads.</p>
   <h2>Article 8. Security Measures</h2>
   <p>The Service implements reasonable security measures such as access control, encryption, password management, API key management, log management, unauthorized access prevention, backups, and vendor management.</p>
   <h2>Article 9. Retention Period</h2>
