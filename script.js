@@ -344,7 +344,7 @@ const textTranslations = {
   "有料プラン（480円/月〜）なら、広告なしですぐ出力できます。": "Paid plans (from ¥480/month) let you output instantly without ads.",
   "気になるサービスがあれば、ぜひチェックしてみてください。": "Feel free to check out anything that catches your eye.",
   "スポンサー": "Sponsor",
-  "スポンサー（ムームードメイン）": "Sponsor (Muuumu Domain)",
+  "スポンサー（ムームードメイン / ロリポップ！）": "Sponsors (Muuumu Domain / Lolipop)",
   "続ける": "continue",
   "480円プラン：広告カットのみ": "¥480/month plan: ad-free output only",
   "980円プラン：広告なし＋運営API月50回": "¥980/month plan: ad-free + 50 operator AI runs/month",

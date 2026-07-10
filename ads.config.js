@@ -1,8 +1,7 @@
 /**
  * NENE Studio 広告設定
  *
- * 現在: ムームードメイン（A8.net）のみ
- * ※ ロリポップ（234x60）は枠に対して小さく歪むため除外
+ * ロリポップ！ / ムームードメイン（A8.net）のみ
  */
 window.NENE_ADS = {
   enabled: true,
@@ -27,13 +26,24 @@ window.NENE_ADS = {
         width: 468,
         height: 60,
         alt: "ムームードメイン",
+        text: "ムームードメインでドメインを取得する",
+      },
+      {
+        linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28DJG2+348+6DC69",
+        imageUrl: "https://www22.a8.net/svt/bgt?aid=260706994135&wid=001&eno=01&mid=s00000000404001070000&mc=1",
+        width: 234,
+        height: 60,
+        alt: "ロリポップ！",
+        text: "ロリポップ！でサーバーを契約する",
+        pixelUrl: "https://www15.a8.net/0.gif?a8mat=4B7USY+28DJG2+348+6DC69",
       },
     ],
   },
 
+  // A8 が設定されているときは使わない（誤って自社案内が出ないようにする）
   fallback: {
-    title: "NENE Studio 有料プラン",
-    message: "480円/月から、スポンサーなしですぐ出力できます。",
-    linkUrl: "https://nenestudio.net/index.html#settings",
+    title: "",
+    message: "",
+    linkUrl: "",
   },
 };

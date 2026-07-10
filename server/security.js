@@ -5,7 +5,7 @@ export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' https://accounts.google.com https://appleid.cdn-apple.com https://pagead2.googlesyndication.com https://contextual.media.net",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: https: blob:",
+  "img-src 'self' data: https: blob: https://*.a8.net",
   "connect-src 'self' https://nenestudio.onrender.com https://api.nenestudio.net https://generativelanguage.googleapis.com",
   "frame-src https://accounts.google.com https://appleid.apple.com",
   "font-src 'self'",
