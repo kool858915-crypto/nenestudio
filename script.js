@@ -3100,18 +3100,23 @@ function createZipBlob(fileMap) {
   const localParts = [];
   const centralParts = [];
   let offset = 0;
+  // Bit 11 = UTF-8 filenames (Language encoding flag)
+  const utf8Flag = 0x0800;
+  const dosDateTime = zipDosDateTime(new Date());
 
   Object.entries(fileMap).forEach(([path, content]) => {
-    const nameBytes = encoder.encode(path);
-    const dataBytes = encoder.encode(content);
+    const nameBytes = encoder.encode(path.replace(/\\/g, "/"));
+    const dataBytes = encoder.encode(String(content ?? ""));
     const crc = crc32(dataBytes);
     const localHeader = makeZipHeader(0x04034b50, [
-      20, 0, 0, 0, 0, 0, crc, dataBytes.length, dataBytes.length, nameBytes.length, 0,
+      20, utf8Flag, 0, dosDateTime.time, dosDateTime.date,
+      crc, dataBytes.length, dataBytes.length, nameBytes.length, 0,
     ]);
     localParts.push(localHeader, nameBytes, dataBytes);
 
     const centralHeader = makeZipHeader(0x02014b50, [
-      20, 20, 0, 0, 0, 0, crc, dataBytes.length, dataBytes.length, nameBytes.length, 0, 0, 0, 0, 0, offset,
+      20, 20, utf8Flag, 0, dosDateTime.time, dosDateTime.date,
+      crc, dataBytes.length, dataBytes.length, nameBytes.length, 0, 0, 0, 0, 0, offset,
     ]);
     centralParts.push(centralHeader, nameBytes);
     offset += localHeader.length + nameBytes.length + dataBytes.length;
@@ -3127,22 +3132,35 @@ function createZipBlob(fileMap) {
   return new Blob([...localParts, ...centralParts, endHeader], { type: "application/zip" });
 }
 
+function zipDosDateTime(date) {
+  const year = Math.max(1980, date.getFullYear());
+  const dosTime = (date.getHours() << 11) | (date.getMinutes() << 5) | Math.floor(date.getSeconds() / 2);
+  const dosDate = ((year - 1980) << 9) | ((date.getMonth() + 1) << 5) | date.getDate();
+  return { time: dosTime & 0xffff, date: dosDate & 0xffff };
+}
+
 function makeZipHeader(signature, values) {
-  const localFieldCounts = {
-    0x04034b50: [2, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2],
+  const fieldSizes = {
+    0x04034b50: [2, 2, 2, 2, 2, 4, 4, 4, 2, 2],
     0x02014b50: [2, 2, 2, 2, 2, 2, 4, 4, 4, 2, 2, 2, 2, 2, 4, 4],
     0x06054b50: [2, 2, 2, 2, 4, 4, 2],
   }[signature];
-  const size = 4 + localFieldCounts.reduce((sum, bytes) => sum + bytes, 0);
+  if (!fieldSizes) {
+    throw new Error(`Unsupported ZIP signature: 0x${signature.toString(16)}`);
+  }
+  if (values.length !== fieldSizes.length) {
+    throw new Error(`ZIP header field count mismatch for 0x${signature.toString(16)}`);
+  }
+  const size = 4 + fieldSizes.reduce((sum, bytes) => sum + bytes, 0);
   const buffer = new ArrayBuffer(size);
   const view = new DataView(buffer);
   let pointer = 0;
   view.setUint32(pointer, signature, true);
   pointer += 4;
   values.forEach((value, index) => {
-    const bytes = localFieldCounts[index];
+    const bytes = fieldSizes[index];
     if (bytes === 2) {
-      view.setUint16(pointer, value, true);
+      view.setUint16(pointer, value & 0xffff, true);
     } else {
       view.setUint32(pointer, value >>> 0, true);
     }
