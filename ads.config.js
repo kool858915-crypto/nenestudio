@@ -1,8 +1,8 @@
 /**
  * NENE Studio 広告設定
  *
- * 現在: ロリポップ！ / ムームードメイン（A8.net）のみ
- * 表示: 2件をランダム表示 → 自社フォールバック
+ * 現在: ムームードメイン（A8.net）のみ
+ * ※ ロリポップ（234x60）は枠に対して小さく歪むため除外
  */
 window.NENE_ADS = {
   enabled: true,
@@ -27,14 +27,6 @@ window.NENE_ADS = {
         width: 468,
         height: 60,
         alt: "ムームードメイン",
-      },
-      {
-        linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28DJG2+348+6DC69",
-        imageUrl: "https://www22.a8.net/svt/bgt?aid=260706994135&wid=001&eno=01&mid=s00000000404001070000&mc=1",
-        width: 234,
-        height: 60,
-        alt: "ロリポップ！",
-        pixelUrl: "https://www15.a8.net/0.gif?a8mat=4B7USY+28DJG2+348+6DC69",
       },
     ],
   },

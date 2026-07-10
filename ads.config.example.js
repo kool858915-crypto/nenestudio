@@ -1,7 +1,7 @@
 /**
  * 設定例 — 本番は ads.config.js を編集
  *
- * 現在の本番: ロリポップ！ / ムームードメイン のみ
+ * 現在の本番: ムームードメインのみ
  */
 window.NENE_ADS = {
   enabled: true,
@@ -23,14 +23,6 @@ window.NENE_ADS = {
         width: 468,
         height: 60,
         alt: "ムームードメイン",
-      },
-      {
-        linkUrl: "https://px.a8.net/svt/ejp?a8mat=...",
-        imageUrl: "https://www22.a8.net/svt/bgt?aid=...",
-        width: 234,
-        height: 60,
-        alt: "ロリポップ！",
-        pixelUrl: "https://www15.a8.net/0.gif?a8mat=...",
       },
     ],
   },
