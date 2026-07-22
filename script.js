@@ -2482,14 +2482,19 @@ function renderExport() {
     card.classList.toggle("active", card.dataset.exportFormat === state.exportFormat);
   });
 
-  exportPreview.textContent = getExportText(state.exportFormat);
+  // プレビュー画面には生のAPIキーを表示しない（ダウンロード物には実キーが入る）
+  const previewText = getExportText(state.exportFormat);
+  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  exportPreview.textContent = key
+    ? previewText.split(key).join("********（実際の出力にはAPIキーが入ります）")
+    : previewText;
   renderApiFormatNotice();
   exportStatus.textContent = state.status;
 }
 
 function renderApiFormatNotice() {
   const apiRequiredFormats = {
-    api: "APIキー入力形式は、OpenAI APIキーや外部データAPIキーを入れないと実行できません。",
+    api: "APIキー入力形式は、Gemini / OpenAI のAPIキーを設定画面か出力ツールの画面に入れると単体で実行できます。",
     codex: "Codex用ツール作成内容は、Codex側で外部APIキーや実行環境を設定しないと実行できない場合があります。",
     claude: "Claude Code用ツール作成内容は、Claude Code側でAPIキーや必要な実行環境を設定しないと実行できない場合があります。",
   };
@@ -2503,65 +2508,146 @@ function buildRunnableToolFiles() {
   const summary = getSummary();
   const prompt = buildRunnablePrompt();
   const isEnglish = state.language === "en";
+  const provider = state.settings.userApiProvider || "gemini";
+  const apiKey = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  const hasApiKey = Boolean(apiKey);
+  const providerLabel = provider === "openai" ? "OpenAI" : "Google Gemini";
   const toolLabels = isEnglish
     ? {
         usage: "How to use",
-        open: "Open index.html in your browser.",
-        api: "Log in to NENE Studio. The OpenAI API key is kept on the server.",
+        open: "Open index.html in your browser (double-click is fine).",
+        api: hasApiKey
+          ? `Your ${providerLabel} API key is already written to .env and config.js.`
+          : `Enter your ${providerLabel} API key in the tool screen (or put it in .env / config.js).`,
         paste: "Paste the body text or source information. URLs are memo only.",
         generate: "Generate",
+        copy: "Copy result",
+        copied: "Copied.",
         result: "Check the generated result.",
         requirements: "Requirements",
-        apiKey: "Server-side OpenAI API key",
-        apiTitle: "Secure Server API",
+        apiKey: `${providerLabel} API key`,
+        apiTitle: "API key",
         inputTitle: "Input",
+        workflowTitle: "Workflow",
         urlMemo: "URL memo (optional, body text is not fetched)",
         sourceText: "Body text / source information",
-        extra: "Extra conditions",
+        extra: "Extra conditions / desired output style",
         outputTitle: "Output",
-        statusNoKey: "Please log in before generating.",
+        statusNoKey: "Please enter an API key.",
         statusNoInput: "Please paste the body text or source information. URL alone cannot be processed.",
         generating: "Generating...",
         complete: "Generation complete.",
         empty: "The result was empty.",
         error: "Error: ",
-        note: "The OpenAI API key is never entered in the browser. The server runs AI generation.",
+        note: hasApiKey
+          ? "This tool runs standalone. It calls the AI provider directly with your API key."
+          : "This tool runs standalone. Add your API key to use AI generation.",
+        provider: "Provider",
+        saveKey: "Remember key in this browser",
+        warning: "Do not share .env / config.js. They may contain your API key.",
+        keyReady: "API key loaded from config.",
+        promptUrl: "URL memo (not used to fetch content):",
+        promptBody: "Body text / source information:",
+        promptExtra: "Extra conditions:",
       }
     : {
         usage: "使い方",
-        open: "`index.html` をブラウザで開きます。",
-        api: "NENE Studioにログインします。OpenAI APIキーはサーバーで管理します。",
+        open: "`index.html` をブラウザで開きます（ダブルクリックでOK）。",
+        api: hasApiKey
+          ? `設定済みの ${providerLabel} APIキーを .env と config.js に書き込み済みです。`
+          : `${providerLabel} の APIキーを画面に入力するか、.env / config.js に入れてください。`,
         paste: "URLはメモ欄に入れ、処理したい本文や元情報は本文欄に貼り付けます。",
         generate: "生成する",
+        copy: "結果をコピー",
+        copied: "コピーしました。",
         result: "結果欄に出た内容を確認します。",
         requirements: "必要なもの",
-        apiKey: "サーバー側OpenAI APIキー",
-        apiTitle: "安全なサーバーAPI",
+        apiKey: `${providerLabel} APIキー`,
+        apiTitle: "APIキー",
         inputTitle: "入力",
+        workflowTitle: "処理の流れ",
         urlMemo: "URLメモ（任意・本文は読み取りません）",
         sourceText: "本文・元情報",
-        extra: "補足条件",
+        extra: "補足条件・出力の好み",
         outputTitle: "出力結果",
-        statusNoKey: "生成する前にログインしてください。",
+        statusNoKey: "APIキーを入力してください。",
         statusNoInput: "本文・元情報を貼り付けてください。URLだけでは生成できません。",
         generating: "生成中です...",
         complete: "生成が完了しました。",
         empty: "結果が空でした。",
         error: "エラー: ",
-        note: "OpenAI APIキーはブラウザに入力しません。サーバーAPIがAI生成を実行します。",
+        note: hasApiKey
+          ? "このツールは単体で動きます。あなたの APIキーで AI に直接接続します。"
+          : "このツールは単体で動きます。APIキーを入れると AI 生成が使えます。",
+        provider: "プロバイダー",
+        saveKey: "このブラウザにキーを覚える",
+        warning: ".env と config.js には APIキーが入ることがあります。他人に共有しないでください。",
+        keyReady: "config から APIキーを読み込みました。",
+        promptUrl: "URLメモ（本文取得には使わない）:",
+        promptBody: "本文・元情報:",
+        promptExtra: "補足条件:",
       };
+  const docLabels = isEnglish
+    ? {
+        sampleTitle: `# ${proposal.title} Sample Output`,
+        sampleResult: "## Output example",
+        sampleInputs: "## Input example",
+        sampleUsage: "## How to use",
+        sampleFlow: "## Workflow",
+        pressGenerate: `4. Press \`${toolLabels.generate}\``,
+        filesTitle: "## Files",
+        fileEnv: "- `.env` ... API key (already filled in if set at build time)",
+        fileConfig: "- `config.js` ... browser config (same key as .env)",
+        fileRun: "- `index.html` / `script.js` / `style.css` ... runtime files",
+        cautionTitle: "## Caution",
+        noLogin: "No NENE Studio login required. This folder works on its own.",
+        setupSteps: [
+          "1. Put this folder anywhere you like.",
+          "2. If no API key is set, add one to `.env` and `config.js`.",
+          "3. Open `index.html` in your browser.",
+          "4. Paste the body text / source information and press `Generate`.",
+        ],
+        setupRecommend: "Recommended: Google Gemini (easy to call directly from the browser)",
+        setupOpenAiNote: "OpenAI may fail due to browser restrictions. Use Gemini in that case.",
+      }
+    : {
+        sampleTitle: `# ${proposal.title} サンプル出力`,
+        sampleResult: "## 出力例",
+        sampleInputs: "## 入力例",
+        sampleUsage: "## 使い方",
+        sampleFlow: "## 処理の流れ",
+        pressGenerate: `4. \`${toolLabels.generate}\` を押す`,
+        filesTitle: "## ファイル",
+        fileEnv: "- `.env` … APIキー（作成時に設定済みなら反映済み）",
+        fileConfig: "- `config.js` … ブラウザ用の設定（.env と同じキー）",
+        fileRun: "- `index.html` / `script.js` / `style.css` … 実行ファイル",
+        cautionTitle: "## 注意",
+        noLogin: "NENE Studio へのログインは不要です。このフォルダだけで使えます。",
+        setupSteps: [
+          "1. このフォルダを任意の場所に置きます。",
+          "2. APIキー未設定の場合は `.env` と `config.js` にキーを入れます。",
+          "3. `index.html` をブラウザで開きます。",
+          "4. 本文・元情報を貼り付けて `生成する` を押します。",
+        ],
+        setupRecommend: "おすすめ: Google Gemini（ブラウザから直接呼びやすい）",
+        setupOpenAiNote: "OpenAI はブラウザ制限で失敗する場合があります。そのときは Gemini を使ってください。",
+      };
+
   const workflowLines = state.nodes.map(([title, description], index) => `${index + 1}. ${title}: ${description}`).join("\n");
   const sampleOutput = [
-    `# ${proposal.title} サンプル出力`,
+    docLabels.sampleTitle,
     "",
-    "## 出力例",
+    docLabels.sampleResult,
     summary.result,
     "",
-    "## 入力例",
+    docLabels.sampleInputs,
     summary.inputs,
     "",
-    "## 使い方",
+    docLabels.sampleUsage,
     summary.usage,
+    "",
+    docLabels.sampleFlow,
+    workflowLines,
   ].join("\n");
 
   const readme = [
@@ -2573,37 +2659,70 @@ function buildRunnableToolFiles() {
     `1. ${toolLabels.open}`,
     `2. ${toolLabels.api}`,
     `3. ${toolLabels.paste}`,
-    `4. \`${toolLabels.generate}\``,
+    docLabels.pressGenerate,
     `5. ${toolLabels.result}`,
     "",
     `## ${toolLabels.requirements}`,
     `- ${toolLabels.apiKey}`,
     `- ${toolLabels.note}`,
+    "",
+    docLabels.filesTitle,
+    docLabels.fileEnv,
+    docLabels.fileConfig,
+    docLabels.fileRun,
+    "",
+    docLabels.cautionTitle,
+    toolLabels.warning,
+    docLabels.noLogin,
   ].join("\n");
 
   const setup = [
     "# setup",
     "",
-    "1. このフォルダを任意の場所に置きます。",
-    "2. `index.html` をブラウザで開きます。",
-    "3. NENE Studioにログインします。",
-    "4. URLはメモ欄に入れ、処理する本文や元情報は本文欄に貼り付けます。",
-    "5. 入力欄を埋めて `生成する` を押します。",
+    ...docLabels.setupSteps,
     "",
-    "OpenAI APIキーはサーバー側の `.env` に設定します。ブラウザには入力しません。",
-    "URLを入れても本文は自動取得しません。本文貼り付け、または正式なAPI連携を使ってください。",
+    docLabels.setupRecommend,
+    docLabels.setupOpenAiNote,
+    "",
+    toolLabels.warning,
   ].join("\n");
 
-  const apiKeys = [
-    "# サーバー側の .env にだけ設定します",
-    "OPENAI_API_KEY=sk-proj-...",
-    "# 外部データAPIを正式に使う場合のみサーバーに追加",
-    "EXTERNAL_DATA_API_KEY=",
+  const envContent = [
+    `# ${proposal.title} - APIキー設定`,
+    `# プロバイダー: gemini または openai`,
+    `AI_PROVIDER=${provider}`,
+    `GEMINI_API_KEY=${provider === "gemini" && hasApiKey ? apiKey : ""}`,
+    `OPENAI_API_KEY=${provider === "openai" && hasApiKey ? apiKey : ""}`,
+    "# どちらの名前でも読めます",
+    `API_KEY=${hasApiKey ? apiKey : ""}`,
+  ].join("\n");
+
+  const envExample = [
+    "AI_PROVIDER=gemini",
+    "GEMINI_API_KEY=",
+    "OPENAI_API_KEY=",
+    "API_KEY=",
+  ].join("\n");
+
+  const apiKeysExample = [
+    "# 旧ファイル名互換。本番のキーは .env と config.js を使ってください。",
+    "AI_PROVIDER=gemini",
+    "GEMINI_API_KEY=",
+    "OPENAI_API_KEY=",
+  ].join("\n");
+
+  const configJs = [
+    "// ブラウザ用設定。.env と同じ内容です。共有ZIPには含めないでください。",
+    "window.TOOL_CONFIG = {",
+    `  provider: ${JSON.stringify(provider)},`,
+    `  apiKey: ${JSON.stringify(apiKey)},`,
+    `  title: ${JSON.stringify(proposal.title)},`,
+    "};",
   ].join("\n");
 
   const indexHtml = [
     "<!doctype html>",
-    '<html lang="ja">',
+    `<html lang="${isEnglish ? "en" : "ja"}">`,
     "<head>",
     '  <meta charset="utf-8" />',
     '  <meta name="viewport" content="width=device-width, initial-scale=1" />',
@@ -2614,80 +2733,138 @@ function buildRunnableToolFiles() {
     '  <main class="tool-shell">',
     `    <h1>${escapeHtml(proposal.title)}</h1>`,
     `    <p class="lead">${escapeHtml(summary.purpose)}</p>`,
+    `    <p class="note">${escapeHtml(toolLabels.note)}</p>`,
+    workflowLines
+      ? `    <section class="panel soft"><h2>${toolLabels.workflowTitle}</h2><pre class="workflow">${escapeHtml(workflowLines)}</pre></section>`
+      : "",
     '    <section class="panel">',
     `      <h2>${toolLabels.apiTitle}</h2>`,
-    `      <p class="note">${toolLabels.note}</p>`,
+    `      <label>${toolLabels.provider}`,
+    '        <select id="provider">',
+    `          <option value="gemini"${provider === "gemini" ? " selected" : ""}>Google Gemini</option>`,
+    `          <option value="openai"${provider === "openai" ? " selected" : ""}>OpenAI</option>`,
+    "        </select>",
+    "      </label>",
+    `      <label>${toolLabels.apiKey}<input id="api-key" type="password" autocomplete="off" placeholder="APIキー" /></label>`,
+    `      <label class="check"><input id="remember-key" type="checkbox" checked /> ${toolLabels.saveKey}</label>`,
+    hasApiKey ? `      <p class="status" id="key-status">${toolLabels.keyReady}</p>` : "",
     "    </section>",
     '    <section class="panel">',
     `      <h2>${toolLabels.inputTitle}</h2>`,
     `      <label>${toolLabels.urlMemo}<input id="source-url" type="text" placeholder="https://example.com/article" /></label>`,
-    `      <label>${toolLabels.sourceText}<textarea id="tool-input" rows="8" placeholder="${escapeAttribute(summary.inputs)}"></textarea></label>`,
-    `      <label>${toolLabels.extra}<textarea id="tool-extra" rows="4" placeholder="${escapeAttribute(summary.result)}"></textarea></label>`,
-    `      <button id="generate-button">${toolLabels.generate}</button>`,
-    '      <p id="status" class="status"></p>',
+    `      <label>${toolLabels.sourceText}<textarea id="tool-input" rows="10" placeholder="${escapeAttribute(String(summary.inputs).replace(/\s+/g, " "))}"></textarea></label>`,
+    `      <label>${toolLabels.extra}<textarea id="tool-extra" rows="4" placeholder="${escapeAttribute(String(summary.result).replace(/\s+/g, " "))}"></textarea></label>`,
+    '      <div class="actions">',
+    `        <button id="generate-button" type="button">${toolLabels.generate}</button>`,
+    `        <button id="copy-button" type="button" class="secondary">${toolLabels.copy}</button>`,
+    "      </div>",
+    '      <p id="status" class="status" aria-live="polite"></p>',
     "    </section>",
     '    <section class="panel">',
     `      <h2>${toolLabels.outputTitle}</h2>`,
     '      <pre id="result"></pre>',
     "    </section>",
     "  </main>",
+    '  <script src="./config.js"></script>',
     '  <script src="./script.js"></script>',
     "</body>",
     "</html>",
   ].join("\n");
 
   const styleCss = [
+    ":root {",
+    "  --bg: #f4f7fb;",
+    "  --ink: #152033;",
+    "  --muted: #5b6b80;",
+    "  --line: #d7e0ec;",
+    "  --panel: rgba(255,255,255,.92);",
+    "  --accent: #0b6bcb;",
+    "  --accent-2: #128a6a;",
+    "}",
     "body {",
     "  margin: 0;",
-    "  font-family: system-ui, sans-serif;",
-    "  background: #0f172a;",
-    "  color: #f8fafc;",
+    "  font-family: 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif;",
+    "  background:",
+    "    radial-gradient(circle at 12% 8%, rgba(18,138,106,.14), transparent 28%),",
+    "    radial-gradient(circle at 88% 0%, rgba(11,107,203,.16), transparent 32%),",
+    "    linear-gradient(180deg, #eef4fb, var(--bg) 45%, #e8eef6);",
+    "  color: var(--ink);",
+    "  min-height: 100vh;",
     "}",
     ".tool-shell {",
     "  max-width: 880px;",
     "  margin: 0 auto;",
-    "  padding: 32px 16px;",
+    "  padding: 32px 16px 48px;",
     "}",
-    ".lead, .note, .status { color: #cbd5e1; line-height: 1.7; }",
+    "h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 3vw, 2.1rem); letter-spacing: -.02em; }",
+    ".lead, .note, .status { color: var(--muted); line-height: 1.7; }",
     ".panel {",
     "  margin-top: 16px;",
     "  padding: 18px;",
-    "  border: 1px solid rgba(255,255,255,.16);",
-    "  border-radius: 12px;",
-    "  background: rgba(15,23,42,.82);",
+    "  border: 1px solid var(--line);",
+    "  border-radius: 16px;",
+    "  background: var(--panel);",
+    "  box-shadow: 0 12px 28px rgba(21,32,51,.06);",
     "}",
-    "label { display: grid; gap: 8px; margin-top: 12px; }",
-    "input, textarea {",
+    ".panel.soft { background: rgba(255,255,255,.72); }",
+    "h2 { margin: 0 0 8px; font-size: 1.05rem; }",
+    "label { display: grid; gap: 8px; margin-top: 12px; color: var(--ink); }",
+    "label.check { grid-template-columns: auto 1fr; align-items: center; gap: 10px; }",
+    "input, textarea, select {",
     "  width: 100%;",
     "  box-sizing: border-box;",
-    "  border: 1px solid rgba(255,255,255,.2);",
-    "  border-radius: 8px;",
-    "  background: #020617;",
-    "  color: #f8fafc;",
+    "  border: 1px solid var(--line);",
+    "  border-radius: 10px;",
+    "  background: #fff;",
+    "  color: var(--ink);",
     "  padding: 12px;",
+    "  font: inherit;",
     "}",
+    ".actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }",
     "button {",
-    "  margin-top: 14px;",
-    "  min-height: 44px;",
+    "  min-height: 48px;",
     "  border: 0;",
-    "  border-radius: 8px;",
-    "  background: #2563eb;",
+    "  border-radius: 10px;",
+    "  background: linear-gradient(135deg, var(--accent), var(--accent-2));",
     "  color: white;",
     "  font-weight: 700;",
-    "  padding: 0 18px;",
+    "  padding: 0 20px;",
+    "  cursor: pointer;",
     "}",
+    "button.secondary {",
+    "  background: #fff;",
+    "  color: var(--ink);",
+    "  border: 1px solid var(--line);",
+    "}",
+    "button:disabled { opacity: .6; cursor: wait; }",
     "pre {",
     "  white-space: pre-wrap;",
-    "  background: #020617;",
-    "  border-radius: 8px;",
+    "  background: #f7fafc;",
+    "  border: 1px solid var(--line);",
+    "  border-radius: 10px;",
     "  padding: 14px;",
-    "  min-height: 160px;",
+    "  min-height: 180px;",
+    "  line-height: 1.65;",
     "}",
+    "pre.workflow { min-height: 0; margin: 0; background: transparent; border: 0; padding: 0; color: var(--muted); }",
   ].join("\n");
 
   const scriptJs = [
     `const SYSTEM_PROMPT = ${JSON.stringify(prompt)};`,
+    `const LABELS = ${JSON.stringify(toolLabels)};`,
+    "const STORAGE_KEY = 'neneStandaloneToolKey';",
+    "const STORAGE_PROVIDER = 'neneStandaloneToolProvider';",
     "",
+    "const config = window.TOOL_CONFIG || {};",
+    "// file:// で開いたときに localStorage が使えないブラウザでも止まらないようにする",
+    "const storage = {",
+    "  get(key) { try { return localStorage.getItem(key); } catch { return null; } },",
+    "  set(key, value) { try { localStorage.setItem(key, value); } catch {} },",
+    "  remove(key) { try { localStorage.removeItem(key); } catch {} },",
+    "};",
+    'const providerSelect = document.querySelector("#provider");',
+    'const apiKeyInput = document.querySelector("#api-key");',
+    'const rememberKey = document.querySelector("#remember-key");',
     'const sourceUrlInput = document.querySelector("#source-url");',
     'const toolInput = document.querySelector("#tool-input");',
     'const toolExtra = document.querySelector("#tool-extra");',
@@ -2695,82 +2872,214 @@ function buildRunnableToolFiles() {
     'const statusText = document.querySelector("#status");',
     'const resultBox = document.querySelector("#result");',
     "",
+    "hydrateConfig();",
     'generateButton.addEventListener("click", generateResult);',
+    'document.querySelector("#copy-button")?.addEventListener("click", copyResult);',
+    "",
+    "function hydrateConfig() {",
+    "  const savedProvider = storage.get(STORAGE_PROVIDER) || config.provider || 'gemini';",
+    "  const savedKey = storage.get(STORAGE_KEY) || config.apiKey || '';",
+    "  if (providerSelect) providerSelect.value = savedProvider;",
+    "  if (apiKeyInput && !apiKeyInput.value) apiKeyInput.value = savedKey;",
+    "}",
+    "",
+    "function currentProvider() {",
+    "  return providerSelect?.value || config.provider || 'gemini';",
+    "}",
+    "",
+    "function currentApiKey() {",
+    "  return (apiKeyInput?.value || config.apiKey || '').trim();",
+    "}",
+    "",
+    "function persistKeyIfNeeded() {",
+    "  if (!rememberKey?.checked) {",
+    "    storage.remove(STORAGE_KEY);",
+    "    storage.remove(STORAGE_PROVIDER);",
+    "    return;",
+    "  }",
+    "  storage.set(STORAGE_KEY, currentApiKey());",
+    "  storage.set(STORAGE_PROVIDER, currentProvider());",
+    "}",
+    "",
+    "async function copyResult() {",
+    "  const text = resultBox.textContent || '';",
+    "  if (!text) return;",
+    "  try {",
+    "    await navigator.clipboard.writeText(text);",
+    "    statusText.textContent = LABELS.copied;",
+    "  } catch (error) {",
+    "    statusText.textContent = LABELS.error + (error.message || error);",
+    "  }",
+    "}",
     "",
     "async function generateResult() {",
     "  const sourceUrl = sourceUrlInput.value.trim();",
     "  const input = toolInput.value.trim();",
     "  const extra = toolExtra.value.trim();",
-    "  if (!input) {",
-    `    statusText.textContent = ${JSON.stringify(toolLabels.statusNoInput)};`,
+    "  const apiKey = currentApiKey();",
+    "  const provider = currentProvider();",
+    "  if (!apiKey) {",
+    "    statusText.textContent = LABELS.statusNoKey;",
     "    return;",
     "  }",
-    `  statusText.textContent = ${JSON.stringify(toolLabels.generating)};`,
-    '  resultBox.textContent = "";',
-    "  try {",
-    "    const response = await fetch('/api/ai/generate', {",
-    "      method: 'POST',",
-    "      credentials: 'include',",
-    "      headers: { 'Content-Type': 'application/json' },",
-    "      body: JSON.stringify({",
-    "        systemPrompt: SYSTEM_PROMPT,",
-    "        input: 'URLメモ（本文取得には使わない）:\\n' + sourceUrl + '\\n\\n本文・元情報:\\n' + input + '\\n\\n補足条件:\\n' + extra,",
-    "        userApiKey: sessionStorage.getItem('neneUserApiKey') || '',",
-    "        provider: sessionStorage.getItem('neneUserApiProvider') || 'gemini',",
-    "      }),",
-    "    });",
-    "    if (!response.ok) {",
-    "      const errorData = await response.json().catch(() => ({}));",
-    "      throw new Error(errorData.error || 'API通信に失敗しました。');",
-    "    }",
-    "    const data = await response.json();",
-    `    resultBox.textContent = data.text || ${JSON.stringify(toolLabels.empty)};`,
-    `    statusText.textContent = ${JSON.stringify(toolLabels.complete)};`,
-    "  } catch (error) {",
-    `    statusText.textContent = ${JSON.stringify(toolLabels.error)} + error.message;`,
+    "  if (!input) {",
+    "    statusText.textContent = LABELS.statusNoInput;",
+    "    return;",
     "  }",
+    "  persistKeyIfNeeded();",
+    "  generateButton.disabled = true;",
+    "  statusText.textContent = LABELS.generating;",
+    '  resultBox.textContent = "";',
+    "  const userInput = [",
+    "    sourceUrl ? (LABELS.promptUrl + '\\n' + sourceUrl) : '',",
+    "    LABELS.promptBody + '\\n' + input,",
+    "    extra ? (LABELS.promptExtra + '\\n' + extra) : '',",
+    "  ].filter(Boolean).join('\\n\\n');",
+    "  try {",
+    "    const text = provider === 'openai'",
+    "      ? await callOpenAI(apiKey, SYSTEM_PROMPT, userInput)",
+    "      : await callGemini(apiKey, SYSTEM_PROMPT, userInput);",
+    "    resultBox.textContent = text || LABELS.empty;",
+    "    statusText.textContent = LABELS.complete;",
+    "  } catch (error) {",
+    "    statusText.textContent = LABELS.error + (error.message || error);",
+    "  } finally {",
+    "    generateButton.disabled = false;",
+    "  }",
+    "}",
+    "",
+    "async function callGemini(apiKey, systemPrompt, input) {",
+    "  const model = 'gemini-2.0-flash';",
+    "  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(apiKey);",
+    "  const response = await fetch(url, {",
+    "    method: 'POST',",
+    "    headers: { 'Content-Type': 'application/json' },",
+    "    body: JSON.stringify({",
+    "      contents: [{ parts: [{ text: systemPrompt + '\\n\\n' + input }] }],",
+    "    }),",
+    "  });",
+    "  const data = await response.json().catch(() => ({}));",
+    "  if (!response.ok) {",
+    "    throw new Error(data.error?.message || 'Gemini APIの実行に失敗しました。');",
+    "  }",
+    "  return (data.candidates?.[0]?.content?.parts || []).map((part) => part.text || '').join('');",
+    "}",
+    "",
+    "async function callOpenAI(apiKey, systemPrompt, input) {",
+    "  const response = await fetch('https://api.openai.com/v1/chat/completions', {",
+    "    method: 'POST',",
+    "    headers: {",
+    "      'Content-Type': 'application/json',",
+    "      Authorization: 'Bearer ' + apiKey,",
+    "    },",
+    "    body: JSON.stringify({",
+    "      model: 'gpt-4o-mini',",
+    "      messages: [",
+    "        { role: 'system', content: systemPrompt },",
+    "        { role: 'user', content: input },",
+    "      ],",
+    "      temperature: 0.7,",
+    "    }),",
+    "  });",
+    "  const data = await response.json().catch(() => ({}));",
+    "  if (!response.ok) {",
+    "    throw new Error(data.error?.message || 'OpenAI APIの実行に失敗しました。ブラウザ制限の場合は Gemini を試してください。');",
+    "  }",
+    "  return data.choices?.[0]?.message?.content || '';",
     "}",
   ].join("\n");
 
   return {
     readme,
     setup,
-    apiKeys,
+    apiKeys: apiKeysExample,
+    envContent,
+    envExample,
+    configJs,
     mainPrompt: prompt,
     nodes: workflowLines,
     sampleOutput,
     indexHtml,
     styleCss,
     scriptJs,
+    hasApiKey,
   };
 }
 
 function buildRunnablePrompt() {
   const proposal = getSelectedProposal();
   const summary = getSummary();
+  const isEnglish = state.language === "en";
+  const workflow = state.nodes
+    .map(([title, description], index) => `${index + 1}. ${title}: ${description}`)
+    .join("\n");
+  if (isEnglish) {
+    return [
+      `You are the dedicated assistant for "${proposal.title}".`,
+      `Purpose: ${summary.purpose}`,
+      `Target user: ${summary.user}`,
+      `Expected input: ${summary.inputs}`,
+      `Expected output: ${summary.result}`,
+      `Usage context: ${summary.usage}`,
+      "",
+      "Follow this workflow in order:",
+      workflow || "1. Organize the input\n2. Extract key points\n3. Summarize clearly",
+      "",
+      "Output rules:",
+      "- Use clear headings and short paragraphs",
+      "- Lead with the conclusion",
+      "- Separate evidence, caveats, and next actions",
+      "- If input is incomplete, ask for missing items first as bullets",
+      "- Do not fetch URL contents; treat URLs as source memos only",
+      "- Do not invent facts; mark unknowns as unknown",
+      "- No filler openings like \"Sure\" or \"Understood\"",
+    ].join("\n");
+  }
   return [
-    `あなたは「${proposal.title}」として動作します。`,
-    summary.purpose,
+    `あなたは「${proposal.title}」専用の実務アシスタントです。`,
+    `目的: ${summary.purpose}`,
     `想定ユーザー: ${summary.user}`,
-    `入力: ${summary.inputs}`,
-    `出力: ${summary.result}`,
-    "必ず初心者にも分かる日本語で、見出しを付けて整理してください。",
-    "入力が不足している場合は、足りない情報を先に示してください。",
-    "URLが入力されていても、そのURL本文を読みに行ってはいけません。",
-    "URLは出典メモとして扱い、処理対象は貼り付けられた本文・元情報だけにしてください。",
-    "外部データが必要な場合は、正式なAPIキー連携がある場合のみ利用してください。",
+    `受け取る入力: ${summary.inputs}`,
+    `出すべき結果: ${summary.result}`,
+    `使い方の前提: ${summary.usage}`,
+    "",
+    "処理手順（必ずこの順番で考える）:",
+    workflow || "1. 入力を整理する\n2. 要点を抽出する\n3. わかりやすくまとめる",
+    "",
+    "出力フォーマット（この見出し構成を優先）:",
+    "## 結論",
+    "## ポイント",
+    "## 詳細",
+    "## 注意点",
+    "## 次のアクション",
+    "",
+    "出力ルール:",
+    "- 日本語で、見出し付きの読みやすい文章にする",
+    "- 重要な結論を最初に書く",
+    "- 箇条書きを活用し、1項目は1〜2行に収める",
+    "- 入力が足りないときは、不足情報を箇条書きで先に尋ねる",
+    "- URLが入力されていても本文を取得しに行かない。URLは出典メモとして扱う",
+    "- 推測で事実を埋めない。不明な点は不明と書く",
+    "- 余計な前置きや「了解しました」は書かない",
+    "- ツールの目的から外れた一般論だけで埋めない",
   ].join("\n");
 }
 
 function getExportText(format) {
   const blueprintText = buildBlueprintText();
   const files = buildRunnableToolFiles();
+  const keyNote = files.hasApiKey
+    ? "※ 設定画面の APIキーは .env と config.js に反映済みです（共有しないでください）。"
+    : "※ APIキー未設定です。ZIP解凍後に画面入力するか、.env / config.js に入れてください。";
   const exportTextByFormat = {
     folder: `NENE_Tool/
   README.md
   index.html
   style.css
   script.js
+  config.js
+  .env
+  .env.example
   setup.md
   config/
     api_keys.example
@@ -2782,8 +3091,16 @@ function getExportText(format) {
     sample_output.md
   tool_design.md
 
+${keyNote}
+
 --- README.md ---
 ${files.readme}
+
+--- .env ---
+${files.envContent}
+
+--- config.js ---
+${files.configJs}
 
 --- index.html ---
 ${files.indexHtml}
@@ -2816,6 +3133,9 @@ ${blueprintText}`,
 - index.html
 - style.css
 - script.js
+- config.js
+- .env
+- .env.example
 - setup.md
 - config/api_keys.example
 - prompts/main_prompt.md
@@ -2823,10 +3143,17 @@ ${blueprintText}`,
 - output/sample_output.md
 - tool_design.md
 
-以下のファイル内容をZIPに入れると、ブラウザで開いて使えるツールになります。
+${keyNote}
+解凍して index.html を開くと、NENE Studio なしで単体動作します。
 
 --- README.md ---
 ${files.readme}
+
+--- .env ---
+${files.envContent}
+
+--- config.js ---
+${files.configJs}
 
 --- index.html ---
 ${files.indexHtml}
@@ -2855,13 +3182,19 @@ ${files.sampleOutput}
 --- tool_design.md ---
 ${blueprintText}`,
     api: `APIキー入力形式:
-この形式はサーバー側のOPENAI_API_KEYが設定されていないと実行できません。
-外部データを使う場合は、URL読み取りではなくサーバー側の正式な外部APIキー連携が必要です。
+設定画面の BYOK（自分のAPIキー）が .env / config.js に入り、単体で動くツールになります。
+${keyNote}
 
 1. index.html をブラウザで開く
-2. NENE Studioにログインする
-3. 入力情報を入れる
-4. 実行ボタンで投稿案・レポートなどを生成する
+2. APIキーが未入力なら画面で入れる（設定済みなら自動入力）
+3. 本文・元情報を貼る
+4. 生成する を押す
+
+--- .env ---
+${files.envContent}
+
+--- config.js ---
+${files.configJs}
 
 --- index.html ---
 ${files.indexHtml}
@@ -2874,10 +3207,17 @@ ${files.mainPrompt}
 
 ${blueprintText}`,
     codex: `Codexに渡す指示:
-以下のファイル一式を作成してください。index.html をブラウザで開くと、OpenAI APIキー入力後にそのまま使えるツールにしてください。
+以下のファイル一式を作成してください。index.html をブラウザで開くと、config.js / .env の APIキー（または画面入力）でそのまま使えるスタンドアロンツールにしてください。
+Gemini または OpenAI にブラウザから直接接続し、NENE Studio サーバーには依存しないでください。
 
 --- README.md ---
 ${files.readme}
+
+--- .env ---
+${files.envContent}
+
+--- config.js ---
+${files.configJs}
 
 --- index.html ---
 ${files.indexHtml}
@@ -2897,10 +3237,16 @@ ${files.nodes}
 --- tool_design.md ---
 ${blueprintText}`,
     claude: `Claude Codeに渡す指示:
-以下のファイル一式を作成してください。README、セットアップ手順、APIキー例、実行画面、OpenAI API呼び出し、エラー表示、サンプル出力を含めてください。
+以下のファイル一式を作成してください。README、setup、.env、config.js、実行画面、Gemini/OpenAI 直接呼び出し、エラー表示、サンプル出力を含めてください。NENE Studio API には依存しないスタンドアロン構成にしてください。
 
 --- README.md ---
 ${files.readme}
+
+--- .env ---
+${files.envContent}
+
+--- config.js ---
+${files.configJs}
 
 --- index.html ---
 ${files.indexHtml}
@@ -2933,8 +3279,12 @@ ${blueprintText}`,
   return exportTextByFormat[format] || exportTextByFormat.folder;
 }
 
+function adsCurrentlyEnabled() {
+  return window.NENE_ADS?.enabled !== false;
+}
+
 async function copyExport() {
-  if (!state.auth.user?.isAdFree) {
+  if (adsCurrentlyEnabled() && !state.auth.user?.isAdFree) {
     showAdBeforeOutput(runOutput);
     return;
   }
@@ -2942,8 +3292,13 @@ async function copyExport() {
 }
 
 async function runOutput() {
+  saveUserApiKey();
+  const files = buildRunnableToolFiles();
   const text = getExportText(state.exportFormat);
   const proposal = getSelectedProposal();
+  const keyStatus = files.hasApiKey
+    ? "APIキーを .env と config.js に反映しました。"
+    : "APIキー未設定のため、プレースホルダのままです（設定画面でキーを保存してから再作成してください）。";
   state.createdOutput = {
     title: proposal.title,
     format: state.exportFormat,
@@ -2951,7 +3306,6 @@ async function runOutput() {
   };
   try {
     if (state.exportFormat === "zip") {
-      const files = buildRunnableToolFiles();
       const zipBlob = createZipBlob(getRunnableFileMap(files));
       downloadBlob(zipBlob, `${sanitizeFileName(proposal.title)}.zip`);
     } else if (navigator.clipboard) {
@@ -2962,18 +3316,22 @@ async function runOutput() {
       downloadGeneratedFile(text, state.exportFormat, proposal.title);
     }
     state.status = state.exportFormat === "zip"
-      ? "ZIPファイルを作成してダウンロードしました。保存する場合はチェックして保存してください。"
-      : "指定形式の作成内容を表示・コピー・ダウンロードしました。保存する場合はチェックして保存してください。";
+      ? `ZIPをダウンロードしました。${keyStatus} 共有しないでください。`
+      : `作成内容を出力しました。${keyStatus}`;
   } catch (error) {
     fallbackCopy(text);
     downloadGeneratedFile(text, state.exportFormat, proposal.title);
-    state.status = "指定形式の作成内容を表示・コピー・ダウンロードしました。保存する場合はチェックして保存してください。";
+    state.status = `作成内容を出力しました。${keyStatus}`;
   }
   renderAll();
   activateScreen("export");
 }
 
 function showAdBeforeOutput(callback) {
+  if (!adsCurrentlyEnabled()) {
+    callback();
+    return;
+  }
   const waitSeconds = window.NeneAds?.getWaitSeconds?.() ?? 5;
   let seconds = waitSeconds;
   const countdown = $("#ad-countdown");
@@ -3031,18 +3389,24 @@ async function saveCreatedTool() {
 }
 
 function launchCreatedTool() {
+  saveUserApiKey();
   const files = buildRunnableToolFiles();
   const html = buildLaunchHtml(files);
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   window.open(url, "_blank", "noopener,noreferrer");
-  state.status = "作成したツールを新しいタブで起動しました。";
+  state.status = files.hasApiKey
+    ? "ツールを起動しました。APIキーは config に入っているので、そのまま生成できます。"
+    : "ツールを起動しました。APIキー未設定のため、画面でキーを入れてから生成してください。";
   renderAll();
 }
 
 function buildLaunchHtml(files) {
   const bodyMatch = files.indexHtml.match(/<body>([\s\S]*?)<\/body>/i);
-  const bodyContent = bodyMatch ? bodyMatch[1].replace(/<script src="\.\/script\.js"><\/script>/, "") : "";
+  let bodyContent = bodyMatch ? bodyMatch[1] : "";
+  bodyContent = bodyContent
+    .replace(/<script src="\.\/config\.js"><\/script>\s*/i, "")
+    .replace(/<script src="\.\/script\.js"><\/script>/i, "");
   return `<!doctype html>
 <html lang="ja">
 <head>
@@ -3053,6 +3417,7 @@ function buildLaunchHtml(files) {
 </head>
 <body>
 ${bodyContent}
+<script>${files.configJs}<\/script>
 <script>${files.scriptJs}<\/script>
 </body>
 </html>`;
@@ -3064,6 +3429,9 @@ function getRunnableFileMap(files) {
     "index.html": files.indexHtml,
     "style.css": files.styleCss,
     "script.js": files.scriptJs,
+    "config.js": files.configJs,
+    ".env": files.envContent,
+    ".env.example": files.envExample,
     "setup.md": files.setup,
     "config/api_keys.example": files.apiKeys,
     "prompts/main_prompt.md": files.mainPrompt,
@@ -3233,6 +3601,12 @@ function fallbackCopy(text) {
   textarea.remove();
 }
 
+function redactApiKey(text) {
+  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  if (!key || !text) return text;
+  return String(text).split(key).join("[APIキーは保存時に削除されます]");
+}
+
 function saveCurrentBlueprint() {
   const proposal = getSelectedProposal();
   const alreadySaved = state.savedBlueprints.some((item) => item.title === proposal.title);
@@ -3245,7 +3619,10 @@ function saveCurrentBlueprint() {
       custom: { ...state.custom },
       summaryEdits: { ...state.summaryEdits },
       exportFormat: state.exportFormat,
-      createdOutput: state.createdOutput ? { ...state.createdOutput } : null,
+      // APIキーが保存物やサーバーDBへ残らないように必ず除去する
+      createdOutput: state.createdOutput
+        ? { ...state.createdOutput, text: redactApiKey(state.createdOutput.text) }
+        : null,
     });
     return true;
   }

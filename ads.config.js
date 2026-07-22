@@ -5,7 +5,8 @@
  * 広告ユニット（slot）を作ったら adsense.slot に ID を入れる
  */
 window.NENE_ADS = {
-  enabled: true,
+  // 一時停止中。バナーを入れ直すときに true に戻す
+  enabled: false,
   waitSeconds: 5,
 
   adsense: {

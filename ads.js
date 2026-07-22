@@ -230,7 +230,6 @@
     const config = getConfig();
     clearSlot(slot);
     if (config.enabled === false) {
-      renderFallback(slot, config);
       return "disabled";
     }
 

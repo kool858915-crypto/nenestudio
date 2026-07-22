@@ -8,7 +8,9 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./styles.css" />
+    <!-- AdSense: 広告再開時に戻す
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9344128846274010" crossorigin="anonymous"></script>
+    -->
   </head>
   <body>
     <div class="app-shell">
@@ -348,9 +350,9 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
 
         <section class="screen" id="export">
           <div class="export-grid">
-            <button class="export-card active" data-export-format="folder"><strong>フォルダ形式</strong><span>実行用HTML/JS/CSSまでまとめる</span></button>
-            <button class="export-card" data-export-format="zip"><strong>ZIP形式</strong><span>実行用ファイル一式をZIP用にまとめる</span></button>
-            <button class="export-card" data-export-format="api"><strong>APIキー入力形式</strong><span>認証コードを入れるだけで使う</span></button>
+            <button class="export-card active" data-export-format="folder"><strong>フォルダ形式</strong><span>HTML/JS/CSS + .env / config.js</span></button>
+            <button class="export-card" data-export-format="zip"><strong>ZIP形式</strong><span>単体動作一式（APIキー反映）</span></button>
+            <button class="export-card" data-export-format="api"><strong>APIキー入力形式</strong><span>キー入りの実行手順つき</span></button>
             <button class="export-card" data-export-format="codex"><strong>Codex用ツール作成内容</strong><span>コード作成AIに渡す内容</span></button>
             <button class="export-card" data-export-format="claude"><strong>Claude Code用ツール作成内容</strong><span>実装支援AIに渡す内容</span></button>
           </div>
@@ -411,7 +413,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
                 <span>各ファイル</span>
               </div>
               <h3>2. ZIPを解凍する</h3>
-              <p>解凍すると `index.html`、`style.css`、`script.js` などが最初から分かれた状態で入っています。</p>
+              <p>解凍すると `index.html`、`style.css`、`script.js`、`config.js`、`.env` などが分かれて入っています。</p>
             </article>
             <article class="usage-card">
               <div class="usage-illustration browser-view">
@@ -428,7 +430,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
                 <span>生成する</span>
               </div>
               <h3>4. APIキーと本文を入れて使う</h3>
-              <p>URLはメモ用です。実際に処理したい本文や元情報を貼り付け、OpenAI APIキーを入れて生成します。</p>
+              <p>設定画面で APIキーを保存してから作成すると `.env` と `config.js` に反映されます。未設定なら画面で入力。URLはメモ用で、本文欄に貼った内容を処理します。</p>
             </article>
           </div>
           <div class="folder-panel">
@@ -437,7 +439,8 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <article><h3>`index.html`</h3><p>画面本体です。出力内の `--- index.html ---` から次の区切りまでを入れます。</p></article>
               <article><h3>`style.css`</h3><p>見た目のファイルです。`index.html` と同じフォルダに置きます。</p></article>
               <article><h3>`script.js`</h3><p>生成ボタンやAPI通信の動きです。`index.html` と同じフォルダに置きます。</p></article>
-              <article><h3>補助ファイル</h3><p>`README.md`、`setup.md`、`prompts/main_prompt.md` などは説明・保管用です。実行に最低限必要なのは上の3つです。</p></article>
+              <article><h3>`config.js` / `.env`</h3><p>APIキー設定です。設定画面で保存したキーが入ります。実行に必要です（共有しないでください）。</p></article>
+              <article><h3>補助ファイル</h3><p>`README.md`、`setup.md`、`prompts/main_prompt.md` などは説明・保管用です。</p></article>
             </div>
           </div>
         </section>
@@ -804,7 +807,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
                 </select>
               </label>
               <label>APIキー<input id="user-api-key" type="password" autocomplete="off" placeholder="設定するとこの端末に保存されます" /></label>
-              <p class="plan-note">取得手順は左メニュー <strong>「APIキー設定」</strong>。キーはブラウザの localStorage にのみ保存します。</p>
+              <p class="plan-note">取得手順は左メニュー <strong>「APIキー設定」</strong>。キーはこの端末のブラウザ（sessionStorage＝タブを閉じるまで保持）に保存します。ZIP／フォルダ出力時は <code>.env</code> と <code>config.js</code> にも書き込みます（共有ZIPには入れないでください）。</p>
             </div>
 
             <div class="plan-panel">
