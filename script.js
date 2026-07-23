@@ -304,6 +304,8 @@ const textTranslations = {
   "どう使う？": "How do I use it?",
   "フォルダ形式": "Folder Format",
   "実行用HTML/JS/CSSまでまとめる": "Includes runnable HTML/JS/CSS",
+  "HTML形式（1ファイル）": "HTML (Single File)",
+  "開くだけでそのまま操作できる": "Open the file and use it right away",
   "ZIP形式": "ZIP Format",
   "実行用ファイル一式をZIP用にまとめる": "Packages runnable files as ZIP",
   "APIキー入力形式": "API Key Format",
@@ -2494,6 +2496,7 @@ function renderExport() {
 
 function renderApiFormatNotice() {
   const apiRequiredFormats = {
+    html: "HTML形式は1ファイルで完結し、開くだけで使えます。APIキーが埋め込まれるため、ファイルを他人に渡さないでください。",
     api: "APIキー入力形式は、Gemini / OpenAI のAPIキーを設定画面か出力ツールの画面に入れると単体で実行できます。",
     codex: "Codex用ツール作成内容は、Codex側で外部APIキーや実行環境を設定しないと実行できない場合があります。",
     claude: "Claude Code用ツール作成内容は、Claude Code側でAPIキーや必要な実行環境を設定しないと実行できない場合があります。",
@@ -3072,6 +3075,7 @@ function getExportText(format) {
     ? "※ 設定画面の APIキーは .env と config.js に反映済みです（共有しないでください）。"
     : "※ APIキー未設定です。ZIP解凍後に画面入力するか、.env / config.js に入れてください。";
   const exportTextByFormat = {
+    html: buildLaunchHtml(files),
     folder: `NENE_Tool/
   README.md
   index.html
@@ -3308,6 +3312,9 @@ async function runOutput() {
     if (state.exportFormat === "zip") {
       const zipBlob = createZipBlob(getRunnableFileMap(files));
       downloadBlob(zipBlob, `${sanitizeFileName(proposal.title)}.zip`);
+    } else if (state.exportFormat === "html") {
+      const htmlBlob = new Blob([buildLaunchHtml(files)], { type: "text/html;charset=utf-8" });
+      downloadBlob(htmlBlob, `${sanitizeFileName(proposal.title)}.html`);
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(text);
       downloadGeneratedFile(text, state.exportFormat, proposal.title);
@@ -3317,7 +3324,9 @@ async function runOutput() {
     }
     state.status = state.exportFormat === "zip"
       ? `ZIPをダウンロードしました。${keyStatus} 共有しないでください。`
-      : `作成内容を出力しました。${keyStatus}`;
+      : state.exportFormat === "html"
+        ? `HTMLファイルをダウンロードしました。ダブルクリックで開くとそのまま使えます。${keyStatus} 共有しないでください。`
+        : `作成内容を出力しました。${keyStatus}`;
   } catch (error) {
     fallbackCopy(text);
     downloadGeneratedFile(text, state.exportFormat, proposal.title);
@@ -3403,16 +3412,18 @@ function launchCreatedTool() {
 
 function buildLaunchHtml(files) {
   const bodyMatch = files.indexHtml.match(/<body>([\s\S]*?)<\/body>/i);
+  const titleMatch = files.indexHtml.match(/<title>([\s\S]*?)<\/title>/i);
+  const title = titleMatch ? titleMatch[1] : "作成ツール";
   let bodyContent = bodyMatch ? bodyMatch[1] : "";
   bodyContent = bodyContent
     .replace(/<script src="\.\/config\.js"><\/script>\s*/i, "")
     .replace(/<script src="\.\/script\.js"><\/script>/i, "");
   return `<!doctype html>
-<html lang="ja">
+<html lang="${state.language === "en" ? "en" : "ja"}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ツールプレビュー</title>
+  <title>${title}</title>
   <style>${files.styleCss}</style>
 </head>
 <body>
@@ -3445,6 +3456,7 @@ function downloadGeneratedFile(text, format, title) {
   const extensionByFormat = {
     folder: "txt",
     zip: "zip.txt",
+    html: "html",
     api: "txt",
     codex: "txt",
     claude: "txt",
