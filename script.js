@@ -3908,6 +3908,13 @@ function escapeAttribute(value) {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || window.location.protocol === "file:") return;
+  // 新バージョンのSWが有効になったら1回だけ自動リロードして、古いキャッシュのまま使い続けないようにする
+  let hasReloadedForUpdate = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (hasReloadedForUpdate || !navigator.serviceWorker.controller) return;
+    hasReloadedForUpdate = true;
+    window.location.reload();
+  });
   navigator.serviceWorker.register("./sw.js").catch(() => {
     state.status = "PWAのオフライン登録に失敗しました。サーバー起動後に再読み込みしてください。";
     renderAll();

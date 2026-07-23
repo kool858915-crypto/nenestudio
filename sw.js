@@ -1,4 +1,4 @@
-const CACHE_NAME = "nene-studio-v25";
+const CACHE_NAME = "nene-studio-v26";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -15,7 +15,10 @@ const NETWORK_FIRST_PATHS = ["/ads.config.js", "/ads.js", "/config.js"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)),
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(
+      // ブラウザのHTTPキャッシュを介さず、必ずサーバーから最新を取り直す
+      APP_SHELL.map((url) => new Request(url, { cache: "reload" })),
+    )),
   );
   self.skipWaiting();
 });
