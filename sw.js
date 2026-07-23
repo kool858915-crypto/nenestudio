@@ -1,4 +1,4 @@
-const CACHE_NAME = "nene-studio-v27";
+const CACHE_NAME = "nene-studio-v28";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -34,6 +34,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
+  // 外部ドメイン（広告画像・外部APIなど）はSWを通さずブラウザに直接任せる。
+  // SW経由のfetchはCSPのconnect-srcで縛られ、広告画像がブロックされるため。
+  if (requestUrl.origin !== self.location.origin) return;
   if (requestUrl.pathname.startsWith("/api/")) return;
 
   const isNetworkFirst = NETWORK_FIRST_PATHS.some((path) => (
@@ -51,7 +54,10 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     caches.match(event.request).then((cached) => (
-      cached || fetch(event.request).catch(() => caches.match("./index.html"))
+      cached || fetch(event.request).catch(() => (
+        // 画面遷移だけindex.htmlへフォールバックする。画像やJSにHTMLを返さない
+        event.request.mode === "navigate" ? caches.match("./index.html") : Response.error()
+      ))
     )),
   );
 });
