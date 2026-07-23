@@ -758,15 +758,50 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         <section class="screen" id="agent">
           <div class="section-heading">
             <p class="eyebrow">AIエージェント作成</p>
-            <h2>保存済みツールを組み合わせて、作れるAIエージェントを提案します。</h2>
-            <p>AIエージェントは、複数のツールを順番につなげて、まとまった作業を自動で進める仕組みです。</p>
+            <h2>保存済みツールをつなぎ、ゴールに向かって自走するAIエージェントを作ります。</h2>
+            <p>AIエージェントは、計画→実行→自己チェック→改善を繰り返して、成果物を仕上げる仕組みです。</p>
           </div>
           <div class="proposal-grid" id="agent-proposals"></div>
+
+          <div class="folder-panel">
+            <h2>エージェント設定</h2>
+            <p class="guide-note" style="color: var(--muted); margin-top: 0;">ゴールを入れると、AIが自分で手順を立てて繰り返し改善します。ループ上限でAPIの使いすぎを防ぎます。</p>
+            <div class="form-grid">
+              <label>ゴール（達成したいこと）
+                <textarea id="agent-goal" rows="3" placeholder="例：今日のニュースから注目3銘柄のX投稿案を作る"></textarea>
+              </label>
+              <label>材料・元情報（任意）
+                <textarea id="agent-material" rows="6" placeholder="ニュース本文やメモを貼り付けます。URLだけでは処理できません。"></textarea>
+              </label>
+              <label>ループ上限（何周まで自己改善するか）
+                <select id="agent-max-loops">
+                  <option value="3" selected>3回（おすすめ）</option>
+                  <option value="5">5回</option>
+                  <option value="10">10回</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="folder-panel">
+            <h2>実行パネル</h2>
+            <p>設定画面のAPIキー（または有料プランの運営API）で実行します。1回の実行で複数回AIを呼びます。</p>
+            <div class="button-row">
+              <button class="primary" id="run-agent" type="button">エージェントを実行</button>
+              <button class="secondary" id="stop-agent" type="button" disabled>停止</button>
+              <button class="secondary" id="copy-agent-result" type="button">結果をコピー</button>
+            </div>
+            <h3 class="agent-log-title">進行ログ</h3>
+            <pre class="code-block agent-run-log" id="agent-run-log" aria-live="polite">まだ実行していません。ゴールを入れて「エージェントを実行」を押してください。</pre>
+            <h3 class="agent-log-title">最終成果物</h3>
+            <pre class="code-block" id="agent-result">ここに完成した成果物が表示されます。</pre>
+          </div>
+
           <div class="folder-panel">
             <h2>AIエージェント作成内容</h2>
             <pre class="code-block" id="agent-preview">保存済みツールを追加すると、作成できるAIエージェント案が表示されます。</pre>
             <div class="button-row">
-              <button class="primary" id="create-agent">AIエージェントを作成する</button>
+              <button class="primary" id="create-agent">HTMLで書き出す（自走対応）</button>
               <button class="secondary" id="save-agent">保存する</button>
             </div>
             <p class="status-message" id="agent-status" aria-live="polite"></p>

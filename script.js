@@ -196,7 +196,7 @@ const screenCopy = {
   plans: ["プラン一覧", "作る画面へ戻る"],
   apikey: ["APIキー設定", "作る画面へ戻る"],
   saved: ["保存済みツール", "作業の部品を見る"],
-  agent: ["AIエージェントを作成します", "AIエージェントを作成する"],
+  agent: ["AIエージェントを作成します", "HTMLで書き出す（自走対応）"],
   terms: ["利用規約", "作る画面へ戻る"],
   privacy: ["プライバシーポリシー", "作る画面へ戻る"],
   contact: ["お問い合わせ", "作る画面へ戻る"],
@@ -215,7 +215,7 @@ const screenCopyEn = {
   plans: ["Plans", "Back to Build"],
   apikey: ["API Key Setup (BYOK)", "Back to Build"],
   saved: ["Saved Tools", "View Workflow"],
-  agent: ["Create AI Agent", "Create AI Agent"],
+  agent: ["Create AI Agent", "Export HTML (self-running)"],
   terms: ["Terms of Use", "Back to Build"],
   privacy: ["Privacy Policy", "Back to Build"],
   contact: ["Contact", "Back to Build"],
@@ -375,6 +375,32 @@ const textTranslations = {
   "左メニュー「無料で実装」を開くと、外部AIに渡す設計図の作り方がわかります。": "Open \"Build Free\" in the menu for blueprint handoff to external AI.",
   "無料で実装の説明を見る": "See the free implementation guide",
   "作る画面へ進む": "Go to Build",
+  "保存済みツールを組み合わせて、作れるAIエージェントを提案します。": "Combine saved tools into AI agent proposals.",
+  "保存済みツールをつなぎ、ゴールに向かって自走するAIエージェントを作ります。": "Connect saved tools into a self-running AI agent that works toward a goal.",
+  "AIエージェントは、複数のツールを順番につなげて、まとまった作業を自動で進める仕組みです。": "An AI agent chains multiple tools in order to complete a larger task automatically.",
+  "AIエージェントは、計画→実行→自己チェック→改善を繰り返して、成果物を仕上げる仕組みです。": "An AI agent finishes work by looping through plan → run → self-check → improve.",
+  "エージェント設定": "Agent settings",
+  "ゴールを入れると、AIが自分で手順を立てて繰り返し改善します。ループ上限でAPIの使いすぎを防ぎます。": "Enter a goal and the AI plans, runs, and improves itself. The loop limit prevents overusing the API.",
+  "ゴール（達成したいこと）": "Goal (what to achieve)",
+  "例：今日のニュースから注目3銘柄のX投稿案を作る": "Example: Make 3 X post drafts for notable stocks from today's news",
+  "材料・元情報（任意）": "Materials / source info (optional)",
+  "ニュース本文やメモを貼り付けます。URLだけでは処理できません。": "Paste news text or notes. A URL alone cannot be processed.",
+  "ループ上限（何周まで自己改善するか）": "Loop limit (how many self-improve rounds)",
+  "3回（おすすめ）": "3 rounds (recommended)",
+  "5回": "5 rounds",
+  "10回": "10 rounds",
+  "実行パネル": "Run panel",
+  "設定画面のAPIキー（または有料プランの運営API）で実行します。1回の実行で複数回AIを呼びます。": "Runs with your Settings API key (or paid operator API). One run calls AI multiple times.",
+  "エージェントを実行": "Run agent",
+  "停止": "Stop",
+  "結果をコピー": "Copy result",
+  "進行ログ": "Progress log",
+  "まだ実行していません。ゴールを入れて「エージェントを実行」を押してください。": "Not started yet. Enter a goal and press Run agent.",
+  "最終成果物": "Final deliverable",
+  "ここに完成した成果物が表示されます。": "The finished deliverable appears here.",
+  "AIエージェント作成内容": "AI agent content",
+  "HTMLで書き出す（自走対応）": "Export HTML (self-running)",
+  "保存する": "Save",
   "3ステップで、あなた専用のAIツールが完成します。": "Your own AI tool is ready in 3 steps.",
   "プログラミングの知識は不要です。迷ったら、このページの上から順番に進めてください。": "No programming knowledge needed. If unsure, just follow this page from top to bottom.",
   "設定画面でキーを保存する": "Save the key in Settings",
@@ -1025,6 +1051,13 @@ const state = {
   savedAgents: [],
   selectedAgentIndex: 0,
   createdAgent: null,
+  agentGoal: "",
+  agentMaterial: "",
+  agentMaxLoops: 3,
+  agentRunning: false,
+  agentAbortRequested: false,
+  agentLogs: [],
+  agentResult: "",
   status: "",
 };
 
@@ -1401,6 +1434,18 @@ function bindEvents() {
   $("#save-created-tool").addEventListener("click", saveCreatedTool);
   $("#create-agent").addEventListener("click", createAgent);
   $("#save-agent").addEventListener("click", saveAgent);
+  $("#run-agent")?.addEventListener("click", runAgentLoop);
+  $("#stop-agent")?.addEventListener("click", stopAgentLoop);
+  $("#copy-agent-result")?.addEventListener("click", copyAgentResult);
+  $("#agent-goal")?.addEventListener("input", (event) => {
+    state.agentGoal = event.target.value;
+  });
+  $("#agent-material")?.addEventListener("input", (event) => {
+    state.agentMaterial = event.target.value;
+  });
+  $("#agent-max-loops")?.addEventListener("change", (event) => {
+    state.agentMaxLoops = Number(event.target.value) || 3;
+  });
   $$("input[name='plan']").forEach((input) => {
     input.addEventListener("change", () => {
       state.settings.plan = input.value;
@@ -3797,6 +3842,11 @@ function loadSavedItem(type, index) {
   if (type === "agent") {
     const saved = state.savedAgents[index];
     state.createdAgent = saved;
+    state.agentGoal = saved.goal || "";
+    state.agentMaterial = saved.material || "";
+    state.agentMaxLoops = saved.maxLoops || 3;
+    state.agentResult = "";
+    state.agentLogs = [];
     state.status = `${saved.title}を読み込みました。`;
     renderAll();
     activateScreen("agent");
@@ -3841,23 +3891,56 @@ function getAgentIdeas() {
   return [
     {
       title: "毎日の自動レポートAIエージェント",
-      description: "保存済みツールを順番に実行し、情報収集からレポート作成までをまとめます。",
+      description: "保存済みツールを順番に実行し、情報収集からレポート作成までを自走でまとめます。",
       tools: toolNames,
       output: "日次レポート、要点、次に見るべき項目",
     },
     {
       title: "SNS投稿準備AIエージェント",
-      description: "調査した内容を、投稿文・画像指示・確認メモまで展開します。",
+      description: "調査した内容を、投稿文・画像指示・確認メモまで自走で展開します。",
       tools: toolNames.slice(0, Math.max(1, Math.min(toolNames.length, 3))),
       output: "X投稿案、画像生成指示、投稿前チェック",
     },
     {
       title: "確認付き作業代行AIエージェント",
-      description: "各ツールの結果を確認しながら進め、最後にまとめて出力します。",
+      description: "各ツールの結果を自己チェックしながら進め、合格するまで改善します。",
       tools: toolNames,
       output: "確認リスト、作業ログ、最終出力",
     },
   ];
+}
+
+function syncAgentFormFromState() {
+  const goal = $("#agent-goal");
+  const material = $("#agent-material");
+  const maxLoops = $("#agent-max-loops");
+  const logEl = $("#agent-run-log");
+  const resultEl = $("#agent-result");
+  const runBtn = $("#run-agent");
+  const stopBtn = $("#stop-agent");
+  if (goal && document.activeElement !== goal) goal.value = state.agentGoal || "";
+  if (material && document.activeElement !== material) material.value = state.agentMaterial || "";
+  if (maxLoops) maxLoops.value = String(state.agentMaxLoops || 3);
+  if (logEl) {
+    logEl.textContent = state.agentLogs.length
+      ? state.agentLogs.join("\n")
+      : "まだ実行していません。ゴールを入れて「エージェントを実行」を押してください。";
+  }
+  if (resultEl) {
+    resultEl.textContent = state.agentResult || "ここに完成した成果物が表示されます。";
+  }
+  if (runBtn) runBtn.disabled = state.agentRunning;
+  if (stopBtn) stopBtn.disabled = !state.agentRunning;
+}
+
+function appendAgentLog(message) {
+  const stamp = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  state.agentLogs.push(`[${stamp}] ${message}`);
+  const logEl = $("#agent-run-log");
+  if (logEl) {
+    logEl.textContent = state.agentLogs.join("\n");
+    logEl.scrollTop = logEl.scrollHeight;
+  }
 }
 
 function renderAgentBuilder() {
@@ -3871,6 +3954,7 @@ function renderAgentBuilder() {
       </article>
     `;
     agentPreview.textContent = "保存済みツールを追加すると、作成できるAIエージェント案が表示されます。";
+    syncAgentFormFromState();
     return;
   }
 
@@ -3887,20 +3971,483 @@ function renderAgentBuilder() {
     .join("");
 
   agentPreview.textContent = state.createdAgent?.content || buildAgentText(selectedIdea);
+  syncAgentFormFromState();
 }
 
 function buildAgentText(idea) {
+  const goal = state.agentGoal.trim() || "（実行時にゴールを入力）";
+  const maxLoops = state.agentMaxLoops || 3;
   return `agent_name: ${idea.title}
 purpose: ${idea.description}
+goal: ${goal}
 tools:
 ${idea.tools.map((tool, index) => `  ${index + 1}. ${tool}`).join("\n")}
-workflow:
-  1. 必要な入力を確認する
-  2. 保存済みツールを順番に実行する
-  3. 各ツールの結果をまとめる
-  4. ${idea.output}として出力する
+self_running_loop:
+  1. 計画：ゴールと材料から実行手順を立てる
+  2. 実行：保存済みツールの役割に沿って順番に処理する
+  3. 自己チェック：ゴール達成度を判定する
+  4. 改善：不合格ならフィードバックを持って次の周へ（上限 ${maxLoops} 回）
 output: ${idea.output}
-note: このAIエージェント案は保存済みツールを参考にした作成案です。`;
+note: このAIエージェントは自走ループ付きです。HTML書き出しで単体実行できます。`;
+}
+
+async function callStudioAi(systemPrompt, userInput) {
+  saveUserApiKey();
+  const apiKey = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  const provider = state.settings.userApiProvider || readSessionApiProvider() || "gemini";
+
+  if (apiKey) {
+    return provider === "openai"
+      ? callOpenAiDirect(apiKey, systemPrompt, userInput)
+      : callGeminiDirect(apiKey, systemPrompt, userInput);
+  }
+
+  if (!state.auth.token) {
+    throw new Error("APIキーが未設定です。「設定」でキーを保存するか、ログインして有料プランの運営APIを使ってください。");
+  }
+
+  const data = await apiRequest("/ai/generate", {
+    method: "POST",
+    body: JSON.stringify({
+      systemPrompt,
+      input: userInput,
+      provider,
+    }),
+  });
+  return data.text || "";
+}
+
+async function callGeminiDirect(apiKey, systemPrompt, input) {
+  const model = "gemini-2.0-flash";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: `${systemPrompt}\n\n${input}` }] }],
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Gemini APIの実行に失敗しました。");
+  }
+  return (data.candidates?.[0]?.content?.parts || []).map((part) => part.text || "").join("");
+}
+
+async function callOpenAiDirect(apiKey, systemPrompt, input) {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: input },
+      ],
+      temperature: 0.7,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error?.message || "OpenAI APIの実行に失敗しました。ブラウザ制限の場合は Gemini を試してください。");
+  }
+  return data.choices?.[0]?.message?.content || "";
+}
+
+function parseAgentPlan(text) {
+  const lines = String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*[-*・\d]+[.)、:\s]*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  return lines.length ? lines : ["材料を整理する", "要点を抽出する", "成果物にまとめる"];
+}
+
+function parseAgentReview(text) {
+  const raw = String(text || "");
+  const pass = /^\s*PASS\b/im.test(raw) || /判定\s*[:：]\s*合格/.test(raw);
+  const fail = /^\s*FAIL\b/im.test(raw) || /判定\s*[:：]\s*不合格/.test(raw);
+  return {
+    passed: pass && !fail ? true : fail ? false : /合格/.test(raw) && !/不合格/.test(raw),
+    feedback: raw.trim(),
+  };
+}
+
+function stopAgentLoop() {
+  if (!state.agentRunning) return;
+  state.agentAbortRequested = true;
+  appendAgentLog("⏹ 停止を要求しました。現在の処理が終わり次第止めます。");
+  agentStatus.textContent = "停止中…";
+}
+
+async function copyAgentResult() {
+  const text = state.agentResult || $("#agent-result")?.textContent || "";
+  if (!text || text === "ここに完成した成果物が表示されます。") {
+    agentStatus.textContent = "コピーする結果がまだありません。";
+    return;
+  }
+  try {
+    if (navigator.clipboard) await navigator.clipboard.writeText(text);
+    else fallbackCopy(text);
+    agentStatus.textContent = "成果物をコピーしました。";
+  } catch (error) {
+    fallbackCopy(text);
+    agentStatus.textContent = "成果物をコピーしました。";
+  }
+}
+
+async function runAgentLoop() {
+  if (state.agentRunning) return;
+  const ideas = getAgentIdeas();
+  if (ideas.length === 0) {
+    agentStatus.textContent = "先にツールを保存してください。";
+    return;
+  }
+
+  state.agentGoal = $("#agent-goal")?.value.trim() || state.agentGoal.trim();
+  state.agentMaterial = $("#agent-material")?.value || state.agentMaterial;
+  state.agentMaxLoops = Number($("#agent-max-loops")?.value || state.agentMaxLoops || 3);
+
+  if (!state.agentGoal) {
+    agentStatus.textContent = "ゴールを入力してください。";
+    return;
+  }
+
+  const idea = ideas[state.selectedAgentIndex] || ideas[0];
+  state.agentRunning = true;
+  state.agentAbortRequested = false;
+  state.agentLogs = [];
+  state.agentResult = "";
+  syncAgentFormFromState();
+  agentStatus.textContent = "エージェントを実行中です…";
+  appendAgentLog(`▶ 「${idea.title}」を開始（上限 ${state.agentMaxLoops} 周）`);
+  appendAgentLog(`ゴール: ${state.agentGoal}`);
+
+  let draft = "";
+  let feedback = "";
+  let passed = false;
+
+  try {
+    for (let round = 1; round <= state.agentMaxLoops; round += 1) {
+      if (state.agentAbortRequested) {
+        appendAgentLog("⏹ ユーザー操作で停止しました。");
+        break;
+      }
+
+      appendAgentLog(`— ${round}周目：計画 —`);
+      const planText = await callStudioAi(
+        "あなたは実務AIエージェントの計画担当です。ゴール達成のための短い実行手順を、番号付きで3〜6個だけ日本語で出力してください。前置きは不要です。",
+        [
+          `エージェント名: ${idea.title}`,
+          `使えるツール: ${idea.tools.join("、")}`,
+          `ゴール: ${state.agentGoal}`,
+          state.agentMaterial.trim() ? `材料:\n${state.agentMaterial.trim()}` : "",
+          feedback ? `前回の改善点:\n${feedback}` : "",
+          draft ? `これまでの下書き:\n${draft.slice(0, 4000)}` : "",
+        ].filter(Boolean).join("\n\n"),
+      );
+      if (state.agentAbortRequested) break;
+      const steps = parseAgentPlan(planText);
+      steps.forEach((step, index) => appendAgentLog(`計画 ${index + 1}. ${step}`));
+
+      for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
+        if (state.agentAbortRequested) break;
+        const step = steps[stepIndex];
+        appendAgentLog(`実行 ${stepIndex + 1}/${steps.length}: ${step}`);
+        draft = await callStudioAi(
+          `あなたは「${idea.title}」の実行担当です。指定ステップだけを進め、これまでの下書きを更新した完成途中の成果物全文を日本語で出力してください。前置きは不要です。`,
+          [
+            `ゴール: ${state.agentGoal}`,
+            `使えるツールの役割: ${idea.tools.join("、")}`,
+            `今回のステップ: ${step}`,
+            `期待する最終出力: ${idea.output}`,
+            state.agentMaterial.trim() ? `材料:\n${state.agentMaterial.trim()}` : "",
+            draft ? `これまでの下書き:\n${draft}` : "これまでの下書き: （なし）",
+            feedback ? `改善してほしい点:\n${feedback}` : "",
+          ].filter(Boolean).join("\n\n"),
+        );
+      }
+      if (state.agentAbortRequested) break;
+
+      appendAgentLog(`— ${round}周目：自己チェック —`);
+      const reviewText = await callStudioAi(
+        "あなたは厳しい品質チェッカーです。最初の行は必ず「PASS」または「FAIL」だけにしてください。続けて理由と、FAILの場合は具体的な改善点を日本語で書いてください。",
+        [
+          `ゴール: ${state.agentGoal}`,
+          `期待する最終出力: ${idea.output}`,
+          `成果物:\n${draft || "（空）"}`,
+        ].join("\n\n"),
+      );
+      const review = parseAgentReview(reviewText);
+      feedback = review.feedback;
+      appendAgentLog(review.passed ? "✔ 自己チェック：合格" : "✖ 自己チェック：不合格 → 改善して次の周へ");
+      if (!review.passed) appendAgentLog(review.feedback.slice(0, 500));
+
+      if (review.passed) {
+        passed = true;
+        break;
+      }
+    }
+
+    state.agentResult = draft || "成果物を生成できませんでした。";
+    const resultEl = $("#agent-result");
+    if (resultEl) resultEl.textContent = state.agentResult;
+    appendAgentLog(passed ? "完了：ゴールを満たす成果物が得られました。" : "完了：上限周まで実行しました。成果物を確認してください。");
+    agentStatus.textContent = passed
+      ? "エージェント実行が完了しました（合格）。"
+      : state.agentAbortRequested
+        ? "エージェントを停止しました。"
+        : "エージェント実行が完了しました（上限到達）。";
+  } catch (error) {
+    appendAgentLog(`エラー: ${error.message || error}`);
+    agentStatus.textContent = `実行に失敗しました：${error.message || error}`;
+    if (draft) {
+      state.agentResult = draft;
+      const resultEl = $("#agent-result");
+      if (resultEl) resultEl.textContent = draft;
+    }
+  } finally {
+    state.agentRunning = false;
+    state.agentAbortRequested = false;
+    syncAgentFormFromState();
+  }
+}
+
+function buildStandaloneAgentHtml(idea) {
+  const apiKey = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  const provider = state.settings.userApiProvider || readSessionApiProvider() || "gemini";
+  const config = {
+    title: idea.title,
+    description: idea.description,
+    tools: idea.tools,
+    output: idea.output,
+    goal: state.agentGoal.trim(),
+    material: state.agentMaterial,
+    maxLoops: state.agentMaxLoops || 3,
+    provider,
+    apiKey,
+  };
+  const configJson = JSON.stringify(config).replace(/</g, "\\u003c");
+  return `<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(idea.title)}</title>
+  <style>
+    :root { --bg:#f4f7fb; --ink:#152033; --muted:#5b6b80; --line:#d7e0ec; --accent:#0b6bcb; --accent2:#128a6a; }
+    body{margin:0;font-family:'Hiragino Sans','Noto Sans JP','Segoe UI',sans-serif;background:linear-gradient(180deg,#eef4fb,var(--bg));color:var(--ink);}
+    main{max-width:880px;margin:0 auto;padding:28px 16px 48px;}
+    h1{margin:0 0 8px;font-size:clamp(1.5rem,3vw,2rem);}
+    .lead,.note,.status{color:var(--muted);line-height:1.7;}
+    .panel{margin-top:14px;padding:16px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 10px 24px rgba(21,32,51,.06);}
+    label{display:grid;gap:8px;margin-top:12px;}
+    input,textarea,select,button{font:inherit;}
+    input,textarea,select{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;color:var(--ink);}
+    .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+    button{min-height:46px;border:0;border-radius:10px;padding:0 18px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;font-weight:700;cursor:pointer;}
+    button.secondary{background:#fff;color:var(--ink);border:1px solid var(--line);}
+    button:disabled{opacity:.6;cursor:wait;}
+    pre{white-space:pre-wrap;background:#f7fafc;border:1px solid var(--line);border-radius:10px;padding:12px;min-height:120px;line-height:1.65;max-height:360px;overflow:auto;}
+    .warn{color:#b45309;}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>${escapeHtml(idea.title)}</h1>
+    <p class="lead">${escapeHtml(idea.description)}</p>
+    <p class="note">このファイルは単体で動く自走AIエージェントです。計画→実行→自己チェック→改善を繰り返します。</p>
+    <section class="panel">
+      <h2>設定</h2>
+      <label>プロバイダー
+        <select id="provider">
+          <option value="gemini">Google Gemini</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </label>
+      <label>APIキー<input id="api-key" type="password" autocomplete="off" /></label>
+      <label>ゴール<textarea id="goal" rows="3"></textarea></label>
+      <label>材料・元情報<textarea id="material" rows="6"></textarea></label>
+      <label>ループ上限
+        <select id="max-loops">
+          <option value="3">3回</option>
+          <option value="5">5回</option>
+          <option value="10">10回</option>
+        </select>
+      </label>
+      <p class="warn">APIキー入りのファイルは他人に渡さないでください。</p>
+    </section>
+    <section class="panel">
+      <div class="actions">
+        <button id="run" type="button">エージェントを実行</button>
+        <button id="stop" class="secondary" type="button" disabled>停止</button>
+        <button id="copy" class="secondary" type="button">結果をコピー</button>
+      </div>
+      <p id="status" class="status" aria-live="polite"></p>
+      <h3>進行ログ</h3>
+      <pre id="log">まだ実行していません。</pre>
+      <h3>最終成果物</h3>
+      <pre id="result">ここに完成した成果物が表示されます。</pre>
+    </section>
+  </main>
+  <script>
+  const CONFIG = ${configJson};
+  const providerEl = document.querySelector('#provider');
+  const keyEl = document.querySelector('#api-key');
+  const goalEl = document.querySelector('#goal');
+  const materialEl = document.querySelector('#material');
+  const maxLoopsEl = document.querySelector('#max-loops');
+  const runBtn = document.querySelector('#run');
+  const stopBtn = document.querySelector('#stop');
+  const copyBtn = document.querySelector('#copy');
+  const statusEl = document.querySelector('#status');
+  const logEl = document.querySelector('#log');
+  const resultEl = document.querySelector('#result');
+  let running = false;
+  let abortRequested = false;
+  const logs = [];
+
+  providerEl.value = CONFIG.provider || 'gemini';
+  keyEl.value = CONFIG.apiKey || '';
+  goalEl.value = CONFIG.goal || '';
+  materialEl.value = CONFIG.material || '';
+  maxLoopsEl.value = String(CONFIG.maxLoops || 3);
+
+  function log(msg) {
+    const stamp = new Date().toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    logs.push('[' + stamp + '] ' + msg);
+    logEl.textContent = logs.join('\\n');
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  async function callGemini(apiKey, systemPrompt, input) {
+    const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(apiKey);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt + '\\n\\n' + input }] }] }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error?.message || 'Gemini APIの実行に失敗しました。');
+    return (data.candidates?.[0]?.content?.parts || []).map((p) => p.text || '').join('');
+  }
+
+  async function callOpenAI(apiKey, systemPrompt, input) {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: input }],
+        temperature: 0.7,
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error?.message || 'OpenAI APIの実行に失敗しました。');
+    return data.choices?.[0]?.message?.content || '';
+  }
+
+  async function callAi(systemPrompt, input) {
+    const apiKey = keyEl.value.trim();
+    if (!apiKey) throw new Error('APIキーを入力してください。');
+    return providerEl.value === 'openai'
+      ? callOpenAI(apiKey, systemPrompt, input)
+      : callGemini(apiKey, systemPrompt, input);
+  }
+
+  function parsePlan(text) {
+    const lines = String(text || '').split(/\\r?\\n/).map((l) => l.replace(/^\\s*[-*・\\d]+[.)、:\\s]*/, '').trim()).filter(Boolean).slice(0, 6);
+    return lines.length ? lines : ['材料を整理する', '要点を抽出する', '成果物にまとめる'];
+  }
+
+  function parseReview(text) {
+    const raw = String(text || '');
+    const pass = /^\\s*PASS\\b/im.test(raw) || /判定\\s*[:：]\\s*合格/.test(raw);
+    const fail = /^\\s*FAIL\\b/im.test(raw) || /判定\\s*[:：]\\s*不合格/.test(raw);
+    return { passed: pass && !fail ? true : fail ? false : /合格/.test(raw) && !/不合格/.test(raw), feedback: raw.trim() };
+  }
+
+  stopBtn.addEventListener('click', () => {
+    if (!running) return;
+    abortRequested = true;
+    log('⏹ 停止を要求しました。');
+    statusEl.textContent = '停止中…';
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    const text = resultEl.textContent || '';
+    if (!text || text === 'ここに完成した成果物が表示されます。') return;
+    try { await navigator.clipboard.writeText(text); statusEl.textContent = 'コピーしました。'; }
+    catch { statusEl.textContent = 'コピーに失敗しました。'; }
+  });
+
+  runBtn.addEventListener('click', async () => {
+    if (running) return;
+    const goal = goalEl.value.trim();
+    if (!goal) { statusEl.textContent = 'ゴールを入力してください。'; return; }
+    running = true;
+    abortRequested = false;
+    logs.length = 0;
+    runBtn.disabled = true;
+    stopBtn.disabled = false;
+    statusEl.textContent = '実行中…';
+    resultEl.textContent = '';
+    const maxLoops = Number(maxLoopsEl.value) || 3;
+    let draft = '';
+    let feedback = '';
+    let passed = false;
+    try {
+      log('▶ 開始（上限 ' + maxLoops + ' 周）');
+      for (let round = 1; round <= maxLoops; round += 1) {
+        if (abortRequested) { log('⏹ 停止しました。'); break; }
+        log('— ' + round + '周目：計画 —');
+        const planText = await callAi(
+          'あなたは実務AIエージェントの計画担当です。ゴール達成のための短い実行手順を、番号付きで3〜6個だけ日本語で出力してください。前置きは不要です。',
+          ['エージェント名: ' + CONFIG.title, '使えるツール: ' + (CONFIG.tools || []).join('、'), 'ゴール: ' + goal, materialEl.value.trim() ? ('材料:\\n' + materialEl.value.trim()) : '', feedback ? ('前回の改善点:\\n' + feedback) : '', draft ? ('これまでの下書き:\\n' + draft.slice(0, 4000)) : ''].filter(Boolean).join('\\n\\n')
+        );
+        if (abortRequested) break;
+        const steps = parsePlan(planText);
+        steps.forEach((step, i) => log('計画 ' + (i + 1) + '. ' + step));
+        for (let i = 0; i < steps.length; i += 1) {
+          if (abortRequested) break;
+          log('実行 ' + (i + 1) + '/' + steps.length + ': ' + steps[i]);
+          draft = await callAi(
+            'あなたは「' + CONFIG.title + '」の実行担当です。指定ステップだけを進め、これまでの下書きを更新した完成途中の成果物全文を日本語で出力してください。前置きは不要です。',
+            ['ゴール: ' + goal, '使えるツールの役割: ' + (CONFIG.tools || []).join('、'), '今回のステップ: ' + steps[i], '期待する最終出力: ' + CONFIG.output, materialEl.value.trim() ? ('材料:\\n' + materialEl.value.trim()) : '', draft ? ('これまでの下書き:\\n' + draft) : 'これまでの下書き: （なし）', feedback ? ('改善してほしい点:\\n' + feedback) : ''].filter(Boolean).join('\\n\\n')
+          );
+        }
+        if (abortRequested) break;
+        log('— ' + round + '周目：自己チェック —');
+        const reviewText = await callAi(
+          'あなたは厳しい品質チェッカーです。最初の行は必ず「PASS」または「FAIL」だけにしてください。続けて理由と、FAILの場合は具体的な改善点を日本語で書いてください。',
+          ['ゴール: ' + goal, '期待する最終出力: ' + CONFIG.output, '成果物:\\n' + (draft || '（空）')].join('\\n\\n')
+        );
+        const review = parseReview(reviewText);
+        feedback = review.feedback;
+        log(review.passed ? '✔ 自己チェック：合格' : '✖ 自己チェック：不合格 → 改善して次の周へ');
+        if (!review.passed) log(review.feedback.slice(0, 500));
+        if (review.passed) { passed = true; break; }
+      }
+      resultEl.textContent = draft || '成果物を生成できませんでした。';
+      log(passed ? '完了：合格' : abortRequested ? '完了：停止' : '完了：上限到達');
+      statusEl.textContent = passed ? '完了（合格）' : abortRequested ? '停止しました' : '完了（上限到達）';
+    } catch (error) {
+      log('エラー: ' + (error.message || error));
+      statusEl.textContent = '失敗: ' + (error.message || error);
+      if (draft) resultEl.textContent = draft;
+    } finally {
+      running = false;
+      abortRequested = false;
+      runBtn.disabled = false;
+      stopBtn.disabled = true;
+    }
+  });
+  </script>
+</body>
+</html>`;
 }
 
 async function createAgent() {
@@ -3910,30 +4457,38 @@ async function createAgent() {
     renderAll();
     return;
   }
+  saveUserApiKey();
+  state.agentGoal = $("#agent-goal")?.value.trim() || state.agentGoal.trim();
+  state.agentMaterial = $("#agent-material")?.value || state.agentMaterial;
+  state.agentMaxLoops = Number($("#agent-max-loops")?.value || state.agentMaxLoops || 3);
+
   const idea = ideas[state.selectedAgentIndex] || ideas[0];
   const content = buildAgentText(idea);
+  const html = buildStandaloneAgentHtml(idea);
   state.createdAgent = {
     title: idea.title,
     tools: [...idea.tools],
     content,
+    goal: state.agentGoal,
+    material: state.agentMaterial,
+    maxLoops: state.agentMaxLoops,
+    html,
   };
   try {
-    if (navigator.clipboard) {
-      await navigator.clipboard.writeText(content);
-    } else {
-      fallbackCopy(content);
-    }
+    if (navigator.clipboard) await navigator.clipboard.writeText(content);
+    else fallbackCopy(content);
   } catch (error) {
     fallbackCopy(content);
   }
+  downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), `${sanitizeFileName(idea.title)}.html`);
   downloadGeneratedFile(content, "agent", idea.title);
-  state.status = "AIエージェント作成内容を表示・コピー・ダウンロードしました。保存する場合は「保存する」を押してください。";
+  state.status = "自走対応のHTMLと設計内容を出力しました。保存する場合は「保存する」を押してください。APIキー入りのため共有しないでください。";
   renderAll();
 }
 
 function saveAgent() {
   if (!state.createdAgent) {
-    state.status = "先に「AIエージェントを作成する」を押してください。";
+    state.status = "先に「HTMLで書き出す（自走対応）」を押してください。";
     renderAll();
     return;
   }
@@ -3943,7 +4498,15 @@ function saveAgent() {
     renderAll();
     return;
   }
-  state.savedAgents.unshift({ ...state.createdAgent });
+  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  const safeHtml = key && state.createdAgent.html
+    ? state.createdAgent.html.split(key).join("")
+    : state.createdAgent.html;
+  state.savedAgents.unshift({
+    ...state.createdAgent,
+    html: safeHtml,
+    content: redactApiKey(state.createdAgent.content),
+  });
   state.status = "AIエージェントを保存済みに追加しました。";
   renderAll();
   activateScreen("saved");
