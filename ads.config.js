@@ -1,12 +1,12 @@
 /**
  * NENE Studio 広告設定
  *
- * AdSense（サイト全体）+ A8（ムームー / ロリポップ）
- * 広告ユニット（slot）を作ったら adsense.slot に ID を入れる
+ * 現在はムームードメイン（A8）のみ配信。
+ * AdSense を再開する場合は adsense.slot に広告ユニットIDを入れ、
+ * index.html の AdSense スクリプトのコメントを外す。
  */
 window.NENE_ADS = {
-  // 一時停止中。バナーを入れ直すときに true に戻す
-  enabled: false,
+  enabled: true,
   waitSeconds: 5,
 
   adsense: {
@@ -23,21 +23,13 @@ window.NENE_ADS = {
   a8: {
     banners: [
       {
-        linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28YZ1U+348+1BT3VL",
-        imageUrl: "https://www24.a8.net/svt/bgt?aid=260706994136&wid=001&eno=01&mid=s00000000404008030000&mc=1",
+        linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28YZ1U+348+1BU6GH",
+        imageUrl: "https://www22.a8.net/svt/bgt?aid=260706994136&wid=001&eno=01&mid=s00000000404008035000&mc=1",
         width: 468,
         height: 60,
         alt: "ムームードメイン",
         text: "ムームードメインでドメインを取得する",
-      },
-      {
-        linkUrl: "https://px.a8.net/svt/ejp?a8mat=4B7USY+28DJG2+348+6DC69",
-        imageUrl: "https://www22.a8.net/svt/bgt?aid=260706994135&wid=001&eno=01&mid=s00000000404001070000&mc=1",
-        width: 234,
-        height: 60,
-        alt: "ロリポップ！",
-        text: "ロリポップ！でサーバーを契約する",
-        pixelUrl: "https://www15.a8.net/0.gif?a8mat=4B7USY+28DJG2+348+6DC69",
+        pixelUrl: "https://www15.a8.net/0.gif?a8mat=4B7USY+28YZ1U+348+1BU6GH",
       },
     ],
   },
