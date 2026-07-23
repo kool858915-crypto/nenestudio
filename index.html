@@ -393,55 +393,148 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
 
         <section class="screen" id="usage">
           <div class="section-heading">
-            <p class="eyebrow">作成したツールの使い方</p>
-            <h2>ZIP形式なら、解凍して `index.html` を開くだけで使えます。</h2>
-            <p>フォルダ形式でコピーした場合だけ、区切りごとにファイルへ分けてください。</p>
+            <p class="eyebrow">使い方ガイド</p>
+            <h2>迷ったら、この順番だけでOKです。</h2>
+            <p>プログラミングは不要です。下の「今すぐ作る」を押して、画面の案内どおりに進めてください。</p>
           </div>
-          <div class="usage-visual-grid">
-            <article class="usage-card">
-              <div class="usage-illustration">
-                <span class="paper-icon">README</span>
-                <span class="paper-icon">index.html</span>
-                <span class="paper-icon">script.js</span>
-              </div>
-              <h3>1. ZIP形式で作成する</h3>
-              <p>`ZIP形式` を選んで `ツールを作成する` を押すと、実行用ファイル一式が入ったZIPが出ます。</p>
-            </article>
-            <article class="usage-card">
-              <div class="usage-illustration split-view">
-                <span>コピー内容</span>
-                <strong>-></strong>
-                <span>各ファイル</span>
-              </div>
-              <h3>2. ZIPを解凍する</h3>
-              <p>解凍すると `index.html`、`style.css`、`script.js`、`config.js`、`.env` などが分かれて入っています。</p>
-            </article>
-            <article class="usage-card">
-              <div class="usage-illustration browser-view">
-                <span class="browser-bar"></span>
-                <strong>index.html</strong>
-              </div>
-              <h3>3. 起動する</h3>
-              <p>解凍したフォルダの `index.html` をブラウザで開きます。この画面の `作成したツールを起動する` でも確認できます。</p>
-            </article>
-            <article class="usage-card">
-              <div class="usage-illustration form-view">
-                <span>APIキー</span>
-                <span>本文貼り付け</span>
-                <span>生成する</span>
-              </div>
-              <h3>4. APIキーと本文を入れて使う</h3>
-              <p>設定画面で APIキーを保存してから作成すると `.env` と `config.js` に反映されます。未設定なら画面で入力。URLはメモ用で、本文欄に貼った内容を処理します。</p>
-            </article>
+
+          <div class="guide-hero">
+            <div class="guide-hero-copy">
+              <p class="guide-kicker">初心者向けの最短ルート</p>
+              <ol class="guide-route">
+                <li>設定でAPIキーを保存する（最初の1回だけ）</li>
+                <li>作るで質問に答えて提案を選ぶ</li>
+                <li>HTML形式で「ツールを作成する」を押す</li>
+                <li>ダウンロードしたファイルを開いて使う</li>
+              </ol>
+            </div>
+            <div class="guide-hero-actions">
+              <button class="primary" type="button" data-goto="create">今すぐ作る</button>
+              <button class="secondary" type="button" data-goto="settings">先にAPIキーを設定する</button>
+            </div>
           </div>
+
+          <div class="guide-callout">
+            <strong>準備（最初の1回だけ）：APIキーを設定する</strong>
+            <p>APIキーは、AIを動かすための「利用券」のような認証コードです。Google Geminiなら無料枠があります。</p>
+            <ol class="guide-mini-steps">
+              <li>左メニュー「APIキー設定」で取得手順を見る</li>
+              <li>取得したキーを「設定」画面に貼り付けて「保存する」</li>
+              <li>これで作成したツールにキーが自動で入ります</li>
+            </ol>
+            <div class="button-row">
+              <button class="secondary" type="button" data-goto="apikey">APIキーの取得手順を見る</button>
+              <button class="secondary" type="button" data-goto="settings">設定画面を開く</button>
+            </div>
+          </div>
+
           <div class="folder-panel">
-            <h2>フォルダ形式をコピーした場合だけ作るファイル</h2>
+            <h2>画面ごとの進め方（上から順に）</h2>
+            <ol class="guide-screen-steps">
+              <li>
+                <span class="guide-step-num">1</span>
+                <div>
+                  <h3>作る：何を作りたいか答える</h3>
+                  <p>カテゴリを選び、用途や出力形式の質問に答えます。「次へ進む」を押すと提案画面へ進みます。</p>
+                </div>
+              </li>
+              <li>
+                <span class="guide-step-num">2</span>
+                <div>
+                  <h3>提案：気に入った案を選ぶ</h3>
+                  <p>表示されたツール案から1つ選びます。ピンとこなければ「別の提案を見る」で差し替えられます。</p>
+                </div>
+              </li>
+              <li>
+                <span class="guide-step-num">3</span>
+                <div>
+                  <h3>作業の部品：流れを確認する</h3>
+                  <p>部品は「ツールが行う作業のかたまり」です。並べ替えや追加は任意。まずは流れを見て「この組み合わせでツールを作成する」へ進みます。</p>
+                </div>
+              </li>
+              <li>
+                <span class="guide-step-num">4</span>
+                <div>
+                  <h3>内容確認：文章を見て次へ</h3>
+                  <p>何を入れるか・何が出るかを確認します。直したいところだけ直せば十分です。「次へ進む」で作成画面へ。</p>
+                </div>
+              </li>
+              <li>
+                <span class="guide-step-num">5</span>
+                <div>
+                  <h3>作成：形式を選んで出力する</h3>
+                  <p>迷ったら「HTML形式（1ファイル）」を選び、「ツールを作成する」を押します。ファイルが1つダウンロードされます。</p>
+                </div>
+              </li>
+            </ol>
+            <div class="button-row">
+              <button class="primary" type="button" data-goto="create">この手順で作るを始める</button>
+            </div>
+          </div>
+
+          <div class="folder-panel">
+            <h2>出力形式の選び方</h2>
             <div class="info-grid">
-              <article><h3>`index.html`</h3><p>画面本体です。出力内の `--- index.html ---` から次の区切りまでを入れます。</p></article>
-              <article><h3>`style.css`</h3><p>見た目のファイルです。`index.html` と同じフォルダに置きます。</p></article>
-              <article><h3>`script.js`</h3><p>生成ボタンやAPI通信の動きです。`index.html` と同じフォルダに置きます。</p></article>
-              <article><h3>`config.js` / `.env`</h3><p>APIキー設定です。設定画面で保存したキーが入ります。実行に必要です（共有しないでください）。</p></article>
-              <article><h3>補助ファイル</h3><p>`README.md`、`setup.md`、`prompts/main_prompt.md` などは説明・保管用です。</p></article>
+              <article class="guide-recommend">
+                <h3>HTML形式（1ファイル）★おすすめ</h3>
+                <p>ダウンロードしたファイルをダブルクリックで開くだけ。初心者とスマホに一番向いています。</p>
+              </article>
+              <article>
+                <h3>ZIP形式</h3>
+                <p>ファイル一式をフォルダで管理したい人向け。解凍して中の `index.html` を開きます。</p>
+              </article>
+              <article>
+                <h3>フォルダ形式</h3>
+                <p>中身を自分で分けて編集したい人向け。画面の区切りごとにファイルを作る必要があります。</p>
+              </article>
+              <article>
+                <h3>Codex用 / Claude Code用</h3>
+                <p>コード作成AIに渡して、さらに作り込みたい人向けです。まずはHTML形式で十分です。</p>
+              </article>
+            </div>
+          </div>
+
+          <div class="folder-panel">
+            <h2>作ったあとの使い方</h2>
+            <ol class="guide-mini-steps">
+              <li>ダウンロードした `.html` ファイルをダブルクリックで開く（ZIPなら解凍後の `index.html`）</li>
+              <li>本文・元情報を貼り付ける（URLだけでは動きません。本文をコピーして貼ってください）</li>
+              <li>「生成する」を押して結果を確認する</li>
+            </ol>
+            <p class="guide-note">APIキー入りのファイルは他人に渡さないでください。渡す前にキーを消します。</p>
+          </div>
+
+          <div class="folder-panel">
+            <h2>うまくいかないとき</h2>
+            <div class="info-grid">
+              <article>
+                <h3>「生成する」を押しても動かない</h3>
+                <p>APIキー未設定のことが多いです。ツール画面のキー欄に入れるか、「設定」で保存してから作り直してください。</p>
+              </article>
+              <article>
+                <h3>URLを貼ったのに結果が出ない</h3>
+                <p>URLはメモ扱いです。記事などの本文をコピーして本文欄に貼り付けてください。</p>
+              </article>
+              <article>
+                <h3>ZIPのどれを開けばいい？</h3>
+                <p>解凍したフォルダの中の `index.html` です。ダブルクリックで開きます。</p>
+              </article>
+              <article>
+                <h3>出力前に広告が出た</h3>
+                <p>無料プランでは出力前に5秒だけスポンサー紹介が表示されます。有料プラン（480円/月〜）で非表示にできます。</p>
+              </article>
+              <article>
+                <h3>画面が古い・動きがおかしい</h3>
+                <p>ページを再読み込みしてください。それでも直らないときはタブを閉じて開き直します。</p>
+              </article>
+              <article>
+                <h3>無料で設計図だけ欲しい</h3>
+                <p>左メニュー「無料で実装」を開くと、外部AIに渡す設計図の作り方がわかります。</p>
+              </article>
+            </div>
+            <div class="button-row">
+              <button class="secondary" type="button" data-goto="implement">無料で実装の説明を見る</button>
+              <button class="primary" type="button" data-goto="create">作る画面へ進む</button>
             </div>
           </div>
         </section>

@@ -960,9 +960,115 @@ button {
   margin-bottom: 20px;
 }
 
+.guide-callout > p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
 .guide-callout ul {
   margin: 10px 0 0;
   padding-left: 20px;
+}
+
+.guide-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(220px, 0.8fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 20px;
+  padding: 20px;
+  border: 1px solid rgba(84, 211, 154, 0.35);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at top right, rgba(84, 211, 154, 0.12), transparent 42%),
+    rgba(15, 23, 42, 0.72);
+}
+
+.guide-kicker {
+  margin: 0 0 10px;
+  color: #54d39a;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.guide-route {
+  margin: 0;
+  padding-left: 22px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+.guide-route li {
+  margin: 6px 0;
+}
+
+.guide-hero-actions {
+  display: grid;
+  gap: 10px;
+  align-content: center;
+}
+
+.guide-mini-steps {
+  margin: 12px 0 0;
+  padding-left: 22px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.guide-mini-steps li {
+  margin: 6px 0;
+}
+
+.guide-screen-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.guide-screen-steps > li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.guide-step-num {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #4da3ff, #54d39a);
+  color: #04101f;
+  font-weight: 800;
+}
+
+.guide-screen-steps h3 {
+  margin: 2px 0 6px;
+}
+
+.guide-screen-steps p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.guide-recommend {
+  border-color: rgba(84, 211, 154, 0.45) !important;
+  box-shadow: inset 0 0 0 1px rgba(84, 211, 154, 0.18);
+}
+
+.guide-note {
+  margin: 14px 0 0;
+  color: #f0b429;
+  line-height: 1.7;
 }
 
 .guide-step-list {
@@ -1458,7 +1564,8 @@ button {
   .node-canvas,
   .node-editor-row,
   .form-grid.two-column,
-  .create-progress {
+  .create-progress,
+  .guide-hero {
     grid-template-columns: 1fr;
   }
 }
