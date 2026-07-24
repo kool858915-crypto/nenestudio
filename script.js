@@ -306,6 +306,10 @@ const textTranslations = {
   "実行用HTML/JS/CSSまでまとめる": "Includes runnable HTML/JS/CSS",
   "HTML形式（1ファイル）": "HTML (Single File)",
   "開くだけでそのまま操作できる": "Open the file and use it right away",
+  "開くだけでそのまま操作できる（スマホ向け）": "Open and use immediately (great on phones)",
+  "スマホの方へ：迷ったら一番上の「HTML形式」を選んで「ツールを作成する」を押してください。": "On phones: choose the top HTML format, then press Create Tool.",
+  "HTML/JS/CSS + .env / config.js": "HTML/JS/CSS + .env / config.js",
+  "単体動作一式（APIキー反映）": "Standalone package (API key included)",
   "ZIP形式": "ZIP Format",
   "実行用ファイル一式をZIP用にまとめる": "Packages runnable files as ZIP",
   "APIキー入力形式": "API Key Format",
@@ -1045,7 +1049,7 @@ const state = {
   selectedProposalIndex: 0,
   proposalOffset: 0,
   nodes: [],
-  exportFormat: "folder",
+  exportFormat: "html",
   createdOutput: null,
   savedBlueprints: [],
   savedAgents: [],
@@ -3416,7 +3420,7 @@ ${files.sampleOutput}
 ${blueprintText}`,
   };
 
-  return exportTextByFormat[format] || exportTextByFormat.folder;
+  return exportTextByFormat[format] || exportTextByFormat.html;
 }
 
 function adsCurrentlyEnabled() {
