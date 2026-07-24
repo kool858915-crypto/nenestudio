@@ -25,8 +25,8 @@ const categoryThemes = {
     outputOptions: ["ランキング形式", "点数評価", "要約レポート", "グラフ付き", "通知形式"],
     sourceLabel: "ニュース・銘柄情報",
     itemLabel: "銘柄やテーマ",
-    defaultInputs: "ニュース本文、銘柄名、決算PDFの本文、検索キーワード、URLメモ",
-    defaultResult: "注目銘柄、理由、注意点、投稿文案",
+    defaultInputs: "ジャンル（例：日本株、NISA）、短いテーマ、知りたいこと",
+    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、注意点",
   },
   "FXツール": {
     purposeTitle: "どんなFXツールを作りますか？",
@@ -36,8 +36,8 @@ const categoryThemes = {
     outputOptions: ["シナリオ形式", "要約レポート", "チェックリスト", "通知形式", "日次メモ"],
     sourceLabel: "為替ニュース・経済指標",
     itemLabel: "通貨ペアや相場材料",
-    defaultInputs: "通貨ペア、経済指標、為替ニュース、時間軸",
-    defaultResult: "相場シナリオ、注目材料、注意点、日次メモ",
+    defaultInputs: "ジャンル（例：ドル円）、短いテーマ、知りたいこと",
+    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、注意点",
   },
   "ニュース分析ツール": {
     purposeTitle: "どんなニュース分析ツールを作りますか？",
@@ -47,8 +47,8 @@ const categoryThemes = {
     outputOptions: ["要約レポート", "トピック一覧", "ニュースレター形式", "SNS投稿案", "調査メモ"],
     sourceLabel: "ニュース記事",
     itemLabel: "ニュースやトピック",
-    defaultInputs: "ニュース本文、キーワード、対象業界、期間、URLメモ",
-    defaultResult: "要約、重要トピック、背景、投稿文案",
+    defaultInputs: "ジャンル（例：テック、経済）、短いテーマ、知りたいこと",
+    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、次の行動",
   },
   "仮想通貨ツール": {
     purposeTitle: "どんな仮想通貨ツールを作りますか？",
@@ -58,8 +58,8 @@ const categoryThemes = {
     outputOptions: ["要約レポート", "点数評価", "チェックリスト", "通知形式", "日次メモ"],
     sourceLabel: "仮想通貨ニュース・価格情報",
     itemLabel: "銘柄やテーマ",
-    defaultInputs: "銘柄名、ニュース本文、価格情報、注目テーマ、URLメモ",
-    defaultResult: "要約、価格変動理由、注目点、リスク",
+    defaultInputs: "ジャンル（例：ビットコイン）、短いテーマ、知りたいこと",
+    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、注意点",
   },
   "SNS運用ツール": {
     purposeTitle: "どんなSNS運用ツールを作りますか？",
@@ -80,7 +80,7 @@ const categoryThemes = {
     outputOptions: ["構成案", "台本形式", "タイトル一覧", "サムネ案", "チェックリスト"],
     sourceLabel: "動画テーマ・参考動画",
     itemLabel: "企画や台本",
-    defaultInputs: "動画テーマ、視聴者、参考内容の本文、URLメモ、伝えたい内容",
+    defaultInputs: "ジャンル（例：解説動画）、短いテーマ、伝えたいこと",
     defaultResult: "構成、台本、タイトル、サムネ文言",
   },
   "営業集客ツール": {
@@ -146,8 +146,8 @@ const categoryThemes = {
     outputOptions: ["記事構成", "本文下書き", "見出し一覧", "要約", "改善案"],
     sourceLabel: "記事テーマ・キーワード",
     itemLabel: "記事や見出し",
-    defaultInputs: "キーワード、記事テーマ、読者、参考本文、URLメモ",
-    defaultResult: "記事構成、見出し、本文下書き、SEOメモ",
+    defaultInputs: "ジャンル、短いテーマ、狙いたいキーワード",
+    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、見出し、FAQ",
   },
   "教育学習ツール": {
     purposeTitle: "どんな教育学習ツールを作りますか？",
@@ -423,7 +423,7 @@ const textTranslations = {
   "迷ったら「HTML形式（1ファイル）」を選んでください。「ツールを作成する」を押すと、ファイルが1つダウンロードされます。": "If unsure, choose \"HTML (Single File)\". Press \"Create Tool\" and one file is downloaded.",
   "ダブルクリックで開く": "Open with a double-click",
   "STEP 3. 開いて使う": "STEP 3. Open and use",
-  "ダウンロードしたファイルをダブルクリックで開き、本文・元情報を貼り付けて「生成する」を押すだけです。スマホでも使えます。": "Double-click the downloaded file, paste your text, and press \"Generate\". Works on smartphones too.",
+  "ダウンロードしたファイルをダブルクリックで開き、ジャンルを押して「記事を作成する」だけです。ニュースURLのコピペは不要です。": "Double-click the downloaded file, tap a genre, and press Create article. No news URL paste needed.",
   "出力形式の選び方（迷ったら一番上）": "Choosing an output format (top one if unsure)",
   "HTML形式（1ファイル）★おすすめ": "HTML (Single File) - Recommended",
   "ファイルを開くだけで使えます。初心者とスマホに一番向いています。": "Just open the file and use it. Best for beginners and smartphones.",
@@ -435,7 +435,7 @@ const textTranslations = {
   "「生成する」を押しても動かない": "Nothing happens when I press Generate",
   "APIキーが未設定の可能性が高いです。ツール画面のAPIキー欄に入力するか、「設定」で保存してから作り直してください。": "Most likely the API key is missing. Enter it in the tool screen, or save it in Settings and re-create the tool.",
   "URLを貼ったのに結果が出ない": "I pasted a URL but got no result",
-  "URLはメモ扱いで、本文は読み取りません。記事などの本文をコピーして本文欄に貼り付けてください。": "URLs are memo only; the content is not fetched. Copy the article text and paste it into the body field.",
+  "このツールはURLコピペ不要です。ジャンルボタンか短いテーマだけで記事を作ります。": "This tool does not need URL paste. Just tap a genre chip or enter a short topic.",
   "ZIPのどのファイルを開けばいい？": "Which file in the ZIP should I open?",
   "解凍したフォルダの中の `index.html` です。ダブルクリックで開きます。": "Open `index.html` inside the unzipped folder with a double-click.",
   "出力前に広告が表示された": "An ad appeared before output",
@@ -450,8 +450,8 @@ const textTranslations = {
   "解凍すると `index.html`、`style.css`、`script.js` などが最初から分かれた状態で入っています。": "After unzipping, files like `index.html`, `style.css`, and `script.js` are already separated.",
   "3. 起動する": "3. Launch",
   "解凍したフォルダの `index.html` をブラウザで開きます。この画面の `作成したツールを起動する` でも確認できます。": "Open `index.html` in the extracted folder. You can also preview it with the Launch Button.",
-  "4. APIキーと本文を入れて使う": "4. Enter API Key and Text",
-  "URLはメモ用です。実際に処理したい本文や元情報を貼り付け、OpenAI APIキーを入れて生成します。": "URLs are memo only. Paste the text/source information and enter your OpenAI API key.",
+  "4. ジャンルを選んで記事を作る": "4. Pick a genre and create the article",
+  "APIキーが入っていれば、ジャンルボタンを押して「記事を作成する」だけでOKです。ニュースURLのコピペは不要です。": "If the API key is set, tap a genre and press Create article. No news URL paste needed.",
   "フォルダ形式をコピーした場合だけ作るファイル": "Files to Create Only for Folder Copy",
   "画面本体です。出力内の `--- index.html ---` から次の区切りまでを入れます。": "The main screen file. Put the content under `--- index.html ---` here.",
   "見た目のファイルです。`index.html` と同じフォルダに置きます。": "The style file. Put it in the same folder as `index.html`.",
@@ -2616,11 +2616,11 @@ summary_result: ${summary.result}
 summary_usage: ${summary.usage}
 workflow: ${workflow}
 required_data: ${proposal.meta.replace("必要なデータ：", "")}
-required_api_keys: OpenAI API key, 正式な外部データAPIを使う場合のみ追加API key
+required_api_keys: Google Gemini API key（推奨）または OpenAI API key
 folders: config, prompts, workflow, output
 error_handling: 入力不足、APIキー未設定、取得失敗を画面に表示
-prompt: 取得した情報を読み、初心者にも分かる整理情報としてまとめる
-note: URL本文の自動読み取りは禁止。URLはメモ扱いにし、本文貼り付けまたは正式なAPI連携だけを処理対象にする`;
+prompt: ジャンルや短いテーマだけから、検索可能な最新情報を踏まえたSEO向けまとめ記事を書く
+note: ユーザーにニュースURLや長文コピペを要求しない。GeminiはGoogle検索グラウンディングで最新動向を参照し、正確な価格が不明なら断定しない`;
 }
 
 function renderExport() {
@@ -2673,6 +2673,41 @@ function getTopicPresets() {
   return (map[category?.name] || theme.scopeOptions || ["人気テーマ", "初心者向け", "最新動向", "まとめ"]).slice(0, 8);
 }
 
+/** ジャンルチップから、そのまま記事テーマになる問いへ広げる */
+function expandTopicFromChip(chip) {
+  const map = {
+    "ビットコイン": "ビットコインはいつ買えばよいのか",
+    "イーサリアム": "イーサリアムは今からでも遅くないのか",
+    "アルトコイン": "アルトコイン投資で押さえるべきポイント",
+    "相場見通し": "仮想通貨の相場見通しを初心者向けにまとめてみた",
+    "日本株": "日本株は今から始めても遅くないのか",
+    "米国株": "米国株投資の始め方をわかりやすくまとめてみた",
+    "NISA": "NISAの始め方を初心者向けにわかりやすくまとめてみた",
+    "配当株": "配当株の選び方をわかりやすくまとめてみた",
+    "決算まとめ": "決算発表の見方を初心者向けにまとめてみた",
+    "ドル円": "ドル円相場の見方を初心者向けにまとめてみた",
+    "ユーロドル": "ユーロドルの基本をわかりやすくまとめてみた",
+    "ポンド円": "ポンド円の値動きの見方をまとめてみた",
+    "経済指標": "FXで見るべき経済指標をまとめてみた",
+    "金利差": "金利差と為替の関係をわかりやすくまとめてみた",
+    "テックニュース": "今押さえておきたいテックニュースをまとめてみた",
+    "経済ニュース": "今週の経済ニュースをわかりやすくまとめてみた",
+    "業界動向": "注目業界の動向を初心者向けにまとめてみた",
+    "注目トピック": "今話題のトピックをわかりやすくまとめてみた",
+    "SEO記事": "SEOに強い記事の書き方をまとめてみた",
+    "ハウツー": "初心者でもできるハウツー記事の作り方",
+    "比較記事": "比較記事の書き方をわかりやすくまとめてみた",
+    "まとめ記事": "読まれるまとめ記事の作り方",
+  };
+  const key = String(chip || "").trim();
+  if (!key) return "";
+  return map[key] || `${key}についてわかりやすくまとめてみた`;
+}
+
+function escapeInlineScript(code) {
+  return String(code || "").replace(/<\/(script)/gi, "<\\/$1");
+}
+
 function buildRunnableToolFiles() {
   const proposal = getSelectedProposal();
   const summary = getSummary();
@@ -2684,15 +2719,19 @@ function buildRunnableToolFiles() {
   const hasApiKey = Boolean(apiKey);
   const providerLabel = provider === "openai" ? "OpenAI" : "Google Gemini";
   const topicPresets = getTopicPresets();
-  const defaultTopic = state.answers.purpose || (isEnglish ? proposal.title : "ビットコインはいつ買えばよいのか");
+  const defaultGenre = topicPresets[0] || (isEnglish ? "Popular topic" : "投資");
+  const purposeText = String(state.answers.purpose || "").trim();
+  const defaultTopic = purposeText
+    || expandTopicFromChip(defaultGenre)
+    || (isEnglish ? "When should I buy Bitcoin?" : "ビットコインはいつ買えばよいのか");
   const toolLabels = isEnglish
     ? {
         usage: "How to use",
-        open: "Open the HTML file in your browser (double-click is fine).",
+        open: "Open the HTML file in your browser (double-click is fine). On iPhone, open it from the Files app in Safari.",
         api: hasApiKey
           ? `Your ${providerLabel} API key is already written to .env and config.js.`
           : `Enter your ${providerLabel} API key on the tool screen.`,
-        paste: "Pick a genre chip or type a short topic. No URL/article paste required.",
+        paste: "Tap one genre chip, then press Create article. No news URL paste.",
         generate: "Create article",
         copy: "Copy result",
         copied: "Copied.",
@@ -2700,12 +2739,14 @@ function buildRunnableToolFiles() {
         requirements: "Requirements",
         apiKey: `${providerLabel} API key`,
         apiTitle: "API key",
-        inputTitle: "Topic (keep it rough)",
+        apiReadyTitle: "API key (already set)",
+        inputTitle: "1. Pick a genre",
         workflowTitle: "What this tool does",
-        genre: "Genre / theme",
-        topic: "Topic or question",
+        genre: "Genre / what kind of topic",
+        topic: "Topic (auto-filled from the chip)",
         topicPlaceholder: "Example: when should I buy Bitcoin?",
-        angle: "Optional keywords / angle",
+        moreOptions: "Optional: angle / length",
+        angle: "Keywords / angle",
         anglePlaceholder: "Example: beginner-friendly, SEO, summary style",
         length: "Target length",
         length1500: "About 1500 chars",
@@ -2713,12 +2754,12 @@ function buildRunnableToolFiles() {
         length5000: "About 5000 chars",
         outputTitle: "SEO article",
         statusNoKey: "Please enter an API key.",
-        statusNoInput: "Enter a short topic, or tap a genre chip.",
-        generating: "Writing the article...",
+        statusNoInput: "Tap a genre chip first.",
+        generating: "Researching and writing the article...",
         complete: "Article ready.",
         empty: "The result was empty.",
         error: "Error: ",
-        note: "Just choose a theme and press Create article. No news URL paste needed.",
+        note: "Tap a genre → Create article. Gemini looks up recent public info. No URL paste.",
         provider: "Provider",
         saveKey: "Remember key in this browser",
         warning: "Do not share .env / config.js. They may contain your API key.",
@@ -2731,11 +2772,11 @@ function buildRunnableToolFiles() {
       }
     : {
         usage: "使い方",
-        open: "HTMLファイルをブラウザで開きます（ダブルクリックでOK）。",
+        open: "HTMLファイルをブラウザで開きます（ダブルクリックでOK）。iPhoneはファイルアプリからSafariで開いてください。",
         api: hasApiKey
           ? `設定済みの ${providerLabel} APIキーを .env と config.js に書き込み済みです。`
           : `${providerLabel} の APIキーを画面に入力してください。`,
-        paste: "ジャンルを選ぶか、短いテーマを入れるだけ。ニュースURLのコピペは不要です。",
+        paste: "ジャンルボタンを1つ押して「記事を作成する」。ニュースURLのコピペは不要です。",
         generate: "記事を作成する",
         copy: "結果をコピー",
         copied: "コピーしました。",
@@ -2743,12 +2784,14 @@ function buildRunnableToolFiles() {
         requirements: "必要なもの",
         apiKey: `${providerLabel} APIキー`,
         apiTitle: "APIキー",
-        inputTitle: "テーマをざっくり入れる",
+        apiReadyTitle: "APIキー（設定済み）",
+        inputTitle: "1. 何系かを選ぶ",
         workflowTitle: "このツールができること",
         genre: "ジャンル / 何系",
-        topic: "テーマ・知りたいこと",
+        topic: "テーマ（ボタンを押すと自動で入ります）",
         topicPlaceholder: "例：ビットコインはいつ買えばよいのか",
-        angle: "キーワード・切り口（任意）",
+        moreOptions: "切り口・文字数（任意）",
+        angle: "キーワード・切り口",
         anglePlaceholder: "例：初心者向け、SEO、まとめ記事、注意点多め",
         length: "文字数目安",
         length1500: "約1500字",
@@ -2756,12 +2799,12 @@ function buildRunnableToolFiles() {
         length5000: "約5000字",
         outputTitle: "SEO記事",
         statusNoKey: "APIキーを入力してください。",
-        statusNoInput: "テーマを入れるか、ジャンルボタンを押してください。",
-        generating: "記事を作成中です...",
+        statusNoInput: "先にジャンルボタンを押してください。",
+        generating: "最新情報を確認しながら記事を作成中です...",
         complete: "記事ができました。",
         empty: "結果が空でした。",
         error: "エラー: ",
-        note: "ジャンルかテーマを入れて「記事を作成する」だけ。URLや長文のコピペは不要です。",
+        note: "ジャンルを押す →「記事を作成する」だけ。Geminiが公開情報を参照します。URLコピペ不要。",
         provider: "プロバイダー",
         saveKey: "このブラウザにキーを覚える",
         warning: ".env と config.js には APIキーが入ることがあります。他人に共有しないでください。",
@@ -2919,6 +2962,8 @@ function buildRunnableToolFiles() {
     `  purpose: ${JSON.stringify(state.answers.purpose || "")},`,
     `  market: ${JSON.stringify(state.answers.market || "")},`,
     `  topicPresets: ${JSON.stringify(topicPresets)},`,
+    `  topicExpandMap: ${JSON.stringify(Object.fromEntries(topicPresets.map((chip) => [chip, expandTopicFromChip(chip)])))},`,
+    `  defaultGenre: ${JSON.stringify(defaultGenre)},`,
     `  defaultTopic: ${JSON.stringify(defaultTopic)},`,
     `  isInvestment: ${JSON.stringify(Boolean(category.isInvestment))},`,
     "};",
@@ -2927,6 +2972,18 @@ function buildRunnableToolFiles() {
   const chipButtons = topicPresets
     .map((topic) => `      <button type="button" class="chip" data-topic="${escapeAttribute(topic)}">${escapeHtml(topic)}</button>`)
     .join("\n");
+
+  const apiPanelInner = [
+    `      <label>${toolLabels.provider}`,
+    '        <select id="provider">',
+    `          <option value="gemini"${provider === "gemini" ? " selected" : ""}>Google Gemini</option>`,
+    `          <option value="openai"${provider === "openai" ? " selected" : ""}>OpenAI</option>`,
+    "        </select>",
+    "      </label>",
+    `      <label>${toolLabels.apiKey}<input id="api-key" type="password" autocomplete="off" placeholder="APIキー" /></label>`,
+    `      <label class="check"><input id="remember-key" type="checkbox" checked /> ${toolLabels.saveKey}</label>`,
+    hasApiKey ? `      <p class="status" id="key-status">${toolLabels.keyReady}</p>` : "",
+  ].join("\n");
 
   const indexHtml = [
     "<!doctype html>",
@@ -2942,19 +2999,9 @@ function buildRunnableToolFiles() {
     `    <h1>${escapeHtml(proposal.title)}</h1>`,
     `    <p class="lead">${escapeHtml(summary.purpose)}</p>`,
     `    <p class="note">${escapeHtml(toolLabels.note)}</p>`,
-    `    <section class="panel soft"><h2>${toolLabels.workflowTitle}</h2><pre class="workflow">${escapeHtml(workflowLines)}</pre></section>`,
-    '    <section class="panel">',
-    `      <h2>${toolLabels.apiTitle}</h2>`,
-    `      <label>${toolLabels.provider}`,
-    '        <select id="provider">',
-    `          <option value="gemini"${provider === "gemini" ? " selected" : ""}>Google Gemini</option>`,
-    `          <option value="openai"${provider === "openai" ? " selected" : ""}>OpenAI</option>`,
-    "        </select>",
-    "      </label>",
-    `      <label>${toolLabels.apiKey}<input id="api-key" type="password" autocomplete="off" placeholder="APIキー" /></label>`,
-    `      <label class="check"><input id="remember-key" type="checkbox" checked /> ${toolLabels.saveKey}</label>`,
-    hasApiKey ? `      <p class="status" id="key-status">${toolLabels.keyReady}</p>` : "",
-    "    </section>",
+    hasApiKey
+      ? `    <details class="panel soft"><summary>${toolLabels.apiReadyTitle}</summary>\n${apiPanelInner}\n    </details>`
+      : `    <section class="panel">\n      <h2>${toolLabels.apiTitle}</h2>\n${apiPanelInner}\n    </section>`,
     '    <section class="panel">',
     `      <h2>${toolLabels.inputTitle}</h2>`,
     `      <p class="field-label">${toolLabels.genre}</p>`,
@@ -2962,6 +3009,7 @@ function buildRunnableToolFiles() {
     chipButtons,
     "      </div>",
     `      <label>${toolLabels.topic}<input id="tool-topic" type="text" placeholder="${escapeAttribute(toolLabels.topicPlaceholder)}" value="${escapeAttribute(defaultTopic)}" /></label>`,
+    `      <details class="optional"><summary>${toolLabels.moreOptions}</summary>`,
     `      <label>${toolLabels.angle}<input id="tool-angle" type="text" placeholder="${escapeAttribute(toolLabels.anglePlaceholder)}" /></label>`,
     `      <label>${toolLabels.length}`,
     '        <select id="tool-length">',
@@ -2970,6 +3018,7 @@ function buildRunnableToolFiles() {
     `          <option value="5000">${toolLabels.length5000}</option>`,
     "        </select>",
     "      </label>",
+    "      </details>",
     '      <div class="actions">',
     `        <button id="generate-button" type="button">${toolLabels.generate}</button>`,
     `        <button id="copy-button" type="button" class="secondary">${toolLabels.copy}</button>`,
@@ -3050,6 +3099,9 @@ function buildRunnableToolFiles() {
     "  cursor: pointer;",
     "}",
     ".chip.active, .chip:hover { border-color: rgba(11,107,203,.55); background: rgba(11,107,203,.08); }",
+    "details.panel, details.optional { margin-top: 12px; }",
+    "details.panel > summary, details.optional > summary { cursor: pointer; font-weight: 700; color: var(--ink); }",
+    "details.optional { border-top: 1px dashed var(--line); padding-top: 10px; }",
     ".actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }",
     "button {",
     "  min-height: 48px;",
@@ -3101,10 +3153,11 @@ function buildRunnableToolFiles() {
     'const statusText = document.querySelector("#status");',
     'const resultBox = document.querySelector("#result");',
     'const chipRow = document.querySelector("#topic-chips");',
-    "let selectedGenre = '';",
+    "let selectedGenre = config.defaultGenre || '';",
     "",
     "hydrateConfig();",
     "wireChips();",
+    "selectGenre(selectedGenre || (config.topicPresets || [])[0] || '', { fillTopic: !topicInput?.value?.trim() });",
     'generateButton.addEventListener("click", generateResult);',
     'document.querySelector("#copy-button")?.addEventListener("click", copyResult);',
     "",
@@ -3113,7 +3166,30 @@ function buildRunnableToolFiles() {
     "  const savedKey = storage.get(STORAGE_KEY) || config.apiKey || '';",
     "  if (providerSelect) providerSelect.value = savedProvider;",
     "  if (apiKeyInput && !apiKeyInput.value) apiKeyInput.value = savedKey;",
-    "  if (topicInput && !topicInput.value) topicInput.value = config.defaultTopic || '';",
+    "  if (topicInput && !topicInput.value) {",
+    "    topicInput.value = config.defaultTopic || '';",
+    "    topicInput.dataset.filledByChip = '1';",
+    "  }",
+    "}",
+    "",
+    "function expandTopic(chip) {",
+    "  const map = config.topicExpandMap || {};",
+    "  const key = String(chip || '').trim();",
+    "  if (!key) return '';",
+    "  return map[key] || (key + 'についてわかりやすくまとめてみた');",
+    "}",
+    "",
+    "function selectGenre(genre, options = {}) {",
+    "  const key = String(genre || '').trim();",
+    "  if (!key || !chipRow) return;",
+    "  selectedGenre = key;",
+    "  chipRow.querySelectorAll('.chip').forEach((chip) => {",
+    "    chip.classList.toggle('active', chip.dataset.topic === key);",
+    "  });",
+    "  if (options.fillTopic !== false && topicInput) {",
+    "    topicInput.value = expandTopic(key);",
+    "    topicInput.dataset.filledByChip = '1';",
+    "  }",
     "}",
     "",
     "function wireChips() {",
@@ -3121,12 +3197,8 @@ function buildRunnableToolFiles() {
     "  chipRow.addEventListener('click', (event) => {",
     "    const button = event.target.closest('[data-topic]');",
     "    if (!button) return;",
-    "    selectedGenre = button.dataset.topic || '';",
-    "    chipRow.querySelectorAll('.chip').forEach((chip) => chip.classList.toggle('active', chip === button));",
-    "    if (topicInput && (!topicInput.value.trim() || topicInput.dataset.filledByChip === '1')) {",
-    "      topicInput.value = selectedGenre;",
-    "      topicInput.dataset.filledByChip = '1';",
-    "    }",
+    "    const shouldFill = !topicInput?.value?.trim() || topicInput.dataset.filledByChip === '1';",
+    "    selectGenre(button.dataset.topic || '', { fillTopic: shouldFill });",
     "  });",
     "  topicInput?.addEventListener('input', () => { topicInput.dataset.filledByChip = '0'; });",
     "}",
@@ -3156,7 +3228,7 @@ function buildRunnableToolFiles() {
     "}",
     "",
     "async function generateResult() {",
-    "  const topic = (topicInput?.value || selectedGenre || '').trim();",
+    "  const topic = (topicInput?.value || expandTopic(selectedGenre) || selectedGenre || '').trim();",
     "  const angle = (angleInput?.value || '').trim();",
     "  const length = lengthSelect?.value || '3000';",
     "  const apiKey = currentApiKey();",
@@ -3169,9 +3241,12 @@ function buildRunnableToolFiles() {
     "  resultBox.textContent = '';",
     "  const userInput = [",
     "    LABELS.promptGenre + ' ' + (selectedGenre || config.category || ''),",
-    "    LABELS.promptTopic + ' ' + (topic || selectedGenre),",
+    "    LABELS.promptTopic + ' ' + (topic || expandTopic(selectedGenre) || selectedGenre),",
     "    angle ? (LABELS.promptAngle + ' ' + angle) : '',",
     "    LABELS.promptLength + ' ' + length,",
+    "    '出力タイトル例: ビットコインはいつ買えばよいのかまとめてみた',",
+    "    'ユーザーへの要求禁止: ニュースURLや長文のコピペを求めない',",
+    "    '可能なら公開されている最新動向を踏まえて書く。正確な価格が不明なら断定しない',",
     "    config.purpose ? ('ツール目的: ' + config.purpose) : '',",
     "    config.market ? ('対象: ' + config.market) : '',",
     "  ].filter(Boolean).join('\\n');",
@@ -3182,26 +3257,48 @@ function buildRunnableToolFiles() {
     "    resultBox.textContent = text || LABELS.empty;",
     "    statusText.textContent = LABELS.complete;",
     "  } catch (error) {",
-    "    statusText.textContent = LABELS.error + (error.message || error);",
+    "    const message = error.message || String(error);",
+    "    statusText.textContent = LABELS.error + message;",
     "  } finally {",
     "    generateButton.disabled = false;",
     "  }",
     "}",
     "",
+    "function extractGeminiText(data) {",
+    "  return (data.candidates?.[0]?.content?.parts || []).map((part) => part.text || '').join('');",
+    "}",
+    "",
     "async function callGemini(apiKey, systemPrompt, input) {",
+    "  try {",
+    "    return await callGeminiRequest(apiKey, systemPrompt, input, true);",
+    "  } catch (error) {",
+    "    const message = String(error.message || error);",
+    "    if (/google_search|Search Grounding|tools|Tool/i.test(message)) {",
+    "      return callGeminiRequest(apiKey, systemPrompt, input, false);",
+    "    }",
+    "    throw error;",
+    "  }",
+    "}",
+    "",
+    "async function callGeminiRequest(apiKey, systemPrompt, input, withSearch) {",
     "  const model = 'gemini-2.0-flash';",
     "  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(apiKey);",
+    "  const body = {",
+    "    systemInstruction: { parts: [{ text: systemPrompt }] },",
+    "    contents: [{ role: 'user', parts: [{ text: input }] }],",
+    "    generationConfig: { temperature: 0.75, maxOutputTokens: 8192 },",
+    "  };",
+    "  if (withSearch) body.tools = [{ google_search: {} }];",
     "  const response = await fetch(url, {",
     "    method: 'POST',",
     "    headers: { 'Content-Type': 'application/json' },",
-    "    body: JSON.stringify({",
-    "      contents: [{ parts: [{ text: systemPrompt + '\\n\\n' + input }] }],",
-    "      generationConfig: { temperature: 0.8, maxOutputTokens: 8192 },",
-    "    }),",
+    "    body: JSON.stringify(body),",
     "  });",
     "  const data = await response.json().catch(() => ({}));",
     "  if (!response.ok) throw new Error(data.error?.message || 'Gemini APIの実行に失敗しました。');",
-    "  return (data.candidates?.[0]?.content?.parts || []).map((part) => part.text || '').join('');",
+    "  const text = extractGeminiText(data);",
+    "  if (!text) throw new Error('結果が空でした。もう一度お試しください。');",
+    "  return text;",
     "}",
     "",
     "async function callOpenAI(apiKey, systemPrompt, input) {",
@@ -3214,7 +3311,7 @@ function buildRunnableToolFiles() {
     "        { role: 'system', content: systemPrompt },",
     "        { role: 'user', content: input },",
     "      ],",
-    "      temperature: 0.8,",
+    "      temperature: 0.75,",
     "    }),",
     "  });",
     "  const data = await response.json().catch(() => ({}));",
@@ -3259,6 +3356,7 @@ function buildRunnablePrompt() {
       `Desired outcome: ${summary.result}`,
       "",
       "The user only gives a rough genre/topic. Do NOT ask them to paste news URLs or long source text.",
+      "If search grounding is available, use recent public information. Never invent exact live prices.",
       "Write a complete SEO-friendly article in Japanese.",
       "",
       "Title style example: ビットコインはいつ買えばよいのかまとめてみた",
@@ -3289,10 +3387,10 @@ function buildRunnablePrompt() {
     `出したい結果: ${summary.result}`,
     `カテゴリ: ${category.name}`,
     "",
-    "ユーザーはジャンルや短いテーマだけを入れます。ニュースURLや長文のコピペは要求しないでください。",
-    "そのアバウトな指定だけから、公開できるレベルのSEO向けまとめ記事を日本語で完成させてください。",
+    "ユーザーは「何系か」や短いテーマだけを入れます。ニュースURLや長文のコピペは絶対に要求しないでください。",
+    "検索で参照できる公開情報があれば最新動向を踏まえ、なくても一般知識で公開できるレベルのSEO向けまとめ記事を日本語で完成させてください。",
     "",
-    "タイトル例:",
+    "タイトル例（このトーンで1行目を書く）:",
     "ビットコインはいつ買えばよいのかまとめてみた",
     "初心者向けNISAの始め方をわかりやすくまとめてみた",
     "",
@@ -3300,18 +3398,18 @@ function buildRunnablePrompt() {
     "1. 1行目にクリックしたくなるタイトル（「〜まとめてみた」「〜とは？わかりやすく解説」など）",
     "2. 導入（今これを知る意味）",
     "3. 目次になるH2見出しを複数",
-    "4. 初心者でも分かる本文（具体例・チェックリスト）",
+    "4. 初心者でも分かる本文（具体例・チェックリスト・判断ポイント）",
     "5. よくある質問（3〜5個）",
     "6. 注意点・リスク",
     "7. 次にやること",
     "",
-    "文字数: 指定の目安に合わせる（指定がなければ約3000字）。",
+    "文字数: 指定の目安に合わせる（指定がなければ約3000字）。短すぎる要約で終わらせない。",
     "SEOルール:",
     "- テーマ語を見出しと冒頭に自然に入れる",
     "- 無駄な前置きや「了解しました」は禁止",
     "- 抽象論だけで埋めない。手順や判断ポイントを書く",
     "- 最新の正確な価格・日付が不明なら、断定せず「公開時点で要確認」と書く",
-    "- URL本文は取得しない前提で書く",
+    "- 売買推奨・利益保証はしない",
     investmentNote,
   ].filter(Boolean).join("\n");
 }
@@ -3439,8 +3537,8 @@ ${keyNote}
 
 1. index.html をブラウザで開く
 2. APIキーが未入力なら画面で入れる（設定済みなら自動入力）
-3. 本文・元情報を貼る
-4. 生成する を押す
+3. ジャンルボタンを1つ押す（ニュースURLのコピペは不要）
+4. 「記事を作成する」を押す
 
 --- .env ---
 ${files.envContent}
@@ -3573,7 +3671,7 @@ async function runOutput() {
     state.status = state.exportFormat === "zip"
       ? `ZIPをダウンロードしました。${keyStatus} 共有しないでください。`
       : state.exportFormat === "html"
-        ? `HTMLファイルをダウンロードしました。ダブルクリックで開くとそのまま使えます。${keyStatus} 共有しないでください。`
+        ? `HTMLファイルをダウンロードしました。PCはダブルクリック、スマホはファイルアプリ→Safariで開くか、この画面の「作成したツールを起動する」を使ってください。ジャンルを押して記事作成できます。${keyStatus} 共有しないでください。`
         : `作成内容を出力しました。${keyStatus}`;
   } catch (error) {
     fallbackCopy(text);
@@ -3666,18 +3764,22 @@ function buildLaunchHtml(files) {
   bodyContent = bodyContent
     .replace(/<script src="\.\/config\.js"><\/script>\s*/i, "")
     .replace(/<script src="\.\/script\.js"><\/script>/i, "");
+  // インラインscript内の </script> でHTMLが途中終了するのを防ぐ
+  const configJs = escapeInlineScript(files.configJs);
+  const scriptJs = escapeInlineScript(files.scriptJs);
+  const styleCss = String(files.styleCss || "").replace(/<\/(style)/gi, "<\\/$1");
   return `<!doctype html>
 <html lang="${state.language === "en" ? "en" : "ja"}">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${title}</title>
-  <style>${files.styleCss}</style>
+  <style>${styleCss}</style>
 </head>
 <body>
 ${bodyContent}
-<script>${files.configJs}<\/script>
-<script>${files.scriptJs}<\/script>
+<script>${configJs}<\/script>
+<script>${scriptJs}<\/script>
 </body>
 </html>`;
 }
