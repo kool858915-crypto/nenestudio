@@ -1,8 +1,8 @@
 const categories = [
-  { name: "株投資ツール", description: "株ニュース、銘柄整理、決算要約など", money: "★★★★★", easy: "★★★★☆", use: "X投稿、note記事、投資メモ", isInvestment: true },
-  { name: "FXツール", description: "為替ニュース、相場メモ、シナリオ整理など", money: "★★★★☆", easy: "★★★★☆", use: "相場メモ、配信ネタ、日次レポート", isInvestment: true },
-  { name: "ニュース分析ツール", description: "最新ニュースの要約、業界分析など", money: "★★★★★", easy: "★★★★★", use: "ニュースレター、SNS投稿、調査メモ", isInvestment: false },
-  { name: "仮想通貨ツール", description: "仮想通貨ニュース、価格変動メモなど", money: "★★★★☆", easy: "★★★☆☆", use: "相場メモ、速報投稿、レポート", isInvestment: true },
+  { name: "株投資ツール", description: "テーマを選ぶだけで注目株を半自動選定", money: "★★★★★", easy: "★★★★☆", use: "銘柄候補、選定理由、買う前チェック", isInvestment: true },
+  { name: "FXツール", description: "自動売買向けのシグナル・ルールを半自動生成", money: "★★★★☆", easy: "★★★★☆", use: "売買シグナル、EA用ルール、リスクリミット", isInvestment: true },
+  { name: "ニュース分析ツール", description: "分野を選ぶだけで今の注目ニュースを自動整理", money: "★★★★★", easy: "★★★★★", use: "注目トピック、要点、次の行動", isInvestment: false },
+  { name: "仮想通貨ツール", description: "テーマを選ぶだけで注目コインを半自動選定", money: "★★★★☆", easy: "★★★☆☆", use: "コイン候補、選定理由、リスク", isInvestment: true },
   { name: "SNS運用ツール", description: "X投稿、スレッド、投稿案作成など", money: "★★★★★", easy: "★★★★★", use: "X運用、note導線、投稿量産", isInvestment: false },
   { name: "YouTube動画制作ツール", description: "台本、構成、サムネイル文言など", money: "★★★★☆", easy: "★★★★☆", use: "動画企画、台本、タイトル案", isInvestment: false },
   { name: "営業集客ツール", description: "営業メール、問い合わせ返信など", money: "★★★★☆", easy: "★★★★★", use: "営業文、返信文、見込み客整理", isInvestment: false },
@@ -20,168 +20,169 @@ const categoryThemes = {
   "株投資ツール": {
     purposeTitle: "どんな株投資ツールを作りますか？",
     scopeTitle: "どの市場を対象にしますか？",
-    purposeOptions: ["ニュースから注目銘柄を探す", "決算情報を要約する", "株価チャートを分析する", "急騰しそうなテーマを探す", "自分だけの条件で銘柄を点数化する"],
+    purposeOptions: ["テーマを選ぶだけで注目株を半自動選定する", "今日の注目テーマから銘柄候補を出す", "条件なしで初心者向け候補を出す", "高配当テーマから候補を出す", "買う前チェック付きで候補を出す"],
     scopeOptions: ["日本株", "米国株", "両方"],
-    outputOptions: ["ランキング形式", "点数評価", "要約レポート", "グラフ付き", "通知形式"],
-    sourceLabel: "ニュース・銘柄情報",
-    itemLabel: "銘柄やテーマ",
-    defaultInputs: "ジャンル（例：日本株、NISA）、短いテーマ、知りたいこと",
-    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、注意点",
+    outputOptions: ["ランキング形式", "点数評価", "選定理由つきリスト", "買う前チェック付き", "通知形式"],
+    sourceLabel: "直近の公開情報・テーマ材料",
+    itemLabel: "注目銘柄",
+    defaultInputs: "テーマだけ（例：AI・半導体）。ニュースURLや長文の貼り付けは不要",
+    defaultResult: "注目株3〜5銘柄、選定理由、リスク、買う前チェック",
   },
   "FXツール": {
     purposeTitle: "どんなFXツールを作りますか？",
     scopeTitle: "どの通貨ペアを対象にしますか？",
-    purposeOptions: ["為替ニュースを要約する", "通貨ペアのシナリオを整理する", "経済指標の影響を確認する", "売買メモを作る", "日次レポートを作る"],
-    scopeOptions: ["ドル円", "ユーロドル", "ポンド円", "主要通貨全体"],
-    outputOptions: ["シナリオ形式", "要約レポート", "チェックリスト", "通知形式", "日次メモ"],
-    sourceLabel: "為替ニュース・経済指標",
-    itemLabel: "通貨ペアや相場材料",
-    defaultInputs: "ジャンル（例：ドル円）、短いテーマ、知りたいこと",
-    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、注意点",
+    purposeOptions: ["自動売買向けシグナルを半自動で出す", "EA用の売買ルールを作る", "エントリー／損切り条件を自動整理する", "指標発表前後の立ち回りを出す", "今日のトレードチェックリストを出す"],
+    scopeOptions: ["ドル円", "ユーロドル", "ポンド円", "ゴールド", "主要通貨全体"],
+    outputOptions: ["売買シグナル形式", "EAルール形式", "チェックリスト", "通知形式", "日次メモ"],
+    sourceLabel: "直近の相場材料・指標",
+    itemLabel: "シグナル／売買ルール",
+    defaultInputs: "通貨ペアまたは手法テーマだけ（例：ドル円、スキャル）。ニュースURL貼り付けは不要",
+    defaultResult: "売買シグナル、エントリー／決済条件、ロット目安の考え方、注意点（実注文は別途）",
   },
   "ニュース分析ツール": {
     purposeTitle: "どんなニュース分析ツールを作りますか？",
     scopeTitle: "どの分野を対象にしますか？",
-    purposeOptions: ["最新ニュースを要約する", "業界の変化を整理する", "重要トピックを抽出する", "ニュースレター案を作る", "調査メモを作る"],
+    purposeOptions: ["分野を選ぶだけで今日の注目を自動整理する", "読むべきトピックだけ抜き出す", "初心者向けに要点だけ出す", "SNS投稿用に短くまとめる", "次に調べることを自動提示する"],
     scopeOptions: ["ビジネス", "テクノロジー", "金融", "国内ニュース", "海外ニュース"],
     outputOptions: ["要約レポート", "トピック一覧", "ニュースレター形式", "SNS投稿案", "調査メモ"],
-    sourceLabel: "ニュース記事",
-    itemLabel: "ニュースやトピック",
-    defaultInputs: "ジャンル（例：テック、経済）、短いテーマ、知りたいこと",
-    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、次の行動",
+    sourceLabel: "直近の公開ニュース動向",
+    itemLabel: "注目トピック",
+    defaultInputs: "分野・テーマだけ（例：テック）。記事URLのコピペは不要",
+    defaultResult: "注目トピック一覧、要点、なぜ今か、次の行動",
   },
   "仮想通貨ツール": {
     purposeTitle: "どんな仮想通貨ツールを作りますか？",
     scopeTitle: "どの銘柄・領域を対象にしますか？",
-    purposeOptions: ["仮想通貨ニュースを要約する", "価格変動メモを作る", "注目銘柄を整理する", "オンチェーン情報をまとめる", "リスク要因を確認する"],
-    scopeOptions: ["BTC", "ETH", "主要アルト", "DeFi", "NFT/GameFi"],
-    outputOptions: ["要約レポート", "点数評価", "チェックリスト", "通知形式", "日次メモ"],
-    sourceLabel: "仮想通貨ニュース・価格情報",
-    itemLabel: "銘柄やテーマ",
-    defaultInputs: "ジャンル（例：ビットコイン）、短いテーマ、知りたいこと",
-    defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、FAQ、注意点",
+    purposeOptions: ["テーマを選ぶだけで注目コインを半自動選定する", "初心者向け候補を自動で出す", "リスク付きで候補を並べる", "短期／中期の見方を整理する", "買う前チェック付きで候補を出す"],
+    scopeOptions: ["BTC", "ETH", "主要アルト", "DeFi", "AI関連"],
+    outputOptions: ["ランキング形式", "点数評価", "選定理由つきリスト", "チェックリスト", "日次メモ"],
+    sourceLabel: "直近の公開情報・テーマ材料",
+    itemLabel: "注目コイン",
+    defaultInputs: "テーマだけ（例：AI関連コイン）。ニュースURLや長文の貼り付けは不要",
+    defaultResult: "注目コイン3〜5個、選定理由、リスク、買う前チェック",
   },
   "SNS運用ツール": {
     purposeTitle: "どんなSNS運用ツールを作りますか？",
     scopeTitle: "どのSNSを対象にしますか？",
-    purposeOptions: ["X投稿案を作る", "スレッド構成を作る", "投稿カレンダーを作る", "反応が取れる見出しを作る", "プロフィール文を改善する"],
+    purposeOptions: ["テーマを入れるだけで投稿文を自動作成する", "スレッドを半自動で量産する", "投稿カレンダーを自動で埋める", "反応が取れる見出しを自動生成する", "プロフィール文を改善する"],
     scopeOptions: ["X", "Instagram", "TikTok", "YouTube Shorts", "複数SNS"],
     outputOptions: ["投稿案", "スレッド形式", "カレンダー形式", "改善リスト", "テンプレート"],
-    sourceLabel: "投稿テーマ・過去投稿",
+    sourceLabel: "投稿テーマ",
     itemLabel: "投稿案や企画",
-    defaultInputs: "投稿テーマ、ターゲット、商品情報、過去投稿",
+    defaultInputs: "テーマだけ（商品名や業種が分かれば尚可）。長文コピペは不要",
     defaultResult: "投稿文、見出し、ハッシュタグ、投稿順",
   },
   "YouTube動画制作ツール": {
     purposeTitle: "どんなYouTube動画制作ツールを作りますか？",
     scopeTitle: "どの動画タイプを対象にしますか？",
-    purposeOptions: ["動画企画を作る", "台本を作る", "タイトル案を作る", "サムネイル文言を作る", "構成を改善する"],
+    purposeOptions: ["テーマを入れるだけで台本を半自動作成する", "タイトル案を自動で出す", "サムネ文言を自動で出す", "構成を自動で組む", "ショート向けに短く整える"],
     scopeOptions: ["解説動画", "ショート動画", "レビュー動画", "教育動画", "ライブ配信"],
     outputOptions: ["構成案", "台本形式", "タイトル一覧", "サムネ案", "チェックリスト"],
-    sourceLabel: "動画テーマ・参考動画",
+    sourceLabel: "動画テーマ",
     itemLabel: "企画や台本",
-    defaultInputs: "ジャンル（例：解説動画）、短いテーマ、伝えたいこと",
+    defaultInputs: "テーマだけ（例：初心者向けNISA解説）。参考URLのコピペは不要",
     defaultResult: "構成、台本、タイトル、サムネ文言",
   },
   "営業集客ツール": {
     purposeTitle: "どんな営業集客ツールを作りますか？",
     scopeTitle: "どの相手を対象にしますか？",
-    purposeOptions: ["営業メールを作る", "問い合わせ返信を作る", "見込み客を整理する", "提案文を作る", "商談メモをまとめる"],
+    purposeOptions: ["相手種別を選ぶだけで営業文を自動作成する", "問い合わせ返信を半自動で作る", "提案文を自動で整える", "フォロー文を量産する", "商談メモを自動整理する"],
     scopeOptions: ["新規顧客", "既存顧客", "問い合わせ客", "法人向け", "個人向け"],
     outputOptions: ["メール文", "返信文", "リスト形式", "提案文", "商談メモ"],
-    sourceLabel: "顧客情報・商品情報",
-    itemLabel: "見込み客や提案内容",
-    defaultInputs: "顧客情報、商品情報、問い合わせ内容、目的",
+    sourceLabel: "相手種別・商品テーマ",
+    itemLabel: "営業文や提案",
+    defaultInputs: "相手種別と商品テーマだけ。長文コピペは不要",
     defaultResult: "営業文、返信文、提案ポイント、次の行動",
   },
   "資料作成ツール": {
     purposeTitle: "どんな資料作成ツールを作りますか？",
     scopeTitle: "どの資料を対象にしますか？",
-    purposeOptions: ["提案資料を作る", "企画書を作る", "説明資料を作る", "社内共有メモを作る", "プレゼン構成を作る"],
+    purposeOptions: ["テーマを入れるだけで資料構成を半自動作成する", "見出しと話す順を自動で出す", "説明文を自動で埋める", "社内共有メモを自動作成する", "プレゼン用に短く整える"],
     scopeOptions: ["営業資料", "社内資料", "企画資料", "研修資料", "報告資料"],
     outputOptions: ["スライド構成", "見出し案", "本文案", "要約", "チェックリスト"],
-    sourceLabel: "資料テーマ・元情報",
+    sourceLabel: "資料テーマ",
     itemLabel: "資料項目や構成",
-    defaultInputs: "資料テーマ、目的、対象者、元情報",
+    defaultInputs: "資料テーマと対象者だけ。元資料の全文コピペは不要",
     defaultResult: "構成、見出し、本文案、話す順番",
   },
   "メニュー表チラシ制作ツール": {
     purposeTitle: "どんな販促物制作ツールを作りますか？",
     scopeTitle: "どの店舗・用途を対象にしますか？",
-    purposeOptions: ["メニュー表を作る", "チラシ構成を作る", "キャンペーン文を作る", "商品説明を整える", "店頭POPを作る"],
+    purposeOptions: ["業種を選ぶだけでメニュー文を半自動作成する", "チラシ構成を自動で出す", "キャンペーン文を自動作成する", "POP文言を自動で出す", "SNS告知文まで一気に作る"],
     scopeOptions: ["飲食店", "美容サロン", "小売店", "イベント", "キャンペーン"],
     outputOptions: ["メニュー構成", "チラシ文面", "キャッチコピー", "POP文", "SNS告知文"],
-    sourceLabel: "店舗情報・商品情報",
+    sourceLabel: "店舗業種・キャンペーンテーマ",
     itemLabel: "商品や販促内容",
-    defaultInputs: "店舗名、商品名、価格、キャンペーン内容",
+    defaultInputs: "業種とキャンペーンテーマだけ（店名があれば尚可）",
     defaultResult: "メニュー文、チラシ構成、キャッチコピー、告知文",
   },
   "事務作業自動化ツール": {
     purposeTitle: "どんな事務作業ツールを作りますか？",
     scopeTitle: "どの作業を対象にしますか？",
-    purposeOptions: ["議事録を作る", "書類を整理する", "定型文を作る", "タスク一覧を作る", "メール文を整える"],
+    purposeOptions: ["用途を選ぶだけで定型文を自動作成する", "議事録テンプレを半自動で埋める", "案内文を自動作成する", "タスク一覧を自動で出す", "メール文を整える"],
     scopeOptions: ["会議", "メール", "書類", "タスク管理", "社内連絡"],
     outputOptions: ["議事録形式", "一覧表", "要約", "テンプレート", "チェックリスト"],
-    sourceLabel: "会議メモ・書類・メール",
+    sourceLabel: "作業テーマ",
     itemLabel: "事務作業やタスク",
-    defaultInputs: "会議メモ、書類内容、メール文、期限",
+    defaultInputs: "用途テーマだけ（例：会議の案内）。長文コピペは任意",
     defaultResult: "議事録、要約、タスク一覧、定型文",
   },
   "求人採用ツール": {
     purposeTitle: "どんな求人採用ツールを作りますか？",
     scopeTitle: "どの採用業務を対象にしますか？",
-    purposeOptions: ["求人票を作る", "スカウト文を作る", "面接質問を作る", "候補者メモを整理する", "採用ペルソナを作る"],
+    purposeOptions: ["職種を入れるだけで求人票を半自動作成する", "スカウト文を自動で作る", "面接質問を自動で出す", "魅力訴求を自動で整える", "採用ペルソナを自動作成する"],
     scopeOptions: ["正社員", "アルバイト", "業務委託", "新卒", "中途"],
     outputOptions: ["求人票", "スカウト文", "質問リスト", "評価表", "候補者メモ"],
-    sourceLabel: "求人条件・候補者情報",
+    sourceLabel: "職種・採用テーマ",
     itemLabel: "求人や候補者",
-    defaultInputs: "職種、条件、求める人物像、候補者情報",
+    defaultInputs: "職種と雇用形態だけ。長文の就業規則コピペは不要",
     defaultResult: "求人票、スカウト文、面接質問、評価軸",
   },
   "ブログ記事作成ツール": {
     purposeTitle: "どんなブログ記事作成ツールを作りますか？",
     scopeTitle: "どの記事タイプを対象にしますか？",
-    purposeOptions: ["SEO記事を作る", "note記事を作る", "記事構成を作る", "見出しを作る", "リライト案を作る"],
+    purposeOptions: ["テーマを選ぶだけでSEO記事を半自動作成する", "見出し構成を自動で出す", "note向けに読みやすく整える", "比較記事を自動で作る", "リライト案を自動で出す"],
     scopeOptions: ["SEO記事", "note", "商品レビュー", "ハウツー", "コラム"],
     outputOptions: ["記事構成", "本文下書き", "見出し一覧", "要約", "改善案"],
     sourceLabel: "記事テーマ・キーワード",
     itemLabel: "記事や見出し",
-    defaultInputs: "ジャンル、短いテーマ、狙いたいキーワード",
+    defaultInputs: "テーマかキーワードだけ。参考記事URLのコピペは不要",
     defaultResult: "SEO向けまとめ記事（約3000字）、タイトル、見出し、FAQ",
   },
   "教育学習ツール": {
     purposeTitle: "どんな教育学習ツールを作りますか？",
     scopeTitle: "どの学習対象を扱いますか？",
-    purposeOptions: ["学習計画を作る", "教材を作る", "問題を作る", "復習メモを作る", "理解度チェックを作る"],
+    purposeOptions: ["テーマを入れるだけで学習計画を半自動作成する", "復習まとめを自動で出す", "問題を自動作成する", "用語解説を自動で作る", "理解度チェックを自動で出す"],
     scopeOptions: ["学校学習", "資格学習", "語学", "社内研修", "個人学習"],
     outputOptions: ["学習計画", "教材形式", "問題集", "復習カード", "チェックリスト"],
-    sourceLabel: "学習内容・教材",
+    sourceLabel: "学習テーマ",
     itemLabel: "教材や問題",
-    defaultInputs: "学習テーマ、レベル、教材、目標日",
+    defaultInputs: "学習テーマとレベルだけ",
     defaultResult: "学習計画、問題、解説、復習メモ",
   },
   "店舗運営ツール": {
     purposeTitle: "どんな店舗運営ツールを作りますか？",
     scopeTitle: "どの運営業務を対象にしますか？",
-    purposeOptions: ["口コミ返信を作る", "キャンペーン案を作る", "販促メモを作る", "スタッフ共有文を作る", "改善点を整理する"],
+    purposeOptions: ["用途を選ぶだけで口コミ返信を自動作成する", "販促案を半自動で出す", "季節キャンペーンを自動提案する", "接客トークを自動で作る", "改善点を自動整理する"],
     scopeOptions: ["口コミ対応", "販促", "スタッフ共有", "在庫・メニュー", "店舗改善"],
     outputOptions: ["返信文", "キャンペーン案", "共有メモ", "改善リスト", "SNS告知文"],
-    sourceLabel: "店舗情報・口コミ・運営メモ",
+    sourceLabel: "店舗業種・運営テーマ",
     itemLabel: "店舗施策や返信内容",
-    defaultInputs: "店舗情報、口コミ、商品情報、キャンペーン内容",
+    defaultInputs: "業種と用途テーマだけ（口コミ本文があれば尚可）",
     defaultResult: "返信文、販促案、改善点、共有メモ",
   },
   "自由作成": {
     purposeTitle: "どんなツールを作りますか？",
     scopeTitle: "どの用途を対象にしますか？",
-    purposeOptions: ["情報を整理する", "文章を作る", "点数化する", "チェックリストを作る", "自分だけの条件で処理する"],
+    purposeOptions: ["テーマを入れるだけで半自動で結果を出す", "面倒な整理を自動化する", "候補を自動で点数化する", "チェックリストを自動作成する", "自分の条件で処理する"],
     scopeOptions: ["個人用途", "仕事用", "店舗用", "SNS用", "検証用"],
     outputOptions: ["要約", "一覧表", "レポート", "テンプレート", "通知形式"],
-    sourceLabel: "入力情報",
-    itemLabel: "対象データ",
-    defaultInputs: "扱いたい情報、条件、出力したい内容",
-    defaultResult: "整理結果、文章、一覧表、次の行動",
+    sourceLabel: "テーマ",
+    itemLabel: "出力結果",
+    defaultInputs: "やりたいこと・テーマだけ。長文コピペは不要",
+    defaultResult: "半自動で使える結果、理由、次の行動",
   },
+
 };
 
 const screenCopy = {
@@ -2399,33 +2400,40 @@ function renderOptionButtons(options, question, className) {
 function getProposals() {
   const category = getSelectedCategory();
   const theme = getTheme();
+  const mode = getToolMode();
   const { purpose, market, output } = state.answers;
   const customName = state.custom.toolName;
   const customInputs = state.custom.inputs || theme.defaultInputs;
+  const autoHint =
+    mode === "stock_picker" ? "テーマ選択だけで注目株を半自動選定"
+    : mode === "fx_auto" ? "自動売買向けシグナル・ルールを半自動生成"
+    : mode === "crypto_picker" ? "テーマ選択だけで注目コインを半自動選定"
+    : mode === "news_digest" ? "分野選択だけで注目ニュースを自動整理"
+    : "面倒な下調べや下書きを半自動で進める";
   const base = [
     {
-      title: customName || `${purpose}AIツール`,
-      description: `${category.name}として、${market}を対象に「${purpose}」を行い、${output}で見られるようにします。`,
+      title: customName || `${purpose.replace(/する$/, "")}ツール`,
+      description: `${autoHint}。${market}向けに「${purpose}」し、${output}で見られます。ニュースURLのコピペは不要です。`,
       money: category.money,
       easy: category.easy,
       demand: "★★★★★",
-      meta: `必要なデータ：${customInputs}`,
+      meta: `必要な操作：${customInputs}`,
     },
     {
-      title: `${market}向け${theme.itemLabel}整理ツール`,
-      description: `${theme.sourceLabel}を集め、${theme.itemLabel}を用途に合わせて整理します。`,
+      title: `${market}向け${theme.itemLabel}半自動ツール`,
+      description: `テーマを選ぶだけで、直近の公開情報から${theme.itemLabel}を候補化し、理由つきで出します。`,
       money: "★★★★☆",
       easy: "★★★★☆",
       demand: "★★★★☆",
-      meta: `必要なデータ：${customInputs}`,
+      meta: `必要な操作：${customInputs}`,
     },
     {
-      title: `${output}で見る${category.name}`,
-      description: `${purpose}ための流れを、${output}として毎回同じ形で出せるようにします。`,
+      title: `考える手間を減らす${category.name}`,
+      description: `${purpose}流れを固定し、${output}として毎回同じ形で半自動出力します。`,
       money: "★★★☆☆",
       easy: "★★★☆☆",
       demand: "★★★★☆",
-      meta: `必要なデータ：${customInputs}`,
+      meta: `必要な操作：${customInputs}`,
     },
   ];
 
@@ -2491,16 +2499,27 @@ function arrangeNodes() {
 
 function prepareNodes() {
   const theme = getTheme();
+  const mode = getToolMode();
   const { purpose, market, output } = state.answers;
+  const gather =
+    mode === "stock_picker" || mode === "crypto_picker" || mode === "fx_auto" || mode === "news_digest"
+      ? [`${market}の直近公開情報を自動参照する部品`, "ユーザーにURL貼り付けを求めず、テーマ材料を集めます", ""]
+      : [`${market}の材料を自動で用意する部品`, `${theme.defaultInputs}をもとに不足を補います`, ""];
+  const pick =
+    mode === "stock_picker" || mode === "crypto_picker"
+      ? [`${theme.itemLabel}を半自動選定する部品`, "テーマに合う候補を3〜5件に絞ります", ""]
+      : mode === "fx_auto"
+        ? ["売買シグナルとルールを半自動作成する部品", "エントリー／決済／リスク条件を整えます", ""]
+        : [`${purpose}ための要点を自動抽出する部品`, `${theme.sourceLabel}から必要分だけ抜き出します`, ""];
   state.nodes = [
-    ["開始", "作業を始める", "start"],
-    [`${market}の${theme.sourceLabel}を集める部品`, `${theme.defaultInputs}などを取り込みます`, ""],
-    [`${purpose}ための要点を探す部品`, `${theme.sourceLabel}から必要な情報を見つけます`, ""],
-    [`${theme.itemLabel}を整理する部品`, `${market}に関係する${theme.itemLabel}を一覧にします`, ""],
-    ["AIが読み取る部品", `${getSelectedCategory().name}の目的に沿って意味や注目点を整理します`, ""],
+    ["開始", "テーマを選ぶだけから始める", "start"],
+    gather,
+    pick,
+    [`選定理由・注意点を付ける部品`, "なぜ今か／リスク／買う前チェックを付けます", ""],
+    ["AIが読みやすく整える部品", `${getSelectedCategory().name}の目的に沿って意味を整理します`, ""],
     [`${output}に整える部品`, "選んだ出力形式に合わせて見やすくします", ""],
     ["最終出力にする部品", `${state.custom.result || theme.defaultResult}としてまとめます`, ""],
-    ["出力", "ツールとして保存できる形にします", "end"],
+    ["出力", "そのまま判断・利用できる形にします", "end"],
   ];
 }
 
@@ -2573,7 +2592,7 @@ function getSummary() {
   return {
     purpose: state.summaryEdits.purpose || `${category.name}のテーマで、${market}を対象に「${purpose}」を行います。`,
     user: state.summaryEdits.user || `${targetUser}が使う想定です。`,
-    inputs: state.summaryEdits.inputs || `${inputSummary}を入れます。`,
+    inputs: state.summaryEdits.inputs || `${inputSummary}（コピペ不要・テーマ選択中心）。`,
     result: state.summaryEdits.result || `${output}で、${resultSummary}を出します。`,
     usage: state.summaryEdits.usage || `提案は「${proposal.title}」。作業の部品を確認してから作成します。`,
   };
@@ -2619,8 +2638,8 @@ required_data: ${proposal.meta.replace("必要なデータ：", "")}
 required_api_keys: Google Gemini API key（推奨）または OpenAI API key
 folders: config, prompts, workflow, output
 error_handling: 入力不足、APIキー未設定、取得失敗を画面に表示
-prompt: ジャンルや短いテーマだけから、検索可能な最新情報を踏まえたSEO向けまとめ記事を書く
-note: ユーザーにニュースURLや長文コピペを要求しない。GeminiはGoogle検索グラウンディングで最新動向を参照し、正確な価格が不明なら断定しない`;
+prompt: テーマ選択だけで半自動結果を出す。投資系は注目候補+理由、FXは自動売買向けシグナル/ルール、その他は面倒な下調べや下書きを自動化する
+note: ユーザーにニュースURLや長文コピペを要求しない。Geminiは公開情報を参照し、投資助言・利益保証・実注文執行はしない。正確な価格が不明なら断定しない`;
 }
 
 function renderExport() {
@@ -2650,62 +2669,202 @@ function renderApiFormatNotice() {
   apiFormatNotice.textContent = message || "";
 }
 
+function getToolMode() {
+  const name = getSelectedCategory()?.name;
+  if (name === "株投資ツール") return "stock_picker";
+  if (name === "FXツール") return "fx_auto";
+  if (name === "仮想通貨ツール") return "crypto_picker";
+  if (name === "ニュース分析ツール") return "news_digest";
+  if (name === "ブログ記事作成ツール" || name === "SNS運用ツール" || name === "YouTube動画制作ツール") return "content_auto";
+  return "task_auto";
+}
+
 function getTopicPresets() {
   const category = getSelectedCategory();
   const theme = getTheme();
   const map = {
-    "株投資ツール": ["ビットコイン", "日本株", "米国株", "NISA", "配当株", "決算まとめ"],
-    "FXツール": ["ドル円", "ユーロドル", "ポンド円", "経済指標", "金利差"],
-    "ニュース分析ツール": ["テックニュース", "経済ニュース", "業界動向", "注目トピック"],
-    "仮想通貨ツール": ["ビットコイン", "イーサリアム", "アルトコイン", "相場見通し"],
-    "SNS運用ツール": ["X投稿ネタ", "スレッド構成", "バズる言い回し", "固定ポスト案"],
-    "YouTube動画制作ツール": ["動画タイトル", "台本構成", "サムネ文言", "オープニング案"],
-    "営業集客ツール": ["営業メール", "紹介文", "問い合わせ返信", "提案の切り口"],
-    "資料作成ツール": ["提案資料", "企画書", "説明スライド原稿", "要約メモ"],
-    "メニュー表チラシ制作ツール": ["期間限定メニュー", "キャンペーン", "チラシ見出し", "お得訴求"],
-    "事務作業自動化ツール": ["議事録テンプレ", "案内文", "社内共有メモ", "チェックリスト"],
-    "求人採用ツール": ["求人票", "スカウト文", "面接質問", "魅力訴求"],
-    "ブログ記事作成ツール": ["SEO記事", "ハウツー", "比較記事", "まとめ記事"],
-    "教育学習ツール": ["学習計画", "復習まとめ", "解説記事", "用語整理"],
-    "店舗運営ツール": ["口コミ返信", "販促案", "季節キャンペーン", "接客トーク"],
-    "自由作成": ["話題のまとめ", "初心者向け解説", "比較レビュー", "FAQ記事"],
+    "株投資ツール": ["AI・半導体", "防衛", "電力・再エネ", "高配当", "インバウンド", "バイオ", "銀行・金利", "日経注目"],
+    "FXツール": ["ドル円", "ユーロドル", "ゴールド", "スキャル", "スイング", "指標トレード"],
+    "ニュース分析ツール": ["テック", "経済", "金融", "国内", "海外"],
+    "仮想通貨ツール": ["BTC", "ETH", "AI関連コイン", "Solana生態系", "DeFi", "ミーム"],
+    "SNS運用ツール": ["告知投稿", "教育投稿", "共感投稿", "セールス投稿"],
+    "YouTube動画制作ツール": ["初心者解説", "ランキング", "比較", "ハウツー"],
+    "営業集客ツール": ["新規開拓", "既存フォロー", "問い合わせ返信", "提案"],
+    "資料作成ツール": ["提案資料", "社内共有", "企画書", "報告"],
+    "メニュー表チラシ制作ツール": ["期間限定", "ランチ", "キャンペーン", "季節"],
+    "事務作業自動化ツール": ["案内文", "議事録", "依頼メール", "チェックリスト"],
+    "求人採用ツール": ["求人票", "スカウト", "面接質問", "魅力訴求"],
+    "ブログ記事作成ツール": ["SEOまとめ", "ハウツー", "比較", "初心者向け"],
+    "教育学習ツール": ["学習計画", "復習", "問題作成", "用語解説"],
+    "店舗運営ツール": ["口コミ返信", "販促", "季節キャンペーン", "接客"],
+    "自由作成": ["候補出し", "自動整理", "チェックリスト", "下書き"],
   };
-  return (map[category?.name] || theme.scopeOptions || ["人気テーマ", "初心者向け", "最新動向", "まとめ"]).slice(0, 8);
+  return (map[category?.name] || theme.scopeOptions || ["人気テーマ", "初心者向け", "最新動向"]).slice(0, 8);
 }
 
-/** ジャンルチップから、そのまま記事テーマになる問いへ広げる */
+/** テーマチップを、ツールがすぐ動く指定へ広げる */
 function expandTopicFromChip(chip) {
-  const map = {
-    "ビットコイン": "ビットコインはいつ買えばよいのか",
-    "イーサリアム": "イーサリアムは今からでも遅くないのか",
-    "アルトコイン": "アルトコイン投資で押さえるべきポイント",
-    "相場見通し": "仮想通貨の相場見通しを初心者向けにまとめてみた",
-    "日本株": "日本株は今から始めても遅くないのか",
-    "米国株": "米国株投資の始め方をわかりやすくまとめてみた",
-    "NISA": "NISAの始め方を初心者向けにわかりやすくまとめてみた",
-    "配当株": "配当株の選び方をわかりやすくまとめてみた",
-    "決算まとめ": "決算発表の見方を初心者向けにまとめてみた",
-    "ドル円": "ドル円相場の見方を初心者向けにまとめてみた",
-    "ユーロドル": "ユーロドルの基本をわかりやすくまとめてみた",
-    "ポンド円": "ポンド円の値動きの見方をまとめてみた",
-    "経済指標": "FXで見るべき経済指標をまとめてみた",
-    "金利差": "金利差と為替の関係をわかりやすくまとめてみた",
-    "テックニュース": "今押さえておきたいテックニュースをまとめてみた",
-    "経済ニュース": "今週の経済ニュースをわかりやすくまとめてみた",
-    "業界動向": "注目業界の動向を初心者向けにまとめてみた",
-    "注目トピック": "今話題のトピックをわかりやすくまとめてみた",
-    "SEO記事": "SEOに強い記事の書き方をまとめてみた",
-    "ハウツー": "初心者でもできるハウツー記事の作り方",
-    "比較記事": "比較記事の書き方をわかりやすくまとめてみた",
-    "まとめ記事": "読まれるまとめ記事の作り方",
-  };
+  const mode = getToolMode();
   const key = String(chip || "").trim();
   if (!key) return "";
-  return map[key] || `${key}についてわかりやすくまとめてみた`;
+  if (mode === "stock_picker") return `${key}テーマの注目株を半自動選定`;
+  if (mode === "fx_auto") return `${key}の自動売買向けシグナル・ルール`;
+  if (mode === "crypto_picker") return `${key}テーマの注目コインを半自動選定`;
+  if (mode === "news_digest") return `${key}分野の今日の注目を自動整理`;
+  if (mode === "content_auto") return `${key}のコンテンツを半自動作成`;
+  return `${key}を半自動で進める`;
 }
 
 function escapeInlineScript(code) {
   return String(code || "").replace(/<\/(script)/gi, "<\\/$1");
+}
+
+
+
+function getModeToolLabelOverrides(mode, isEnglish) {
+  if (isEnglish) {
+    if (mode === "stock_picker" || mode === "crypto_picker") {
+      const unit = mode === "stock_picker" ? "stocks" : "coins";
+      return {
+        paste: `Tap a theme chip, then press Find ${unit}. No news URL paste.`,
+        generate: `Find ${unit}`,
+        result: `Review the ${unit} shortlist and reasons.`,
+        inputTitle: "1. Pick a theme",
+        genre: "Theme",
+        topic: "Theme (auto-filled)",
+        topicPlaceholder: mode === "stock_picker" ? "Example: AI / semiconductors" : "Example: AI coins",
+        moreOptions: "Optional tweaks",
+        angle: "Risk preference (optional)",
+        anglePlaceholder: "Example: beginner / avoid high risk",
+        length: "How many candidates",
+        length1500: "About 3",
+        length3000: "About 5 (recommended)",
+        length5000: "About 8",
+        outputTitle: mode === "stock_picker" ? "Stock shortlist" : "Coin shortlist",
+        statusNoInput: "Tap a theme chip first.",
+        generating: "Pulling recent info and building the shortlist...",
+        complete: "Shortlist ready.",
+        note: "Theme → shortlist. Recent public info is used when available. No URL paste.",
+        disclaimer: "Not investment advice. Verify latest prices before buying. This tool does not place orders.",
+      };
+    }
+    if (mode === "fx_auto") {
+      return {
+        paste: "Tap a pair/style chip, then press Make signals. No news URL paste.",
+        generate: "Make signals / rules",
+        result: "Review auto-trading style signals and rules.",
+        inputTitle: "1. Pick pair / style",
+        genre: "Pair / style",
+        topic: "Focus (auto-filled)",
+        topicPlaceholder: "Example: USDJPY swing",
+        moreOptions: "Optional tweaks",
+        angle: "Style (optional)",
+        anglePlaceholder: "Example: scalping / swing / news",
+        length: "Detail level",
+        length1500: "Short",
+        length3000: "Standard (recommended)",
+        length5000: "Detailed",
+        outputTitle: "Auto-trading signals / rules",
+        statusNoInput: "Tap a chip first.",
+        generating: "Building signals and rules...",
+        complete: "Signals ready.",
+        note: "Pair/style → auto-trading oriented rules. This tool does not place live orders.",
+        disclaimer: "Not investment advice. No live broker orders from this file. Use rules at your own risk.",
+      };
+    }
+    if (mode === "news_digest") {
+      return {
+        paste: "Tap a field chip, then press Auto-summarize.",
+        generate: "Auto-summarize",
+        result: "Review today's must-know topics.",
+        inputTitle: "1. Pick a field",
+        outputTitle: "Today's digest",
+        generating: "Collecting today's highlights...",
+        complete: "Digest ready.",
+        note: "Field → automatic digest. No article URL paste.",
+      };
+    }
+    return {
+      paste: "Tap a theme, then press Run. No long paste required.",
+      generate: "Run semi-auto",
+      result: "Review the ready-to-use result.",
+      note: "Theme → semi-automatic result. Minimize manual research.",
+      outputTitle: "Result",
+      generating: "Working...",
+      complete: "Done.",
+    };
+  }
+
+  if (mode === "stock_picker" || mode === "crypto_picker") {
+    const unit = mode === "stock_picker" ? "銘柄" : "コイン";
+    return {
+      paste: `テーマを1つ押して「${unit}を選定する」。ニュースURLのコピペは不要です。`,
+      generate: `${unit}を選定する`,
+      result: `注目${unit}と選定理由が表示されます。`,
+      inputTitle: "1. テーマを選ぶ",
+      genre: "テーマ",
+      topic: "テーマ（ボタンで自動入力）",
+      topicPlaceholder: mode === "stock_picker" ? "例：AI・半導体" : "例：AI関連コイン",
+      moreOptions: "任意設定",
+      angle: "リスクの好み（任意）",
+      anglePlaceholder: "例：初心者向け、高リスク回避",
+      length: "候補の数",
+      length1500: "約3件",
+      length3000: "約5件（おすすめ）",
+      length5000: "約8件",
+      outputTitle: mode === "stock_picker" ? "注目株リスト" : "注目コインリスト",
+      statusNoInput: "先にテーマボタンを押してください。",
+      generating: "直近情報を確認しながら選定中です...",
+      complete: "選定できました。",
+      note: "テーマを押す → 選定するだけ。直近の公開情報を参照します。URLコピペ不要。",
+      disclaimer: "投資助言ではありません。買う前に最新価格を確認してください。このツールは注文しません。",
+    };
+  }
+  if (mode === "fx_auto") {
+    return {
+      paste: "通貨ペア／手法を押して「シグナルを作る」。ニュースURLのコピペは不要です。",
+      generate: "シグナル／ルールを作る",
+      result: "自動売買向けのシグナルとルールが表示されます。",
+      inputTitle: "1. ペア／手法を選ぶ",
+      genre: "ペア／手法",
+      topic: "対象（ボタンで自動入力）",
+      topicPlaceholder: "例：ドル円スイング",
+      moreOptions: "任意設定",
+      angle: "スタイル（任意）",
+      anglePlaceholder: "例：スキャル、スイング、指標",
+      length: "詳細さ",
+      length1500: "短め",
+      length3000: "標準（おすすめ）",
+      length5000: "詳しく",
+      outputTitle: "自動売買シグナル／ルール",
+      statusNoInput: "先にボタンを押してください。",
+      generating: "シグナルとルールを作成中です...",
+      complete: "作成できました。",
+      note: "ペア／手法 → 自動売買向けルール。このツール自体は実注文しません。",
+      disclaimer: "投資助言ではありません。ブローカーへの自動発注は別途設定が必要です。自己責任で使ってください。",
+    };
+  }
+  if (mode === "news_digest") {
+    return {
+      paste: "分野を押して「自動で整理する」。記事URLのコピペは不要です。",
+      generate: "自動で整理する",
+      result: "今日の注目トピックが表示されます。",
+      inputTitle: "1. 分野を選ぶ",
+      outputTitle: "今日の注目まとめ",
+      generating: "注目トピックを整理中です...",
+      complete: "整理できました。",
+      note: "分野を選ぶだけで自動整理。記事URLのコピペは不要です。",
+    };
+  }
+  return {
+    paste: "テーマを押して「半自動で実行」。長いコピペは不要です。",
+    generate: "半自動で実行",
+    result: "すぐ使える結果が表示されます。",
+    note: "テーマ選択 → 半自動実行。面倒な下調べや下書きを減らします。",
+    outputTitle: "実行結果",
+    generating: "実行中です...",
+    complete: "完了しました。",
+  };
 }
 
 function buildRunnableToolFiles() {
@@ -2815,6 +2974,7 @@ function buildRunnableToolFiles() {
         promptLength: "文字数目安:",
         disclaimer: "投資助言ではありません。最新の価格・制度は公開前に必ず確認してください。",
       };
+  Object.assign(toolLabels, getModeToolLabelOverrides(getToolMode(), isEnglish));
   const docLabels = isEnglish
     ? {
         sampleTitle: `# ${proposal.title} Sample Output`,
@@ -2832,8 +2992,8 @@ function buildRunnableToolFiles() {
         setupSteps: [
           "1. Open the HTML file (or unzip and open index.html).",
           "2. If needed, enter your API key.",
-          "3. Tap a genre chip or type a short topic.",
-          "4. Press Create article.",
+          "3. Tap a theme chip.",
+          "4. Press the run button.",
         ],
         setupRecommend: "Recommended: Google Gemini",
         setupOpenAiNote: "OpenAI may fail in some browsers. Use Gemini then.",
@@ -2854,22 +3014,37 @@ function buildRunnableToolFiles() {
         setupSteps: [
           "1. HTMLファイルを開きます（ZIPなら解凍後の index.html）。",
           "2. 必要なら APIキーを入れます。",
-          "3. ジャンルボタンを押すか、短いテーマを入れます。",
-          "4. 「記事を作成する」を押します。",
+          "3. テーマボタンを押します。",
+          "4. 画面の実行ボタンを押します。",
         ],
         setupRecommend: "おすすめ: Google Gemini",
         setupOpenAiNote: "OpenAI が失敗する場合は Gemini を使ってください。",
       };
 
-  const workflowLines = [
-    isEnglish ? "1. Understand the rough topic" : "1. ざっくりしたテーマを受け取る",
-    isEnglish ? "2. Choose an SEO-friendly title" : "2. SEO向けのタイトルを決める",
-    isEnglish ? "3. Write a readable long-form article" : "3. 読みやすい長文記事にまとめる",
-    isEnglish ? "4. Add FAQ, caveats, and next actions" : "4. FAQ・注意点・次の行動を付ける",
-  ].join("\n");
-  const sampleTitle = isEnglish
-    ? "I Summarized When to Buy Bitcoin (About 3000 characters)"
-    : "ビットコインはいつ買えばよいのかまとめてみた";
+  const mode = getToolMode();
+  const workflowLines = (
+    mode === "stock_picker" || mode === "crypto_picker"
+      ? (isEnglish
+        ? ["1. Receive theme only", "2. Scan recent public info", "3. Shortlist 3-5 candidates", "4. Add reasons, risks, buy-before checks"]
+        : ["1. テーマだけ受け取る", "2. 直近の公開情報を参照する", "3. 候補を3〜5件に絞る", "4. 理由・リスク・買う前チェックを付ける"])
+      : mode === "fx_auto"
+        ? (isEnglish
+          ? ["1. Receive pair/style", "2. Build bias and entry rules", "3. Add stop/take-profit and risk", "4. Summarize EA-style if-then rules"]
+          : ["1. ペア／手法を受け取る", "2. 方針とエントリー条件を作る", "3. 損切り・利確・リスクを付ける", "4. EA向け if-then に要約する"])
+        : mode === "news_digest"
+          ? (isEnglish
+            ? ["1. Receive field", "2. Collect today's highlights", "3. Rank must-know topics", "4. Suggest next actions"]
+            : ["1. 分野を受け取る", "2. 今日の注目を集める", "3. 必読トピックに絞る", "4. 次の行動を出す"])
+          : (isEnglish
+            ? ["1. Receive theme", "2. Auto-fill missing research", "3. Produce ready-to-use output", "4. Add caveats and next steps"]
+            : ["1. テーマを受け取る", "2. 足りない調べものを自動補完する", "3. すぐ使える結果を出す", "4. 注意点と次の行動を付ける"])
+  ).join("\n");
+  const sampleTitle =
+    mode === "stock_picker" ? (isEnglish ? "AI theme stock shortlist (semi-auto)" : "AI・半導体テーマの注目株（半自動選定）")
+    : mode === "fx_auto" ? (isEnglish ? "USDJPY auto-trading style rules" : "ドル円の自動売買向けシグナル／ルール")
+    : mode === "crypto_picker" ? (isEnglish ? "AI coin shortlist (semi-auto)" : "AI関連コインの注目リスト（半自動選定）")
+    : mode === "news_digest" ? (isEnglish ? "Today's tech digest" : "今日のテック注目まとめ")
+    : (isEnglish ? "Semi-auto ready output" : "半自動で使える実行結果");
   const sampleOutput = [
     docLabels.sampleTitle,
     "",
@@ -2877,11 +3052,11 @@ function buildRunnableToolFiles() {
     sampleTitle,
     "",
     isEnglish
-      ? "A beginner-friendly SEO article of about 3000 characters with headings, FAQ, and caveats."
-      : "見出し・導入・本文・FAQ・注意点つきの、約3000字のSEO向けまとめ記事。",
+      ? "Theme-only input. Semi-automatic shortlist or rules with reasons and caveats."
+      : "テーマ選択だけ。半自動の候補／ルールと、理由・注意点つき。",
     "",
     docLabels.sampleInputs,
-    isEnglish ? `Genre: crypto / Topic: ${defaultTopic}` : `ジャンル: 仮想通貨 / テーマ: ${defaultTopic}`,
+    isEnglish ? `Theme: ${defaultTopic}` : `テーマ: ${defaultTopic}`,
     "",
     docLabels.sampleUsage,
     toolLabels.paste,
@@ -2966,6 +3141,7 @@ function buildRunnableToolFiles() {
     `  defaultGenre: ${JSON.stringify(defaultGenre)},`,
     `  defaultTopic: ${JSON.stringify(defaultTopic)},`,
     `  isInvestment: ${JSON.stringify(Boolean(category.isInvestment))},`,
+    `  toolMode: ${JSON.stringify(getToolMode())},`,
     "};",
   ].join("\n");
 
@@ -3244,8 +3420,8 @@ function buildRunnableToolFiles() {
     "    LABELS.promptTopic + ' ' + (topic || expandTopic(selectedGenre) || selectedGenre),",
     "    angle ? (LABELS.promptAngle + ' ' + angle) : '',",
     "    LABELS.promptLength + ' ' + length,",
-    "    '出力タイトル例: ビットコインはいつ買えばよいのかまとめてみた',",
-    "    'ユーザーへの要求禁止: ニュースURLや長文のコピペを求めない',",
+    "    '成果物方針: テーマ選択だけで半自動。URLコピペ要求禁止',",
+    "    'ユーザーへの要求禁止: ニュースURLや長文のコピペを求めない。面倒な調査はツール側で行う',",
     "    '可能なら公開されている最新動向を踏まえて書く。正確な価格が不明なら断定しない',",
     "    config.purpose ? ('ツール目的: ' + config.purpose) : '',",
     "    config.market ? ('対象: ' + config.market) : '',",
@@ -3341,76 +3517,146 @@ function buildRunnablePrompt() {
   const proposal = getSelectedProposal();
   const summary = getSummary();
   const category = getSelectedCategory();
+  const mode = getToolMode();
   const isEnglish = state.language === "en";
-  const investmentNote = category.isInvestment
-    ? (isEnglish
-      ? "- This is not investment advice. Avoid promising profits. Ask readers to verify latest prices and rules."
-      : "- 投資助言・売買推奨・利益保証はしない。最新価格や制度は読者自身で確認するよう促す。")
-    : "";
+  const commonBan = isEnglish
+    ? "Do NOT ask the user to paste news URLs or long source text. Theme/chip selection is enough."
+    : "ユーザーにニュースURLや長文コピペを絶対に要求しない。テーマ選択だけで完結させる。";
+  const investmentBan = isEnglish
+    ? "This is not investment advice. No profit guarantees. No live order placement. Ask users to verify prices before acting."
+    : "投資助言・利益保証・実注文の執行はしない。候補と理由を出し、最終判断と注文はユーザー自身。価格は公開時点で要確認と書く。";
 
-  if (isEnglish) {
+  if (mode === "stock_picker" || mode === "crypto_picker") {
+    const unit = mode === "stock_picker"
+      ? (isEnglish ? "stocks" : "銘柄")
+      : (isEnglish ? "coins" : "コイン");
+    if (isEnglish) {
+      return [
+        `You are a semi-automatic ${unit} picker for "${proposal.title}".`,
+        `Purpose: ${summary.purpose}`,
+        "Audience: beginners who want picks without researching news themselves.",
+        "",
+        commonBan,
+        "Use recent public information when search grounding is available.",
+        "",
+        "Output in Japanese with this structure:",
+        "1. One-line summary of today's theme",
+        `2. Top 3-5 ${unit} candidates (name / ticker if known)`,
+        "3. For each: why now, confidence (high/mid/low), main risk",
+        "4. Buy-before checklist (3-5 items)",
+        "5. Pass / watch criteria",
+        "",
+        investmentBan,
+      ].join("\n");
+    }
     return [
-      `You are a Japanese SEO content writer for "${proposal.title}".`,
-      `Purpose: ${summary.purpose}`,
-      `Audience: ${summary.user}`,
-      `Desired outcome: ${summary.result}`,
+      `あなたは「${proposal.title}」専用の半自動${unit}選定アシスタントです。`,
+      `目的: ${summary.purpose}`,
+      "想定ユーザー: ニュースを自分で選べない／調べたくない人。テーマを押すだけで候補が欲しい人。",
       "",
-      "The user only gives a rough genre/topic. Do NOT ask them to paste news URLs or long source text.",
-      "If search grounding is available, use recent public information. Never invent exact live prices.",
-      "Write a complete SEO-friendly article in Japanese.",
+      commonBan,
+      "検索できる公開情報があれば直近動向を踏まえる。正確な株価・時価総額が不明なら断定しない。",
       "",
-      "Title style example: ビットコインはいつ買えばよいのかまとめてみた",
+      "出力構成（日本語）:",
+      "1. 今日のテーマ要約（1〜2行）",
+      `2. 注目${unit}候補 3〜5件（名前／分かる範囲でコード）`,
+      "3. 各候補: なぜ今か／注目度(高中低)／主なリスク",
+      "4. 買う前チェック（3〜5項目）",
+      "5. 見送り条件",
       "",
-      "Required structure:",
-      "1. Catchy title on the first line",
-      "2. Short intro",
-      "3. Multiple H2 sections",
-      "4. Practical beginner explanation with checklists",
-      "5. FAQ (3-5 items)",
-      "6. Caveats / risks",
-      "7. Next actions",
+      investmentBan,
+    ].join("\n");
+  }
+
+  if (mode === "fx_auto") {
+    if (isEnglish) {
+      return [
+        `You are an FX auto-trading rule/signal builder for "${proposal.title}".`,
+        `Purpose: ${summary.purpose}`,
+        "Audience: users who want automated trading rules, not news summaries.",
+        "",
+        commonBan,
+        "Output Japanese trading rules they can feed into an EA/bot or follow semi-automatically.",
+        "Do NOT connect to brokers or place live orders from this tool.",
+        "",
+        "Required structure:",
+        "1. Today's bias (buy/sell/wait) with reason",
+        "2. Entry conditions (checklist)",
+        "3. Stop-loss / take-profit rules",
+        "4. Position size thinking (risk %)",
+        "5. Invalidation / do-not-trade conditions",
+        "6. EA-style rule summary (if-then)",
+        "",
+        investmentBan,
+      ].join("\n");
+    }
+    return [
+      `あなたは「${proposal.title}」専用のFX自動売買ルール／シグナル生成アシスタントです。`,
+      `目的: ${summary.purpose}`,
+      "想定ユーザー: ニュース要約より、自動・半自動で売買判断したい人。",
       "",
-      "Length: follow the requested character count (default about 3000 Japanese characters).",
-      "Rules:",
-      "- No filler openings",
-      "- Use searchable phrases naturally",
-      "- Prefer concrete steps over vague advice",
-      "- If latest market numbers are uncertain, say so instead of inventing live prices",
-      investmentNote,
-    ].filter(Boolean).join("\n");
+      commonBan,
+      "EAや自動売買に落とし込めるルール／シグナルを日本語で出す。このツール自体はブローカー接続・実注文をしない。",
+      "",
+      "必須構成:",
+      "1. 今日の方針（買い／売り／見送り）と理由",
+      "2. エントリー条件（チェックリスト）",
+      "3. 損切り／利確ルール",
+      "4. ロット（リスク％）の考え方",
+      "5. 無効化条件（トレードしない条件）",
+      "6. EA向け if-then ルール要約",
+      "",
+      investmentBan,
+    ].join("\n");
+  }
+
+  if (mode === "news_digest") {
+    return [
+      `あなたは「${proposal.title}」専用の注目ニュース自動整理アシスタントです。`,
+      `目的: ${summary.purpose}`,
+      "",
+      commonBan,
+      "分野テーマだけから、今押さえるべきトピックを半自動で出す。",
+      "",
+      "必須構成:",
+      "1. 今日の注目トップ3",
+      "2. 各トピックの要点となぜ今か",
+      "3. 初心者が次にやること",
+      "4. 深掘り不要なノイズ",
+    ].join("\n");
+  }
+
+  if (mode === "content_auto") {
+    return [
+      `あなたは「${proposal.title}」専用のコンテンツ半自動作成アシスタントです。`,
+      `目的: ${summary.purpose}`,
+      `想定読者: ${summary.user}`,
+      "",
+      commonBan,
+      "テーマ選択だけで公開・投稿できる下書きを作る。SEO記事なら約3000字、SNSならすぐ使える文面。",
+      "",
+      "必須:",
+      "1. すぐ使えるタイトル／見出し",
+      "2. 本文または投稿文",
+      "3. 使い方（どこに貼るか）",
+      "4. 注意点",
+    ].join("\n");
   }
 
   return [
-    `あなたは「${proposal.title}」専用のSEO記事ライターです。`,
+    `あなたは「${proposal.title}」専用の半自動アシスタントです。`,
     `目的: ${summary.purpose}`,
-    `想定読者: ${summary.user}`,
-    `出したい結果: ${summary.result}`,
     `カテゴリ: ${category.name}`,
     "",
-    "ユーザーは「何系か」や短いテーマだけを入れます。ニュースURLや長文のコピペは絶対に要求しないでください。",
-    "検索で参照できる公開情報があれば最新動向を踏まえ、なくても一般知識で公開できるレベルのSEO向けまとめ記事を日本語で完成させてください。",
-    "",
-    "タイトル例（このトーンで1行目を書く）:",
-    "ビットコインはいつ買えばよいのかまとめてみた",
-    "初心者向けNISAの始め方をわかりやすくまとめてみた",
+    commonBan,
+    "面倒な調べもの・下書き・整理を自動化し、ユーザーは結果を確認して使うだけにする。",
     "",
     "必須構成:",
-    "1. 1行目にクリックしたくなるタイトル（「〜まとめてみた」「〜とは？わかりやすく解説」など）",
-    "2. 導入（今これを知る意味）",
-    "3. 目次になるH2見出しを複数",
-    "4. 初心者でも分かる本文（具体例・チェックリスト・判断ポイント）",
-    "5. よくある質問（3〜5個）",
-    "6. 注意点・リスク",
-    "7. 次にやること",
-    "",
-    "文字数: 指定の目安に合わせる（指定がなければ約3000字）。短すぎる要約で終わらせない。",
-    "SEOルール:",
-    "- テーマ語を見出しと冒頭に自然に入れる",
-    "- 無駄な前置きや「了解しました」は禁止",
-    "- 抽象論だけで埋めない。手順や判断ポイントを書く",
-    "- 最新の正確な価格・日付が不明なら、断定せず「公開時点で要確認」と書く",
-    "- 売買推奨・利益保証はしない",
-    investmentNote,
+    "1. 結論（すぐ使える結果）",
+    "2. 理由または根拠",
+    "3. 次の行動チェック",
+    "4. 注意点",
+    category.isInvestment ? investmentBan : "",
   ].filter(Boolean).join("\n");
 }
 
@@ -3537,8 +3783,8 @@ ${keyNote}
 
 1. index.html をブラウザで開く
 2. APIキーが未入力なら画面で入れる（設定済みなら自動入力）
-3. ジャンルボタンを1つ押す（ニュースURLのコピペは不要）
-4. 「記事を作成する」を押す
+3. テーマボタンを1つ押す（ニュースURLのコピペは不要）
+4. 実行ボタンを押す（選定／シグナル／半自動実行）
 
 --- .env ---
 ${files.envContent}
