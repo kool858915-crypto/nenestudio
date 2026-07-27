@@ -36,6 +36,18 @@ textarea {
 
 button {
   cursor: pointer;
+  touch-action: manipulation;
+}
+
+.primary,
+.secondary,
+.primary-action,
+.choice,
+.export-card,
+.pill {
+  cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
 }
 
 .app-shell {
