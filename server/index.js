@@ -337,7 +337,7 @@ app.post("/api/billing/create-checkout-session", requireAuth, async (request, re
 });
 
 app.post("/api/ai/generate", requireAuth, async (request, response) => {
-  const { systemPrompt, input, userApiKey, provider } = request.body || {};
+  const { systemPrompt, input, userApiKey, provider, requireSearch } = request.body || {};
   if (!input) {
     return response.status(400).json({ error: "入力本文が必要です。" });
   }
@@ -345,6 +345,7 @@ app.post("/api/ai/generate", requireAuth, async (request, response) => {
   const user = normalizeAiUsage(request.user);
   const aiLimit = getAiLimitForUser(user);
   const ownKey = String(userApiKey || "").trim();
+  const wantSearch = Boolean(requireSearch);
 
   if (ownKey) {
     try {
@@ -353,6 +354,7 @@ app.post("/api/ai/generate", requireAuth, async (request, response) => {
         apiKey: ownKey,
         systemPrompt,
         input,
+        requireSearch: wantSearch,
       });
       return response.json({ text, source: "user_api_key" });
     } catch (error) {
@@ -554,24 +556,35 @@ function normalizeAiUsage(user) {
   return user;
 }
 
-async function runExternalAi({ provider, apiKey, systemPrompt, input }) {
+async function runExternalAi({ provider, apiKey, systemPrompt, input, requireSearch = false }) {
   if (provider === "gemini") {
-    const model = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+    const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const body = {
+      systemInstruction: { parts: [{ text: systemPrompt || "入力内容を整理してください。" }] },
+      contents: [{ role: "user", parts: [{ text: input }] }],
+      generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
+    };
+    if (requireSearch) {
+      body.tools = [{ google_search: {} }];
+    }
     const apiResponse = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: `${systemPrompt || "入力内容を整理してください。"}\n\n${input}` }],
-        }],
-      }),
+      body: JSON.stringify(body),
     });
     const data = await apiResponse.json();
     if (!apiResponse.ok) {
       throw new Error(data.error?.message || "Gemini APIの実行に失敗しました。");
     }
-    return data.candidates?.[0]?.content?.parts?.map((part) => part.text).join("") || "";
+    const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text).join("") || "";
+    const sources = (data.candidates?.[0]?.groundingMetadata?.groundingChunks || [])
+      .map((chunk) => ({ title: chunk.web?.title || "", uri: chunk.web?.uri || "" }))
+      .filter((item) => item.title || item.uri);
+    if (requireSearch && !sources.length && !/情報源|出典|発表日|http/i.test(text)) {
+      throw new Error("最新ニュースを取得できなかったため、選定を中止しました。");
+    }
+    return text;
   }
 
   const apiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -581,7 +594,7 @@ async function runExternalAi({ provider, apiKey, systemPrompt, input }) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
       messages: [
         { role: "system", content: systemPrompt || "入力内容を整理してください。" },
         { role: "user", content: input },

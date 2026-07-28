@@ -510,7 +510,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
             <div class="info-grid">
               <article>
                 <h3>実行ボタンを押しても動かない</h3>
-                <p>APIキー未設定のことが多いです。ツール画面のキー欄に入れるか、「設定」で保存してから作り直してください。Gemini推奨です。</p>
+                <p>ボタンは押せていても、APIキー未入力だと「選定中」に進みません。成果物ファイルにはキーを埋め込まないため、起動画面でキーを入れるか、NENE Studioの「作成したツールを起動する」を使ってください。Gemini推奨です。</p>
               </article>
               <article>
                 <h3>何を入力すればいいか分からない</h3>
@@ -941,7 +941,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
                 </select>
               </label>
               <label>APIキー<input id="user-api-key" type="password" autocomplete="off" placeholder="設定するとこの端末に保存されます" /></label>
-              <p class="plan-note">取得手順は左メニュー <strong>「APIキー設定」</strong>。キーはこの端末のブラウザ（sessionStorage＝タブを閉じるまで保持）に保存します。ZIP／フォルダ出力時は <code>.env</code> と <code>config.js</code> にも書き込みます（共有ZIPには入れないでください）。</p>
+              <p class="plan-note">取得手順は左メニュー <strong>「APIキー設定」</strong>。キーはこの端末のブラウザ（sessionStorage＝タブを閉じるまで保持）に保存します。<strong>ZIP／HTML成果物にはAPIキーを書き込みません</strong>（画面入力、または「作成したツールを起動する」での一時受け渡しのみ）。共有ファイルのソースからキーが漏れることはありません。</p>
             </div>
 
             <div class="plan-panel">
