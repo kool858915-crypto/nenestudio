@@ -191,7 +191,7 @@ const screenCopy = {
   proposal: ["提案を選びます", "次へ進む"],
   nodes: ["作業の部品を組みます", "次へ進む"],
   blueprint: ["作成内容を確認します", "次へ進む"],
-  export: ["ツールを作成します", "ツールを作成する"],
+  export: ["成果物を完成させる", "Webに公開する"],
   usage: ["使い方ガイド", "作る画面へ進む"],
   implement: ["無料で実装する", "作る画面へ戻る"],
   plans: ["プラン一覧", "作る画面へ戻る"],
@@ -210,7 +210,7 @@ const screenCopyEn = {
   proposal: ["Choose a proposal", "Next"],
   nodes: ["Build the workflow parts", "Next"],
   blueprint: ["Review the tool content", "Next"],
-  export: ["Create the tool", "Create Tool"],
+  export: ["Finish the deliverable", "Publish to Web"],
   usage: ["How-to Guide", "Go to Build"],
   implement: ["Build Free with External AI", "Back to Build"],
   plans: ["Plans", "Back to Build"],
@@ -227,18 +227,26 @@ const uiText = {
   ja: {
     nav: { create: "作る", login: "ログイン", usage: "使い方", implement: "無料で実装", plans: "プラン", apikey: "APIキー設定", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", contact: "お問い合わせ", settings: "設定" },
     brand: "AIツール作成",
-    launch: "起動ボタン",
-    exportTitle: "ツール出力内容",
+    launch: "プレビューする",
+    exportTitle: "成果物を完成させる",
     saveCreated: "作成したツールを保存する",
     save: "保存する",
+    preview: "プレビューする",
+    test: "動作テストする",
+    zip: "ZIPをダウンロード",
+    publish: "Webに公開する",
   },
   en: {
     nav: { create: "Build", login: "Login", usage: "How to Use", implement: "Build Free", plans: "Plans", apikey: "API Key", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", contact: "Contact", settings: "Settings" },
     brand: "AI Tool Builder",
-    launch: "Launch Button",
-    exportTitle: "Tool Output",
+    launch: "Preview",
+    exportTitle: "Finish the deliverable",
     saveCreated: "Save created tool",
     save: "Save",
+    preview: "Preview",
+    test: "Run action test",
+    zip: "Download ZIP",
+    publish: "Publish to Web",
   },
 };
 
@@ -1054,7 +1062,9 @@ const state = {
   selectedProposalIndex: 0,
   proposalOffset: 0,
   nodes: [],
-  exportFormat: "html",
+  exportFormat: "zip",
+  lastTestReport: "",
+  lastPublish: null,
   createdOutput: null,
   savedBlueprints: [],
   savedAgents: [],
@@ -1440,8 +1450,12 @@ function bindEvents() {
   $("#go-blueprint").addEventListener("click", () => activateScreen("blueprint"));
   $("#agent-add-tool").addEventListener("click", addNode);
   $("#agent-refresh").addEventListener("click", refreshCombination);
-  $("#copy-export").addEventListener("click", copyExport);
-  $("#launch-created-tool").addEventListener("click", launchCreatedTool);
+  $("#copy-export")?.addEventListener("click", copyExport);
+  $("#launch-created-tool")?.addEventListener("click", () => previewCreatedTool());
+  $("#preview-tool")?.addEventListener("click", () => previewCreatedTool());
+  $("#test-tool")?.addEventListener("click", () => runCreatedToolActionTest());
+  $("#download-zip-tool")?.addEventListener("click", () => downloadCreatedToolZip());
+  $("#publish-tool")?.addEventListener("click", () => publishCreatedTool());
   $("#save-created-tool").addEventListener("click", saveCreatedTool);
   $("#create-agent").addEventListener("click", createAgent);
   $("#save-agent").addEventListener("click", saveAgent);
@@ -1586,10 +1600,20 @@ function renderLanguage() {
   $$(".nav-item").forEach((item) => {
     item.textContent = text.nav[item.dataset.screen] || item.textContent;
   });
-  $("#launch-created-tool").textContent = text.launch;
+  const launchBtn = $("#launch-created-tool");
+  if (launchBtn) launchBtn.textContent = text.launch;
   $("#save-created-label").textContent = text.saveCreated;
   $("#save-created-tool").textContent = text.save;
-  $("#export .folder-panel h2").textContent = text.exportTitle;
+  const exportHeading = $("#export-heading") || $("#export .folder-panel h2");
+  if (exportHeading) exportHeading.textContent = text.exportTitle;
+  const previewBtn = $("#preview-tool");
+  if (previewBtn) previewBtn.textContent = text.preview || "プレビューする";
+  const testBtn = $("#test-tool");
+  if (testBtn) testBtn.textContent = text.test || "動作テストする";
+  const zipBtn = $("#download-zip-tool");
+  if (zipBtn) zipBtn.textContent = text.zip || "ZIPをダウンロード";
+  const publishBtn = $("#publish-tool");
+  if (publishBtn) publishBtn.textContent = text.publish || "Webに公開する";
 }
 
 function renderStaticLanguage() {
@@ -2649,15 +2673,18 @@ function renderExport() {
     card.classList.toggle("active", card.dataset.exportFormat === state.exportFormat);
   });
 
-  // プレビュー画面には生のAPIキーを表示しない（成果物にもキーは埋め込まない）
-  try {
-    exportPreview.textContent = getExportText(state.exportFormat);
-  } catch (error) {
-    console.error(error);
-    exportPreview.textContent = `プレビュー生成エラー: ${error.message || error}`;
+  // 上級者向けプレビュー（隠れていても更新）
+  if (exportPreview) {
+    try {
+      exportPreview.textContent = getExportText(state.exportFormat);
+    } catch (error) {
+      console.error(error);
+      exportPreview.textContent = `プレビュー生成エラー: ${error.message || error}`;
+    }
   }
   renderApiFormatNotice();
-  exportStatus.textContent = state.status;
+  if (exportStatus) exportStatus.textContent = state.status;
+  renderExportStatusOnly();
 }
 
 function renderApiFormatNotice() {
@@ -2900,14 +2927,20 @@ function getModeToolLabelOverrides(mode, isEnglish) {
   };
 }
 
-function buildRunnableToolFiles() {
+function getStudioApiBase() {
+  return String(window.NENE_CONFIG?.apiBase || "/api").replace(/\/$/, "");
+}
+
+function buildRunnableToolFiles(options = {}) {
+  const forPublish = Boolean(options.forPublish);
+  const forceDemo = options.forceDemo !== false; // 既定はお試し（ダミー）で安全に動かす
   const proposal = getSelectedProposal();
   const summary = getSummary();
   const category = getSelectedCategory();
   const prompt = buildRunnablePrompt();
   const isEnglish = state.language === "en";
   const provider = state.settings.userApiProvider || "gemini";
-  // セキュリティ: 成果物ファイルに APIキーを絶対に埋め込まない（画面入力 or 起動時の一時受け渡しのみ）
+  // セキュリティ: 成果物ファイルに APIキーを絶対に埋め込まない
   const hasApiKey = false;
   const geminiModel = DEFAULT_GEMINI_MODEL;
   const providerLabel = provider === "openai" ? "OpenAI" : "Google Gemini";
@@ -2920,8 +2953,8 @@ function buildRunnableToolFiles() {
   const toolLabels = isEnglish
     ? {
         usage: "How to use",
-        open: "Open the HTML file in your browser (double-click is fine). On iPhone, open it from the Files app in Safari.",
-        api: `Enter your ${providerLabel} API key on the tool screen each time. Keys are never written into the downloaded file.`,
+        open: "Open the published URL on your phone, or preview inside NENE Studio.",
+        api: "Live AI runs only through NENE Studio server. Downloaded files use demo mode (no API key in the file).",
         paste: "Tap one genre chip, then press Create article. No news URL paste.",
         generate: "Create article",
         copy: "Copy result",
@@ -2979,16 +3012,16 @@ function buildRunnableToolFiles() {
     : {
         usage: "使い方",
         open: "HTMLファイルをブラウザで開きます（ダブルクリックでOK）。iPhoneはファイルアプリからSafariで開いてください。",
-        api: `${providerLabel} の APIキーを画面に毎回入力してください。ダウンロードしたファイルにはキーを書き込みません。`,
+        api: "本番AIはNENE Studioサーバー経由のみです。ダウンロード単体はお試し（ダミー）で動きます。公開URLならサーバー登録キーで実行します。",
         paste: "ジャンルボタンを1つ押して「記事を作成する」。ニュースURLのコピペは不要です。",
         generate: "記事を作成する",
         copy: "結果をコピー",
         copied: "コピーしました。",
         result: "SEO向けの記事が表示されます。",
         requirements: "必要なもの",
-        apiKey: `${providerLabel} APIキー`,
-        apiTitle: "APIキー（この画面のみ・ファイルには保存しません）",
-        apiReadyTitle: "APIキー",
+        apiKey: "実行モード",
+        apiTitle: "実行モード",
+        apiReadyTitle: "実行モード",
         inputTitle: "1. 何系かを選ぶ",
         workflowTitle: "このツールができること",
         genre: "ジャンル / 何系",
@@ -3002,11 +3035,11 @@ function buildRunnableToolFiles() {
         length3000: "約3000字（おすすめ）",
         length5000: "約5000字",
         outputTitle: "SEO記事",
-        statusNoKey: "APIキーが未入力です。上のAPIキー欄に貼ってから、もう一度ボタンを押してください。「作成中／選定中」はキー入力後に表示されます。",
+        statusNoKey: "本番実行には公開URLが必要です。まずはお試しモードで操作を確認してください。",
         statusNoInput: "先にジャンルボタンを押してください。",
-        needKeyTitle: "APIキーが必要です",
-        needKeyButton: "APIキーを入れて再実行",
-        needKeyHelp: "手順: 1) 画面上部のAPIキー欄に Gemini キーを貼る 2) もう一度ボタンを押す →「作成中...」になります。キーはこの画面のメモリ上だけを使い、ファイルやブラウザ保存には残しません。",
+        needKeyTitle: "公開が必要です",
+        needKeyButton: "お試しで再実行",
+        needKeyHelp: "ダウンロード単体ではお試し（ダミー）のみ動きます。本番はNENE Studioで「Webに公開する」を押してください。",
         accepted: "受け付けました...",
         generating: "最新情報を確認しながら記事を作成中です...",
         generatingButton: "作成中...",
@@ -3014,20 +3047,23 @@ function buildRunnableToolFiles() {
         complete: "記事ができました。",
         empty: "結果が空でした。",
         error: "エラー: ",
-        note: "ジャンルを押す →「記事を作成する」だけ。Geminiが公開情報を参照します。URLコピペ不要。APIキーはファイルに埋め込みません。",
+        note: "テーマを押す → 実行。ダウンロード単体はお試し。本番は公開URL（サーバー経由）のみ。ブラウザからGemini/OpenAIへ直接はつなぎません。",
         provider: "プロバイダー",
-        saveKey: "このブラウザにキーを覚える（非推奨・無効）",
-        warning: "APIキーは成果物ファイルに書き込みません。他人に渡してもソースからキーは読めません。キー自体の管理は自己責任です。",
-        keyReady: "APIキーを受け取りました（このタブの間だけ有効）。",
+        saveKey: "無効",
+        warning: "APIキーはHTML/ZIPに書き込みません。本番キーは公開時のみサーバーへ登録します。",
+        keyReady: "公開設定を読み込みました。",
         probe: "接続テスト",
-        probeOk: "Gemini接続：正常",
-        probeSearchOk: "検索機能：利用可能",
-        probeSearchNg: "検索機能：利用不可（選定を中止します）",
+        probeOk: "実行経路：正常",
+        probeSearchOk: "検索機能：公開URLで利用",
+        probeSearchNg: "検索機能：お試しでは未使用",
         probeFail: "接続テスト失敗",
         searchFailed: "最新ニュースを取得できなかったため、銘柄選定を中止しました。時間を置いて再実行してください。",
         openaiNoSearch: "ニュース根拠が必要なツールでは OpenAI は使えません。Gemini を選んでください。",
         sourcesTitle: "参照した情報源",
         selectedTheme: "選択テーマ：",
+        demoMode: "お試し（ダミー）",
+        liveMode: "本番（公開URL）",
+        demoBadge: "【お試しモード】",
         promptGenre: "ジャンル/何系:",
         promptTopic: "テーマ:",
         promptAngle: "切り口/キーワード:",
@@ -3189,12 +3225,16 @@ function buildRunnableToolFiles() {
   ].join("\n");
 
   const configJs = [
-    "// ブラウザ用設定。セキュリティのため apiKey は常に空です。",
+    "// ブラウザ用設定。セキュリティのため apiKey は常に空。本番はサーバー代理のみ。",
     "window.TOOL_CONFIG = {",
     `  provider: ${JSON.stringify(provider)},`,
     "  apiKey: \"\",",
     `  geminiModel: ${JSON.stringify(geminiModel)},`,
     `  requireNewsSearch: ${JSON.stringify(requiresNewsGrounding(toolMode))},`,
+    `  requireProxy: true,`,
+    `  demoMode: ${JSON.stringify(forPublish ? false : forceDemo)},`,
+    `  publishSlug: ${JSON.stringify(forPublish ? "__NENE_SLUG__" : "")},`,
+    `  apiBase: ${JSON.stringify(forPublish ? "__NENE_API_BASE__" : getStudioApiBase())},`,
     `  title: ${JSON.stringify(proposal.title)},`,
     `  category: ${JSON.stringify(category.name)},`,
     `  purpose: ${JSON.stringify(state.answers.purpose || "")},`,
@@ -3213,13 +3253,14 @@ function buildRunnableToolFiles() {
     .join("\n");
 
   const apiPanelInner = [
-    `      <label>${toolLabels.provider}`,
-    '        <select id="provider">',
-    `          <option value="gemini"${provider === "gemini" ? " selected" : ""}>Google Gemini</option>`,
-    `          <option value="openai"${provider === "openai" ? " selected" : ""}>OpenAI</option>`,
+    `      <label>${toolLabels.apiKey || "実行モード"}`,
+    '        <select id="run-mode">',
+    `          <option value="demo" selected>${toolLabels.demoMode || "お試し（ダミー）"}</option>`,
+    `          <option value="live">${toolLabels.liveMode || "本番（公開URL）"}</option>`,
     "        </select>",
     "      </label>",
-    `      <label>${toolLabels.apiKey}<input id="api-key" type="password" autocomplete="off" placeholder="APIキー（このタブのみ）" /></label>`,
+    '      <input id="provider" type="hidden" value="gemini" />',
+    '      <input id="api-key" type="hidden" value="" />',
     `      <p class="note">${escapeHtml(toolLabels.api)}</p>`,
     `      <button id="probe-button" type="button" class="secondary" onclick="window.__neneProbe&&window.__neneProbe()">${toolLabels.probe}</button>`,
     '      <pre id="probe-result" class="workflow" hidden></pre>',
@@ -3475,7 +3516,7 @@ function buildRunnableToolFiles() {
     "let memoryApiKey = '';",
     "let memoryProvider = '';",
     "let selectedGenre = config.defaultGenre || '';",
-    "let providerSelect, apiKeyInput, topicInput, angleInput, lengthSelect, generateButton, statusText, resultBox, chipRow, bootTip, loadingBox, loadingTitle, loadingDetail, selectedThemeEl, probeButton, probeResult;",
+    "let providerSelect, apiKeyInput, runModeSelect, topicInput, angleInput, lengthSelect, generateButton, statusText, resultBox, chipRow, bootTip, loadingBox, loadingTitle, loadingDetail, selectedThemeEl, probeButton, probeResult;",
     "let loadingTimer = null;",
     "let loadingStartedAt = 0;",
     "let defaultGenerateLabel = '';",
@@ -3494,6 +3535,7 @@ function buildRunnableToolFiles() {
     "function bindElements() {",
     "  providerSelect = qs('#provider');",
     "  apiKeyInput = qs('#api-key');",
+    "  runModeSelect = qs('#run-mode');",
     "  topicInput = qs('#tool-topic');",
     "  angleInput = qs('#tool-angle');",
     "  lengthSelect = qs('#tool-length');",
@@ -3509,6 +3551,10 @@ function buildRunnableToolFiles() {
     "  probeButton = qs('#probe-button');",
     "  probeResult = qs('#probe-result');",
     "  defaultGenerateLabel = (generateButton && generateButton.textContent) || (LABELS.generate || '');",
+    "  if (runModeSelect) {",
+    "    const wantDemo = config.demoMode !== false && !config.publishSlug;",
+    "    runModeSelect.value = wantDemo ? 'demo' : 'live';",
+    "  }",
     "}",
     "",
     "function setStatus(message, kind) {",
@@ -3594,18 +3640,7 @@ function buildRunnableToolFiles() {
     "    const first = selectedGenre || (config.topicPresets || [])[0] || '';",
     "    selectGenre(first, { fillTopic: true });",
     "    if (bootTip) bootTip.hidden = true;",
-    "    const readyKey = !!currentApiKey();",
-    "    if (readyKey) {",
-    "      setStatus('準備完了。テーマを選んでボタンを押してください。', '');",
-    "    } else {",
-    "      setStatus(LABELS.statusNoKey || '先にAPIキーを入力してください。', 'is-error');",
-    "      if (loadingBox) {",
-    "        loadingBox.hidden = false;",
-    "        loadingBox.classList.add('is-error');",
-    "        if (loadingTitle) loadingTitle.textContent = LABELS.needKeyTitle || 'APIキーが必要です';",
-    "        if (loadingDetail) loadingDetail.textContent = LABELS.needKeyHelp || LABELS.statusNoKey || '';",
-    "      }",
-    "    }",
+    "    setStatus('準備完了。テーマを選んでボタンを押してください（既定はお試し）。', '');",
     "  } catch (error) {",
     "    const message = '初期化エラー: ' + (error && error.message ? error.message : error);",
     "    if (statusText) setStatus(message, 'is-error');",
@@ -3714,13 +3749,83 @@ function buildRunnableToolFiles() {
     "}",
     "",
     "function currentProvider() { return (providerSelect && providerSelect.value) || memoryProvider || config.provider || 'gemini'; }",
-    "function currentApiKey() { return ((apiKeyInput && apiKeyInput.value) || memoryApiKey || '').trim(); }",
+    "function currentApiKey() { return ''; }",
     `function currentGeminiModel() { return config.geminiModel || ${JSON.stringify(geminiModel)}; }`,
+    "function isDemoMode() {",
+    "  if (runModeSelect && runModeSelect.value === 'live') return false;",
+    "  if (runModeSelect && runModeSelect.value === 'demo') return true;",
+    "  if (config.publishSlug && String(config.publishSlug).indexOf('__NENE_') === -1) return false;",
+    "  return config.demoMode !== false;",
+    "}",
     "",
     "function persistKeyIfNeeded() { /* intentionally no-op: never persist API keys */ }",
     "",
     "function nowStamp() {",
     "  try { return new Date().toLocaleString('ja-JP'); } catch (e) { return new Date().toISOString(); }",
+    "}",
+    "",
+    "function buildLocalDemoResult(topic) {",
+    "  const mode = config.toolMode || 'task_auto';",
+    "  const title = config.title || 'デモ';",
+    "  const theme = topic || selectedGenre || 'テーマ';",
+    "  if (mode === 'stock_picker' || mode === 'crypto_picker') {",
+    "    const unit = mode === 'stock_picker' ? '銘柄' : 'コイン';",
+    "    return [",
+    "      (LABELS.demoBadge || '【お試しモード】') + title,",
+    "      '※ダミーデータです。APIは呼び出していません。',",
+    "      '',",
+    "      '選択テーマ: ' + theme,",
+    "      '',",
+    "      '1. 今日のテーマ要約',",
+    "      'デモ用の注目テーマを表示しています。',",
+    "      '',",
+    "      '2. 注目' + unit + 'リスト',",
+    "      '【1】サンプル株式会社（9999）',",
+    "      '選定理由: お試し表示用のダミーです。',",
+    "      '関連ニュース: デモ発表（実在しません）',",
+    "      '発表日: 2026-07-01',",
+    "      '情報源: デモデータ',",
+    "      '注目度: 中',",
+    "      '主なリスク: 実データではないため投資判断に使わない',",
+    "      '',",
+    "      '3. 買う前チェック',",
+    "      '- 本番公開後に実データで再確認する',",
+    "      '',",
+    "      '4. 見送り条件',",
+    "      '- お試し結果だけで売買しない',",
+    "      '',",
+    "      '確認日時: ' + nowStamp(),",
+    "    ].join('\\n');",
+    "  }",
+    "  return [",
+    "    (LABELS.demoBadge || '【お試しモード】') + title,",
+    "    '※ダミー結果です。APIは呼び出していません。',",
+    "    'テーマ: ' + theme,",
+    "    '',",
+    "    '結論: プレビュー用のサンプル出力',",
+    "    '次の行動: NENE Studioで「Webに公開する」と本番URLで確認',",
+    "    '確認日時: ' + nowStamp(),",
+    "  ].join('\\n');",
+    "}",
+    "",
+    "async function runViaPublishedProxy(userInput) {",
+    "  const slug = String(config.publishSlug || '').trim();",
+    "  const apiBase = String(config.apiBase || '').replace(/\\/$/, '');",
+    "  if (!slug || slug.indexOf('__NENE_') === 0 || !apiBase || apiBase.indexOf('__NENE_') === 0) {",
+    "    throw new Error(LABELS.needKeyHelp || '本番実行には公開URLが必要です。');",
+    "  }",
+    "  const response = await fetch(apiBase + '/public/tools/' + encodeURIComponent(slug) + '/run', {",
+    "    method: 'POST',",
+    "    headers: { 'Content-Type': 'application/json' },",
+    "    body: JSON.stringify({",
+    "      systemPrompt: SYSTEM_PROMPT,",
+    "      input: userInput,",
+    "      demo: false,",
+    "    }),",
+    "  });",
+    "  const data = await response.json().catch(function () { return {}; });",
+    "  if (!response.ok) throw new Error((data && data.error) || '公開ツールの実行に失敗しました。');",
+    "  return { text: data.text || '', sources: [] };",
     "}",
     "",
     "async function copyResult() {",
@@ -3739,25 +3844,15 @@ function buildRunnableToolFiles() {
     "  const topic = ((topicInput && topicInput.value) || expandTopic(selectedGenre) || selectedGenre || '').trim();",
     "  const angle = ((angleInput && angleInput.value) || '').trim();",
     "  const length = (lengthSelect && lengthSelect.value) || '3000';",
-    "  const apiKey = currentApiKey();",
-    "  const provider = currentProvider();",
-    "  if (!apiKey) { showGateError(LABELS.statusNoKey); return; }",
     "  if (!topic && !selectedGenre) {",
     "    if (generateButton) generateButton.textContent = defaultGenerateLabel;",
     "    setStatus(LABELS.statusNoInput, 'is-error');",
     "    return;",
     "  }",
-    "  if (config.requireNewsSearch && provider === 'openai') {",
-    "    if (generateButton) generateButton.textContent = defaultGenerateLabel;",
-    "    setStatus(LABELS.openaiNoSearch, 'is-error');",
-    "    if (resultBox) {",
-    "      resultBox.classList.add('is-error');",
-    "      resultBox.textContent = LABELS.openaiNoSearch;",
-    "    }",
+    "  if (!isDemoMode() && !(config.publishSlug && String(config.publishSlug).indexOf('__NENE_') === -1)) {",
+    "    showGateError(LABELS.statusNoKey || '本番には公開URLが必要です。');",
     "    return;",
     "  }",
-    "  if (apiKeyInput) apiKeyInput.classList.remove('needs-key');",
-    "  persistKeyIfNeeded();",
     "  setBusy(true);",
     "  if (resultBox) {",
     "    resultBox.classList.remove('is-error');",
@@ -3788,9 +3883,9 @@ function buildRunnableToolFiles() {
     "    config.toolMode ? ('toolMode: ' + config.toolMode) : '',",
     "  ]).filter(Boolean).join('\\n');",
     "  try {",
-    "    const result = provider === 'openai'",
-    "      ? { text: await callOpenAI(apiKey, SYSTEM_PROMPT, userInput), sources: [] }",
-    "      : await callGemini(apiKey, SYSTEM_PROMPT, userInput, !!config.requireNewsSearch);",
+    "    const result = isDemoMode()",
+    "      ? { text: buildLocalDemoResult(topic), sources: [] }",
+    "      : await runViaPublishedProxy(userInput);",
     "    let text = result.text || LABELS.empty;",
     "    if (result.sources && result.sources.length) {",
     "      text += '\\n\\n---\\n' + (LABELS.sourcesTitle || '参照した情報源') + '\\n' + result.sources.map(function (s, i) {",
@@ -3813,22 +3908,28 @@ function buildRunnableToolFiles() {
     "}",
     "",
     "async function runConnectionProbe() {",
-    "  const apiKey = currentApiKey();",
-    "  if (!apiKey) { showGateError(LABELS.statusNoKey); return; }",
-    "  if (currentProvider() !== 'gemini') {",
-    "    setStatus(LABELS.openaiNoSearch, 'is-error');",
-    "    return;",
-    "  }",
     "  probeButton.disabled = true;",
     "  setStatus('接続テスト中...', 'is-busy');",
     "  try {",
-    "    await callGeminiRequest(apiKey, 'Reply with OK only.', '接続テスト。OKとだけ返してください。直近の公開ニュースがあるかも確認してください。', true);",
-    "    const lines = [",
-    "      LABELS.probeOk || 'Gemini接続：正常',",
-    "      LABELS.probeSearchOk || '検索機能：利用可能',",
-    "      'モデル：' + currentGeminiModel(),",
-    "      '確認日時：' + nowStamp(),",
-    "    ];",
+    "    const lines = isDemoMode()",
+    "      ? [",
+    "          LABELS.probeOk || '実行経路：正常',",
+    "          LABELS.probeSearchNg || '検索機能：お試しでは未使用',",
+    "          'モード：お試し（ダミー）',",
+    "          '確認日時：' + nowStamp(),",
+    "        ]",
+    "      : [",
+    "          LABELS.probeOk || '実行経路：正常',",
+    "          LABELS.probeSearchOk || '検索機能：公開URLで利用',",
+    "          'モード：本番（サーバー代理）',",
+    "          'slug：' + (config.publishSlug || ''),",
+    "          '確認日時：' + nowStamp(),",
+    "        ];",
+    "    if (!isDemoMode()) {",
+    "      await runViaPublishedProxy('接続テスト。短くOKと返してください。');",
+    "    } else {",
+    "      buildLocalDemoResult(selectedGenre || 'demo');",
+    "    }",
     "    if (probeResult) {",
     "      probeResult.hidden = false;",
     "      probeResult.textContent = lines.join('\\n');",
@@ -3838,7 +3939,6 @@ function buildRunnableToolFiles() {
     "    const lines = [",
     "      LABELS.probeFail || '接続テスト失敗',",
     "      String(error.message || error),",
-    "      'モデル：' + currentGeminiModel(),",
     "      '確認日時：' + nowStamp(),",
     "    ];",
     "    if (probeResult) {",
@@ -3851,77 +3951,7 @@ function buildRunnableToolFiles() {
     "  }",
     "}",
     "",
-    "function extractGeminiText(data) {",
-    "  const parts = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) || [];",
-    "  return parts.map(function (part) { return part.text || ''; }).join('');",
-    "}",
-    "",
-    "function extractGeminiSources(data) {",
-    "  const chunks = (((data.candidates || [])[0] || {}).groundingMetadata || {}).groundingChunks || [];",
-    "  const sources = [];",
-    "  chunks.forEach(function (chunk) {",
-    "    const web = chunk.web || {};",
-    "    if (!web.uri && !web.title) return;",
-    "    sources.push({ title: web.title || '', uri: web.uri || '' });",
-    "  });",
-    "  return sources;",
-    "}",
-    "",
-    "async function callGemini(apiKey, systemPrompt, input, requireSearch) {",
-    "  try {",
-    "    return await callGeminiRequest(apiKey, systemPrompt, input, true);",
-    "  } catch (error) {",
-    "    if (requireSearch) {",
-    "      throw new Error(LABELS.searchFailed || '最新ニュースを取得できなかったため、選定を中止しました。');",
-    "    }",
-    "    return callGeminiRequest(apiKey, systemPrompt, input, false);",
-    "  }",
-    "}",
-    "",
-    "async function callGeminiRequest(apiKey, systemPrompt, input, withSearch) {",
-    "  const model = currentGeminiModel();",
-    "  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + encodeURIComponent(apiKey);",
-    "  const body = {",
-    "    systemInstruction: { parts: [{ text: systemPrompt }] },",
-    "    contents: [{ role: 'user', parts: [{ text: input }] }],",
-    "    generationConfig: { temperature: 0.75, maxOutputTokens: 8192 },",
-    "  };",
-    "  if (withSearch) body.tools = [{ google_search: {} }];",
-    "  const response = await fetch(url, {",
-    "    method: 'POST',",
-    "    headers: { 'Content-Type': 'application/json' },",
-    "    body: JSON.stringify(body),",
-    "  });",
-    "  const data = await response.json().catch(function () { return {}; });",
-    "  if (!response.ok) throw new Error((data.error && data.error.message) || 'Gemini APIの実行に失敗しました。');",
-    "  const text = extractGeminiText(data);",
-    "  if (!text) throw new Error('結果が空でした。もう一度お試しください。');",
-    "  const sources = extractGeminiSources(data);",
-    "  if (withSearch && config.requireNewsSearch && (!sources || !sources.length)) {",
-    "    if (!/情報源|出典|発表日|http/i.test(text)) {",
-    "      throw new Error(LABELS.searchFailed || '最新ニュースを取得できなかったため、選定を中止しました。');",
-    "    }",
-    "  }",
-    "  return { text: text, sources: sources };",
-    "}",
-    "",
-    "async function callOpenAI(apiKey, systemPrompt, input) {",
-    "  const response = await fetch('https://api.openai.com/v1/chat/completions', {",
-    "    method: 'POST',",
-    "    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },",
-    "    body: JSON.stringify({",
-    "      model: 'gpt-4o-mini',",
-    "      messages: [",
-    "        { role: 'system', content: systemPrompt },",
-    "        { role: 'user', content: input },",
-    "      ],",
-    "      temperature: 0.75,",
-    "    }),",
-    "  });",
-    "  const data = await response.json().catch(function () { return {}; });",
-    "  if (!response.ok) throw new Error((data.error && data.error.message) || 'OpenAI APIの実行に失敗しました。ブラウザ制限の場合は Gemini を試してください。');",
-    "  return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';",
-    "}",
+    "// ブラウザから Gemini/OpenAI への直接通信は禁止。お試しはローカル、本番は runViaPublishedProxy のみ。",
     "",
     "window.__neneSelectTopic = function (button) {",
     "  if (!button) return;",
@@ -4460,27 +4490,194 @@ async function saveCreatedTool() {
 }
 
 function launchCreatedTool() {
+  previewCreatedTool();
+}
+
+function previewCreatedTool() {
   saveUserApiKey();
-  const files = buildRunnableToolFiles();
-  const html = files.indexHtml;
-  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  // noopener だと postMessage できないため、キーの一時受け渡し用に opener を残す
-  const win = window.open(url, "_blank");
-  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
-  const provider = state.settings.userApiProvider || readSessionApiProvider() || "gemini";
-  if (win && key) {
-    const payload = { type: "nene-tool-credentials", apiKey: key, provider };
-    const send = () => {
-      try { win.postMessage(payload, "*"); } catch {}
-    };
-    setTimeout(send, 200);
-    setTimeout(send, 800);
-    setTimeout(send, 1600);
+  const files = buildRunnableToolFiles({ forceDemo: true, forPublish: false });
+  const dialog = $("#tool-preview-dialog");
+  const frame = $("#tool-preview-frame");
+  if (dialog && frame && typeof dialog.showModal === "function") {
+    frame.srcdoc = files.indexHtml;
+    dialog.showModal();
+    state.status = "プレビューを開きました（お試し＝ダミーデータ。APIキー不要）。";
+  } else {
+    const blob = new Blob([files.indexHtml], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    state.status = "プレビューを別タブで開きました（お試しモード）。";
   }
-  state.status = key
-    ? "ツールを起動しました。APIキーはファイルに書き込まず、このタブへ一時受け渡ししました。"
-    : "ツールを起動しました。設定にキーがないため、起動先画面でキーを入力してください。";
+  renderExportStatusOnly();
+}
+
+function renderExportStatusOnly() {
+  const exportStatus = $("#export-status");
+  if (exportStatus) exportStatus.textContent = state.status;
+  const report = $("#export-test-report");
+  if (report && state.lastTestReport) report.textContent = state.lastTestReport;
+  const publishUrl = $("#publish-url");
+  const publishQr = $("#publish-qr");
+  const publishMeta = $("#publish-meta");
+  if (state.lastPublish) {
+    if (publishUrl) {
+      publishUrl.innerHTML = `<a href="${escapeAttribute(state.lastPublish.url)}" target="_blank" rel="noopener">${escapeHtml(state.lastPublish.url)}</a>`;
+    }
+    if (publishQr) {
+      publishQr.hidden = false;
+      publishQr.src = state.lastPublish.qrUrl;
+    }
+    if (publishMeta) {
+      publishMeta.textContent = state.lastPublish.hasApiKey
+        ? "APIキーはサーバーへ安全登録済み。公開URLはサーバー経由のみでAI実行します。"
+        : "キー未登録のため公開URLはお試し中心です。設定でキーを保存して再公開すると本番実行できます。";
+    }
+  }
+}
+
+async function runCreatedToolActionTest() {
+  saveUserApiKey();
+  const reportEl = $("#export-test-report");
+  const lines = [];
+  const push = (ok, msg) => lines.push(`${ok ? "OK" : "NG"} ${msg}`);
+  try {
+    if (reportEl) reportEl.textContent = "自動クリックテスト中...";
+    const files = buildRunnableToolFiles({ forceDemo: true, forPublish: false });
+    push(!!files.indexHtml, "成果物HTMLを生成");
+    push(/generate-button/.test(files.indexHtml), "選定ボタンがある");
+    push(/__neneGenerate/.test(files.indexHtml), "ボタン用JavaScriptがある");
+    push(/demoMode/.test(files.configJs), "お試しモード設定がある");
+    push(/apiKey:\s*""/.test(files.configJs), "HTMLにAPIキーを埋め込んでいない");
+
+    const iframe = document.createElement("iframe");
+    // 自作HTMLの自動テスト用。allow-same-origin が無いと contentDocument が取れない
+    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
+    iframe.style.cssText = "position:fixed;left:-9999px;width:800px;height:900px;opacity:0;pointer-events:none;";
+    document.body.appendChild(iframe);
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error("プレビュー読み込みタイムアウト")), 8000);
+      iframe.onload = () => {
+        clearTimeout(timer);
+        resolve();
+      };
+      iframe.srcdoc = files.indexHtml;
+    });
+    await new Promise((r) => setTimeout(r, 350));
+    const win = iframe.contentWindow;
+    const doc = iframe.contentDocument;
+    if (!win || !doc) throw new Error("プレビューDOMを取得できません");
+
+    const chip = doc.querySelector("[data-topic]");
+    push(!!chip, "テーマボタンがある");
+    if (chip) {
+      chip.click();
+      await new Promise((r) => setTimeout(r, 80));
+      const selected = doc.querySelector("#selected-theme")?.textContent || "";
+      push(selected.includes(chip.getAttribute("data-topic") || ""), "テーマボタンで選択テーマが変わる");
+    }
+
+    const generate = doc.querySelector("#generate-button");
+    push(!!generate, "実行ボタンがある");
+    if (generate) {
+      generate.click();
+      await new Promise((r) => setTimeout(r, 200));
+      const resultText = doc.querySelector("#result")?.textContent || "";
+      push(/お試し|ダミー|デモ|サンプル/.test(resultText), "お試し実行でダミー結果が出る");
+      push(resultText.length > 40, "結果テキストが空でない");
+    }
+
+    push(!/generativelanguage\.googleapis\.com/.test(files.scriptJs), "ブラウザからGemini直結していない");
+    push(!/api\.openai\.com/.test(files.scriptJs), "ブラウザからOpenAI直結していない");
+    push(/runViaPublishedProxy/.test(files.scriptJs), "公開URL用のサーバー代理がある");
+
+    iframe.remove();
+    const failed = lines.some((line) => line.startsWith("NG"));
+    const summary = [
+      `自動クリックテスト: ${failed ? "失敗あり" : "成功"}`,
+      `確認日時: ${new Date().toLocaleString("ja-JP")}`,
+      "",
+      ...lines,
+    ].join("\n");
+    state.lastTestReport = summary;
+    state.status = failed
+      ? "動作テストでNGがあります。内容を確認して修正してください。"
+      : "動作テスト成功。次は「Webに公開する」でURLを発行できます。";
+  } catch (error) {
+    state.lastTestReport = `自動クリックテスト: 失敗\n${error.message || error}`;
+    state.status = `動作テスト失敗: ${error.message || error}`;
+  }
+  renderExportStatusOnly();
+  renderAll();
+}
+
+function downloadCreatedToolZip() {
+  saveUserApiKey();
+  state.exportFormat = "zip";
+  const files = buildRunnableToolFiles({ forceDemo: true, forPublish: false });
+  const proposal = getSelectedProposal();
+  const zipBlob = createZipBlob(getRunnableFileMap(files));
+  downloadBlob(zipBlob, `${sanitizeFileName(proposal.title)}.zip`);
+  state.status = "ZIPをダウンロードしました（キーなし・お試し動作）。本番は「Webに公開する」を使ってください。";
+  renderExportStatusOnly();
+}
+
+async function publishCreatedTool() {
+  saveUserApiKey();
+  if (!state.auth.authenticated && !state.auth.token) {
+    state.status = "公開にはログインが必要です。";
+    renderExportStatusOnly();
+    activateScreen("login");
+    return;
+  }
+  if (!state.lastTestReport || /失敗|NG/.test(state.lastTestReport)) {
+    const proceed = window.confirm("動作テストが未実施、またはNGがあります。このまま公開しますか？\n（推奨: 先に「動作テストする」）");
+    if (!proceed) {
+      state.status = "公開を中断しました。先に動作テストしてください。";
+      renderExportStatusOnly();
+      return;
+    }
+  }
+
+  const proposal = getSelectedProposal();
+  const files = buildRunnableToolFiles({ forceDemo: false, forPublish: true });
+  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
+  if (!key) {
+    const proceed = window.confirm("設定にAPIキーがありません。キーなしで公開するとお試し中心になります。続行しますか？");
+    if (!proceed) {
+      state.status = "公開を中断しました。設定でAPIキーを保存してから再公開してください。";
+      renderExportStatusOnly();
+      activateScreen("settings");
+      return;
+    }
+  }
+
+  state.status = "公開処理中...";
+  renderExportStatusOnly();
+  try {
+    const data = await apiRequest("/publish", {
+      method: "POST",
+      body: JSON.stringify({
+        title: proposal.title,
+        html: files.indexHtml,
+        systemPrompt: files.mainPrompt,
+        toolMode: getToolMode(),
+        provider: state.settings.userApiProvider || "gemini",
+        userApiKey: key,
+        requireSearch: requiresNewsGrounding(),
+        testReport: state.lastTestReport || "",
+      }),
+    });
+    state.lastPublish = data;
+    state.status = `公開しました: ${data.url}`;
+    state.createdOutput = {
+      title: proposal.title,
+      format: "publish",
+      text: data.url,
+    };
+  } catch (error) {
+    state.status = `公開失敗: ${error.message || error}`;
+  }
+  renderExportStatusOnly();
   renderAll();
 }
 

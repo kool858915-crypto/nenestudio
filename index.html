@@ -349,38 +349,53 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         </section>
 
         <section class="screen" id="export">
-          <div class="export-grid">
-            <button class="export-card active" data-export-format="html"><strong>HTML形式（1ファイル）★おすすめ</strong><span>開くだけでそのまま操作できる（スマホ向け）</span></button>
-            <button class="export-card" data-export-format="zip"><strong>ZIP形式</strong><span>単体動作一式（APIキー反映）</span></button>
-            <button class="export-card" data-export-format="folder"><strong>フォルダ形式</strong><span>HTML/JS/CSS + .env / config.js</span></button>
-            <button class="export-card" data-export-format="api"><strong>APIキー入力形式</strong><span>キー入りの実行手順つき</span></button>
-            <button class="export-card" data-export-format="codex"><strong>Codex用ツール作成内容</strong><span>コード作成AIに渡す内容</span></button>
-            <button class="export-card" data-export-format="claude"><strong>Claude Code用ツール作成内容</strong><span>実装支援AIに渡す内容</span></button>
-          </div>
-          <p class="guide-note" id="export-mobile-tip">スマホの方へ：迷ったら一番上の「HTML形式」を選んで「ツールを作成する」を押してください。</p>
-          <div class="folder-panel">
-            <h2>ツール出力内容</h2>
+          <div class="folder-panel export-complete-panel">
+            <h2 id="export-heading">成果物を完成させる</h2>
+            <p class="guide-note" id="export-mobile-tip">HTMLを渡して終わりではありません。プレビュー → 動作テスト → 公開URL発行までが完成です。APIキーはファイルに入れず、公開時だけサーバーへ安全登録します。</p>
+            <div class="export-actions" role="group" aria-label="成果物操作">
+              <button class="primary" type="button" id="preview-tool">プレビューする</button>
+              <button class="secondary" type="button" id="test-tool">動作テストする</button>
+              <button class="secondary" type="button" id="download-zip-tool">ZIPをダウンロード</button>
+              <button class="primary" type="button" id="publish-tool">Webに公開する</button>
+            </div>
             <div class="notice" id="api-format-notice" hidden></div>
-            <pre class="code-block" id="export-preview">NENE_Tool/
-  README.md
-  setup.md
-  config/
-    api_keys.example
-  prompts/
-    main_prompt.md
-  workflow/
-    nodes.md
-  output/
-    sample_output.md
-  tool_design.md</pre>
-            <button class="primary" id="copy-export">ツールを作成する</button>
-            <button class="secondary" id="launch-created-tool">起動ボタン</button>
+            <div class="export-result-grid">
+              <article class="export-result-card">
+                <h3>動作確認結果</h3>
+                <pre class="code-block" id="export-test-report">まだテストしていません。「動作テストする」を押してください。</pre>
+              </article>
+              <article class="export-result-card">
+                <h3>公開URL / QR</h3>
+                <p class="status-message" id="publish-url" aria-live="polite">未公開です。</p>
+                <img id="publish-qr" alt="公開URLのQRコード" hidden width="220" height="220" />
+                <p class="guide-note" id="publish-meta"></p>
+              </article>
+            </div>
+            <details class="export-advanced">
+              <summary>上級者向け：設計図テキスト / 旧形式</summary>
+              <div class="export-grid">
+                <button class="export-card" data-export-format="zip" type="button"><strong>ZIP形式</strong><span>バックアップ用（キーなし・お試し動作）</span></button>
+                <button class="export-card" data-export-format="folder" type="button"><strong>フォルダ形式</strong><span>設計図テキスト</span></button>
+                <button class="export-card" data-export-format="codex" type="button"><strong>Codex用</strong><span>外部AIへ渡す内容</span></button>
+                <button class="export-card" data-export-format="claude" type="button"><strong>Claude Code用</strong><span>外部AIへ渡す内容</span></button>
+              </div>
+              <pre class="code-block" id="export-preview" hidden></pre>
+              <button class="secondary" type="button" id="copy-export">旧形式で書き出す</button>
+              <button class="secondary" type="button" id="launch-created-tool" hidden>起動ボタン</button>
+            </details>
             <div class="save-options">
               <label><input id="save-created-choice" type="checkbox" /> <span id="save-created-label">作成したツールを保存する</span></label>
-              <button class="secondary" id="save-created-tool">保存する</button>
+              <button class="secondary" id="save-created-tool" type="button">保存する</button>
             </div>
             <p class="status-message" id="export-status" aria-live="polite"></p>
           </div>
+          <dialog class="tool-preview-dialog" id="tool-preview-dialog">
+            <form method="dialog" class="tool-preview-bar">
+              <strong>プレビュー（お試しモード）</strong>
+              <button class="secondary" value="close" type="submit">閉じる</button>
+            </form>
+            <iframe id="tool-preview-frame" title="ツールプレビュー" sandbox="allow-scripts allow-forms allow-popups allow-same-origin"></iframe>
+          </dialog>
         </section>
 
         <section class="screen" id="saved">
@@ -403,10 +418,10 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
             <div class="guide-hero-copy">
               <p class="guide-kicker">初心者向けの最短ルート</p>
               <ol class="guide-route">
-                <li>設定でAPIキーを保存する（最初の1回だけ）</li>
+                <li>設定でAPIキーを保存する（公開時にサーバー登録）</li>
                 <li>作るで質問に答えて提案を選ぶ</li>
-                <li>HTML形式で「ツールを作成する」を押す</li>
-                <li>ダウンロードしたファイルを開いて使う</li>
+                <li>プレビュー → 動作テスト → Webに公開する</li>
+                <li>発行されたURL / QRでスマホから使う</li>
               </ol>
             </div>
             <div class="guide-hero-actions">

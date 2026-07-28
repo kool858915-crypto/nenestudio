@@ -131,7 +131,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (requ
   return response.json({ received: true });
 });
 
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "2mb" }));
 
 app.use((request, response, next) => {
   if (!isPublicStaticPath(request.path)) {
@@ -141,6 +141,123 @@ app.use((request, response, next) => {
     return response.sendFile(path.join(appRoot, "index.html"));
   }
   return response.sendFile(path.join(appRoot, request.path.replace(/^\//, "")));
+});
+
+/** 公開ツールHTML（スマホで開ける成果物URL） */
+app.get("/t/:slug", (request, response) => {
+  ensurePublishedStore();
+  const tool = store.publishedTools.find((item) => item.slug === request.params.slug && item.status === "active");
+  if (!tool) {
+    return response.status(404).type("html").send("<!doctype html><meta charset='utf-8'><title>未公開</title><p>この公開URLは見つかりません。</p>");
+  }
+  const apiBase = `${getPublicApiOrigin(request)}/api`;
+  const html = String(tool.html || "")
+    .replaceAll("__NENE_SLUG__", tool.slug)
+    .replaceAll("__NENE_API_BASE__", apiBase)
+    .replaceAll("__NENE_DEMO_MODE__", "false");
+  response.setHeader("Content-Security-Policy", [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https: blob:",
+    `connect-src 'self' ${apiBase} https://api.nenestudio.net https://nenestudio.onrender.com`,
+    "object-src 'none'",
+    "base-uri 'self'",
+  ].join("; "));
+  response.type("html").send(html);
+});
+
+/** 公開ツールのAI実行（ブラウザはGemini/OpenAIへ直接つながない） */
+app.post("/api/public/tools/:slug/run", async (request, response) => {
+  ensurePublishedStore();
+  const tool = store.publishedTools.find((item) => item.slug === request.params.slug && item.status === "active");
+  if (!tool) {
+    return response.status(404).json({ error: "公開ツールが見つかりません。" });
+  }
+  const { input, systemPrompt, demo } = request.body || {};
+  if (demo) {
+    return response.json({
+      text: buildDemoResult(tool.toolMode || "task_auto", tool.title),
+      source: "demo",
+      demo: true,
+    });
+  }
+  if (!tool.apiKeyEnc) {
+    return response.status(503).json({
+      error: "この公開ツールにはAPIキーが登録されていません。お試し（ダミー）モードで使うか、再公開してください。",
+      code: "NO_PUBLISHED_KEY",
+    });
+  }
+  const apiKey = decryptSecret(tool.apiKeyEnc);
+  if (!apiKey) {
+    return response.status(500).json({ error: "登録キーの復号に失敗しました。再公開してください。" });
+  }
+  try {
+    const text = await runExternalAi({
+      provider: tool.provider || "gemini",
+      apiKey,
+      systemPrompt: systemPrompt || tool.systemPrompt || "入力を整理してください。",
+      input: String(input || ""),
+      requireSearch: Boolean(tool.requireSearch),
+    });
+    tool.runCount = (tool.runCount || 0) + 1;
+    tool.lastRunAt = new Date().toISOString();
+    saveStore();
+    return response.json({ text, source: "published_proxy", demo: false });
+  } catch (error) {
+    return response.status(400).json({ error: error.message || "公開ツールの実行に失敗しました。" });
+  }
+});
+
+/** Studioから公開（キーはサーバー保存、HTMLには埋め込まない） */
+app.post("/api/publish", requireAuth, async (request, response) => {
+  ensurePublishedStore();
+  const {
+    title,
+    html,
+    systemPrompt,
+    toolMode,
+    provider,
+    userApiKey,
+    requireSearch,
+    testReport,
+  } = request.body || {};
+  if (!title || !html) {
+    return response.status(400).json({ error: "公開するツール名とHTMLが必要です。" });
+  }
+  const slug = makePublishSlug(title);
+  const ownKey = String(userApiKey || "").trim();
+  const record = {
+    id: nextId("publishedTools"),
+    slug,
+    userId: request.user.id,
+    title: String(title).slice(0, 120),
+    html: String(html),
+    systemPrompt: String(systemPrompt || ""),
+    toolMode: String(toolMode || "task_auto"),
+    provider: provider === "openai" ? "openai" : "gemini",
+    requireSearch: Boolean(requireSearch),
+    apiKeyEnc: ownKey ? encryptSecret(ownKey) : "",
+    testReport: testReport || null,
+    status: "active",
+    runCount: 0,
+    lastRunAt: "",
+    createdAt: new Date().toISOString(),
+  };
+  store.publishedTools.push(record);
+  saveStore();
+  const publicUrl = `${getPublicAppOrigin(request)}/t/${slug}`;
+  // APIサーバー直URLも返す（Cloudflare Pagesでは /t が無いため）
+  const apiToolUrl = `${getPublicApiOrigin(request)}/t/${slug}`;
+  return response.json({
+    id: record.id,
+    slug,
+    url: apiToolUrl,
+    appUrl: publicUrl,
+    hasApiKey: Boolean(ownKey),
+    testReport: record.testReport,
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(apiToolUrl)}`,
+  });
 });
 
 app.post("/api/auth/register", (request, response) => {
@@ -670,9 +787,112 @@ function markUserPaid(userId, customerId, subscriptionId, status, plan = "") {
 
 function loadStore() {
   if (!fs.existsSync(databasePath)) {
-    return { users: [], savedTools: [], counters: { users: 0, savedTools: 0 } };
+    return {
+      users: [],
+      savedTools: [],
+      publishedTools: [],
+      counters: { users: 0, savedTools: 0, publishedTools: 0 },
+    };
   }
-  return JSON.parse(fs.readFileSync(databasePath, "utf8"));
+  const data = JSON.parse(fs.readFileSync(databasePath, "utf8"));
+  if (!Array.isArray(data.publishedTools)) data.publishedTools = [];
+  if (!data.counters) data.counters = {};
+  if (typeof data.counters.publishedTools !== "number") data.counters.publishedTools = data.publishedTools.length;
+  return data;
+}
+
+function ensurePublishedStore() {
+  if (!Array.isArray(store.publishedTools)) store.publishedTools = [];
+  if (!store.counters) store.counters = {};
+}
+
+function getPublicApiOrigin(request) {
+  const fromEnv = process.env.PUBLIC_API_URL || process.env.APP_BASE_URL;
+  if (fromEnv) return String(fromEnv).replace(/\/$/, "").replace(/\/api$/, "");
+  const host = request.headers["x-forwarded-host"] || request.headers.host;
+  const proto = request.headers["x-forwarded-proto"] || request.protocol || "https";
+  return `${proto}://${host}`;
+}
+
+function getPublicAppOrigin(request) {
+  return String(process.env.PUBLIC_APP_URL || publicAppUrl || getPublicApiOrigin(request)).replace(/\/$/, "");
+}
+
+function makePublishSlug(title) {
+  const base = String(title || "tool")
+    .toLowerCase()
+    .replace(/[^a-z0-9\u3040-\u30ff\u4e00-\u9faf]+/gi, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 24) || "tool";
+  const rand = crypto.randomBytes(3).toString("hex");
+  let slug = `${base}-${rand}`.replace(/^-|-$/g, "");
+  while (store.publishedTools.some((item) => item.slug === slug)) {
+    slug = `${base}-${crypto.randomBytes(3).toString("hex")}`;
+  }
+  return slug;
+}
+
+function encryptSecret(text) {
+  const key = crypto.scryptSync(jwtSecret, "nene-publish-key-v1", 32);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const enc = Buffer.concat([cipher.update(String(text), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString("base64");
+}
+
+function decryptSecret(payload) {
+  try {
+    const buf = Buffer.from(String(payload || ""), "base64");
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const enc = buf.subarray(28);
+    const key = crypto.scryptSync(jwtSecret, "nene-publish-key-v1", 32);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(enc), decipher.final()]).toString("utf8");
+  } catch {
+    return "";
+  }
+}
+
+function buildDemoResult(toolMode, title) {
+  const now = new Date().toLocaleString("ja-JP");
+  if (toolMode === "stock_picker" || toolMode === "crypto_picker") {
+    const unit = toolMode === "stock_picker" ? "銘柄" : "コイン";
+    return [
+      `【お試しモード】${title || "デモ"}`,
+      "※これはダミーデータです。最新ニュース検索は行っていません。",
+      "",
+      "1. 今日のテーマ要約",
+      "デモ用の注目テーマを表示しています。",
+      "",
+      `2. 注目${unit}リスト`,
+      "【1】サンプル株式会社（9999）",
+      "選定理由: お試し表示用のダミーです。",
+      "関連ニュース: デモ発表（実在しません）",
+      "発表日: 2026-07-01",
+      "情報源: デモデータ",
+      "注目度: 中",
+      "主なリスク: 実データではないため投資判断に使わない",
+      "",
+      "3. 買う前チェック",
+      "- 本番公開後に実データで再確認する",
+      "",
+      "4. 見送り条件",
+      "- お試し結果だけで売買しない",
+      "",
+      `確認日時: ${now}`,
+    ].join("\n");
+  }
+  return [
+    `【お試しモード】${title || "デモ"}`,
+    "※ダミー結果です。APIは呼び出していません。",
+    "",
+    "結論: プレビュー用のサンプル出力",
+    "次の行動: 「Webに公開する」で本番URLを発行し、実データで確認してください。",
+    `確認日時: ${now}`,
+  ].join("\n");
 }
 
 function saveStore() {
