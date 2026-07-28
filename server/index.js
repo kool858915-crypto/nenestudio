@@ -329,12 +329,7 @@ app.post("/api/publish", requireAuth, async (request, response) => {
   }
 
   const serverKey = getServerProviderKey(provider === "openai" ? "openai" : "gemini");
-  if (!serverKey) {
-    return response.status(503).json({
-      error: "公開にはサーバー環境変数 GEMINI_API_KEY（または OPENAI_API_KEY）の設定が必要です。",
-      code: "SERVER_API_KEY_MISSING",
-    });
-  }
+  // キー未設定でも公開URLは発行する（本番AI実行時だけキーが必要）
 
   const slug = makePublishSlug();
   const now = new Date().toISOString();
@@ -370,15 +365,18 @@ app.post("/api/publish", requireAuth, async (request, response) => {
   store.publishedTools.push(record);
   saveStore();
 
-  const url = `${TOOLS_PUBLIC_BASE}/${slug}`;
+  // tools.nenestudio.net のDNSが未設定でも開けるよう、API側URLを主URLにする
   const apiFallbackUrl = `${getPublicApiOrigin(request)}/t/${slug}`;
+  const toolsUrl = `${TOOLS_PUBLIC_BASE}/${slug}`;
+  const url = apiFallbackUrl;
   return response.json({
     id: record.id,
     slug,
     url,
+    toolsUrl,
     apiFallbackUrl,
     visibility: vis,
-    hasServerKey: true,
+    hasServerKey: Boolean(serverKey),
     testReport: record.testReport,
     createdAt: record.createdAt,
     qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`,

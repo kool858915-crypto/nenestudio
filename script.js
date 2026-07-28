@@ -1065,6 +1065,7 @@ const state = {
   exportFormat: "publish",
   lastTestReport: "",
   lastPublish: null,
+  publishError: "",
   createdOutput: null,
   savedBlueprints: [],
   savedAgents: [],
@@ -4670,13 +4671,20 @@ function renderExportStatusOnly() {
   const publishQr = $("#publish-qr");
   const publishMeta = $("#publish-meta");
   const shareActions = $("#publish-share-actions");
-  if (state.lastPublish) {
+  if (state.lastPublish?.url) {
+    const mainUrl = state.lastPublish.url;
+    const toolsUrl = state.lastPublish.toolsUrl || "";
     if (publishUrl) {
-      publishUrl.innerHTML = `<a href="${escapeAttribute(state.lastPublish.url)}" target="_blank" rel="noopener">${escapeHtml(state.lastPublish.url)}</a>`;
+      publishUrl.innerHTML = [
+        `<a href="${escapeAttribute(mainUrl)}" target="_blank" rel="noopener">${escapeHtml(mainUrl)}</a>`,
+        toolsUrl && toolsUrl !== mainUrl
+          ? `<br><small>将来用: ${escapeHtml(toolsUrl)}</small>`
+          : "",
+      ].filter(Boolean).join("");
     }
     if (publishQr) {
       publishQr.hidden = false;
-      publishQr.src = state.lastPublish.qrUrl;
+      publishQr.src = state.lastPublish.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mainUrl)}`;
     }
     if (shareActions) shareActions.hidden = false;
     if (publishMeta) {
@@ -4685,8 +4693,16 @@ function renderExportStatusOnly() {
         password: "パスワード保護",
         public: "一般公開",
       }[state.lastPublish.visibility] || "非公開";
-      publishMeta.textContent = `公開設定: ${visLabel}。AIキーはサーバー環境変数のみ。検索エンジンには載りません。`;
+      const keyNote = state.lastPublish.hasServerKey
+        ? "本番AIキーはサーバー設定済みです。"
+        : "本番AIキー未設定のため、公開URLはお試し動作が中心です（URL自体は使えます）。";
+      publishMeta.textContent = `公開設定: ${visLabel}。${keyNote}`;
     }
+  } else if (state.publishError && publishUrl) {
+    publishUrl.textContent = state.publishError;
+    if (shareActions) shareActions.hidden = true;
+    if (publishQr) publishQr.hidden = true;
+    if (publishMeta) publishMeta.textContent = "公開に失敗しました。上のメッセージを確認してください。";
   }
 }
 
@@ -4899,8 +4915,10 @@ async function publishCreatedTool(options = {}) {
   const openAfter = options.openAfter !== false;
   const autoTest = options.autoTest !== false;
   saveUserApiKey();
+  state.publishError = "";
   if (!state.auth.authenticated && !state.auth.token) {
-    state.status = "公開にはログインが必要です。";
+    state.status = "公開にはログインが必要です。ログイン後にもう一度「公開URLを発行する」を押してください。";
+    state.publishError = "公開にはログインが必要です。";
     renderExportStatusOnly();
     activateScreen("login");
     return;
@@ -4909,6 +4927,7 @@ async function publishCreatedTool(options = {}) {
   if (!isActionTestPassed()) {
     if (!autoTest) {
       state.status = "自動動作テストに合格したツールだけ公開できます。先に「動作テストする」を成功させてください。";
+      state.publishError = state.status;
       renderExportStatusOnly();
       return;
     }
@@ -4917,6 +4936,7 @@ async function publishCreatedTool(options = {}) {
     await runCreatedToolActionTest();
     if (!isActionTestPassed()) {
       state.status = "動作テストに失敗したため公開できませんでした。内容を確認してから再度「公開URLを発行する」を押してください。";
+      state.publishError = state.status;
       renderExportStatusOnly();
       return;
     }
@@ -4926,15 +4946,33 @@ async function publishCreatedTool(options = {}) {
   const password = String($("#publish-password")?.value || "");
   if (visibility === "password" && password.length < 4) {
     state.status = "パスワード保護には4文字以上のパスワードが必要です。";
+    state.publishError = state.status;
     renderExportStatusOnly();
     return;
   }
 
   const proposal = getSelectedProposal();
+  if (!proposal?.title) {
+    state.status = "公開するツール案が見つかりません。提案画面から選び直してください。";
+    state.publishError = state.status;
+    renderExportStatusOnly();
+    return;
+  }
   const files = buildRunnableToolFiles({ forceDemo: false, forPublish: true });
+  if (!files?.indexHtml) {
+    state.status = "公開用HTMLの生成に失敗しました。";
+    state.publishError = state.status;
+    renderExportStatusOnly();
+    return;
+  }
 
   state.status = "公開URLを発行しています…";
+  state.publishError = "";
   renderExportStatusOnly();
+  const publishBtn = $("#publish-tool");
+  const mainAction = $("#main-action");
+  if (publishBtn) publishBtn.disabled = true;
+  if (mainAction) mainAction.disabled = true;
   try {
     const data = await apiRequest("/publish", {
       method: "POST",
@@ -4951,10 +4989,17 @@ async function publishCreatedTool(options = {}) {
         password: visibility === "password" ? password : "",
       }),
     });
+    if (!data?.url) {
+      throw new Error("サーバーから公開URLが返りませんでした。");
+    }
     state.lastPublish = {
       ...data,
       title: proposal.title,
+      url: data.url,
+      toolsUrl: data.toolsUrl || data.url,
+      qrUrl: data.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(data.url)}`,
     };
+    state.publishError = "";
     state.status = `公開しました。すぐ使えます: ${data.url}`;
     state.createdOutput = {
       title: proposal.title,
@@ -4963,13 +5008,23 @@ async function publishCreatedTool(options = {}) {
     };
     renderExportStatusOnly();
     renderAll();
+    // ポップアップブロックされても画面上にURLは残す
     if (openAfter && data.url) {
-      window.open(data.url, "_blank", "noopener");
+      const opened = window.open(data.url, "_blank", "noopener");
+      if (!opened) {
+        state.status = `公開しました（別タブがブロックされたため、下のURLを開いてください）: ${data.url}`;
+        renderExportStatusOnly();
+      }
     }
   } catch (error) {
-    state.status = `公開失敗: ${error.message || error}`;
+    const message = error.message || String(error);
+    state.status = `公開失敗: ${message}`;
+    state.publishError = `公開失敗: ${message}`;
     renderExportStatusOnly();
     renderAll();
+  } finally {
+    if (publishBtn) publishBtn.disabled = false;
+    if (mainAction) mainAction.disabled = false;
   }
 }
 
@@ -6024,7 +6079,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=45").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=46").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
