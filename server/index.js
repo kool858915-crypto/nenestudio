@@ -34,9 +34,9 @@ const jwtSecret = process.env.JWT_SECRET || "dev-only-change-me";
 const isProduction = process.env.NODE_ENV === "production";
 const cookieDomain = process.env.COOKIE_DOMAIN || "";
 const requirePersistentDb = process.env.REQUIRE_PERSISTENT_DB === "true";
+const databasePath = path.resolve(appRoot, process.env.DATABASE_PATH || "./server/nene-studio-db.json");
 assertProductionSecurity();
 const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
-const databasePath = path.resolve(appRoot, process.env.DATABASE_PATH || "./server/nene-studio-db.json");
 
 const SUBSCRIPTION_PLANS = {
   adfree: { aiLimit: 0, priceYen: 480 },
