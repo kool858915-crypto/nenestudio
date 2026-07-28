@@ -1062,7 +1062,7 @@ const state = {
   selectedProposalIndex: 0,
   proposalOffset: 0,
   nodes: [],
-  exportFormat: "zip",
+  exportFormat: "publish",
   lastTestReport: "",
   lastPublish: null,
   createdOutput: null,
@@ -1421,6 +1421,8 @@ function bindEvents() {
 
   $$(".export-card").forEach((button) => {
     button.addEventListener("click", () => {
+      // ZIPカードは専用ハンドラでダウンロードするだけ。主フローは公開URL。
+      if (button.id === "download-zip-tool") return;
       state.exportFormat = button.dataset.exportFormat;
       state.status = "";
       renderAll();
@@ -1455,7 +1457,7 @@ function bindEvents() {
   $("#preview-tool")?.addEventListener("click", () => previewCreatedTool());
   $("#test-tool")?.addEventListener("click", () => runCreatedToolActionTest());
   $("#download-zip-tool")?.addEventListener("click", () => downloadCreatedToolZip());
-  $("#publish-tool")?.addEventListener("click", () => publishCreatedTool());
+  $("#publish-tool")?.addEventListener("click", () => publishCreatedTool({ openAfter: true, autoTest: true }));
   $("#copy-publish-url")?.addEventListener("click", () => copyPublishUrl());
   $("#share-publish-url")?.addEventListener("click", () => sharePublishUrl());
   $$("input[name='publish-visibility']").forEach((input) => {
@@ -1558,7 +1560,7 @@ function runMainAction() {
   };
 
   if (state.currentScreen === "export") {
-    copyExport();
+    publishCreatedTool({ openAfter: true, autoTest: true });
     return;
   }
   if (state.currentScreen === "settings") {
@@ -2681,8 +2683,8 @@ function renderExport() {
     card.classList.toggle("active", card.dataset.exportFormat === state.exportFormat);
   });
 
-  // 上級者向けプレビュー（隠れていても更新）
-  if (exportPreview) {
+  // 上級者向けプレビュー（公開フロー時はZIP文言を出さない）
+  if (exportPreview && state.exportFormat !== "publish") {
     try {
       exportPreview.textContent = getExportText(state.exportFormat);
     } catch (error) {
@@ -4479,14 +4481,16 @@ async function copyExport() {
 }
 
 async function runOutput() {
+  // 主成果物は公開URL。旧形式（zip/html等）だけダウンロードする。
+  if (!state.exportFormat || state.exportFormat === "publish") {
+    await publishCreatedTool({ openAfter: true, autoTest: true });
+    return;
+  }
   saveUserApiKey();
   const files = buildRunnableToolFiles();
   const text = getExportText(state.exportFormat);
   const proposal = getSelectedProposal();
-  const keyStatus = "APIキーは成果物ファイルに書き込みません。起動時に画面入力するか、「作成したツールを起動する」で一時受け渡しします。";
-  if (!String(state.settings.userApiKey || readSessionApiKey() || "").trim() && (state.exportFormat === "zip" || state.exportFormat === "html")) {
-    state.status = "ヒント: 設定にAPIキーがあると「作成したツールを起動する」で一時受け渡しできます。キー自体はファイルに入りません。";
-  }
+  const keyStatus = "APIキーは成果物ファイルに書き込みません。本番は公開URLを使ってください。";
   state.createdOutput = {
     title: proposal.title,
     format: state.exportFormat,
@@ -4507,17 +4511,15 @@ async function runOutput() {
       downloadGeneratedFile(text, state.exportFormat, proposal.title);
     }
     state.status = state.exportFormat === "zip"
-      ? `ZIPをダウンロードしました。${keyStatus} 共有しないでください。`
+      ? `バックアップZIPを保存しました。${keyStatus}`
       : state.exportFormat === "html"
-        ? `HTMLファイルをダウンロードしました。PCはダブルクリック、スマホはファイルアプリ→Safariで開くか、この画面の「作成したツールを起動する」を使ってください。ジャンルを押して記事作成できます。${keyStatus} 共有しないでください。`
+        ? `HTMLを保存しました。通常は公開URLを使ってください。${keyStatus}`
         : `作成内容を出力しました。${keyStatus}`;
   } catch (error) {
-    fallbackCopy(text);
-    downloadGeneratedFile(text, state.exportFormat, proposal.title);
-    state.status = `作成内容を出力しました。${keyStatus}`;
+    state.status = `出力失敗: ${error.message || error}`;
   }
-  renderAll();
   activateScreen("export");
+  renderAll();
 }
 
 function showAdBeforeOutput(callback) {
@@ -4803,7 +4805,9 @@ function downloadCreatedToolZip() {
   renderExportStatusOnly();
 }
 
-async function publishCreatedTool() {
+async function publishCreatedTool(options = {}) {
+  const openAfter = options.openAfter !== false;
+  const autoTest = options.autoTest !== false;
   saveUserApiKey();
   if (!state.auth.authenticated && !state.auth.token) {
     state.status = "公開にはログインが必要です。";
@@ -4811,10 +4815,21 @@ async function publishCreatedTool() {
     activateScreen("login");
     return;
   }
+
   if (!isActionTestPassed()) {
-    state.status = "自動動作テストに合格したツールだけ公開できます。先に「動作テストする」を成功させてください。";
+    if (!autoTest) {
+      state.status = "自動動作テストに合格したツールだけ公開できます。先に「動作テストする」を成功させてください。";
+      renderExportStatusOnly();
+      return;
+    }
+    state.status = "公開前に自動動作テストを実行しています…";
     renderExportStatusOnly();
-    return;
+    await runCreatedToolActionTest();
+    if (!isActionTestPassed()) {
+      state.status = "動作テストに失敗したため公開できませんでした。内容を確認してから再度「公開URLを発行する」を押してください。";
+      renderExportStatusOnly();
+      return;
+    }
   }
 
   const visibility = getSelectedPublishVisibility();
@@ -4828,7 +4843,7 @@ async function publishCreatedTool() {
   const proposal = getSelectedProposal();
   const files = buildRunnableToolFiles({ forceDemo: false, forPublish: true });
 
-  state.status = "公開処理中（テスト合格済みの成果物のみ発行）...";
+  state.status = "公開URLを発行しています…";
   renderExportStatusOnly();
   try {
     const data = await apiRequest("/publish", {
@@ -4850,17 +4865,22 @@ async function publishCreatedTool() {
       ...data,
       title: proposal.title,
     };
-    state.status = `公開しました: ${data.url}`;
+    state.status = `公開しました。すぐ使えます: ${data.url}`;
     state.createdOutput = {
       title: proposal.title,
       format: "publish",
       text: data.url,
     };
+    renderExportStatusOnly();
+    renderAll();
+    if (openAfter && data.url) {
+      window.open(data.url, "_blank", "noopener");
+    }
   } catch (error) {
     state.status = `公開失敗: ${error.message || error}`;
+    renderExportStatusOnly();
+    renderAll();
   }
-  renderExportStatusOnly();
-  renderAll();
 }
 
 function buildLaunchHtml(files) {

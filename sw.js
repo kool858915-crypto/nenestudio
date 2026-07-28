@@ -1,4 +1,4 @@
-const CACHE_NAME = "nene-studio-v42";
+const CACHE_NAME = "nene-studio-v43";
 const APP_SHELL = [
   "./",
   "./index.html",
