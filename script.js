@@ -1076,6 +1076,8 @@ const AUTH_EMAIL_KEY = "neneAuthEmail";
 const SELECTED_PLAN_KEY = "neneSelectedPlan";
 const USER_API_KEY = "neneUserApiKey";
 const USER_API_PROVIDER_KEY = "neneUserApiProvider";
+/** 成果物・Studio・サーバー共通の既定 Gemini モデル（停止済みモデルを避ける）。初期化より前に置くこと */
+const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
 function shouldRememberLogin() {
   const checkbox = $("#auth-remember-me");
@@ -2648,8 +2650,12 @@ function renderExport() {
   });
 
   // プレビュー画面には生のAPIキーを表示しない（成果物にもキーは埋め込まない）
-  const previewText = getExportText(state.exportFormat);
-  exportPreview.textContent = previewText;
+  try {
+    exportPreview.textContent = getExportText(state.exportFormat);
+  } catch (error) {
+    console.error(error);
+    exportPreview.textContent = `プレビュー生成エラー: ${error.message || error}`;
+  }
   renderApiFormatNotice();
   exportStatus.textContent = state.status;
 }
@@ -2665,9 +2671,6 @@ function renderApiFormatNotice() {
   apiFormatNotice.hidden = !message;
   apiFormatNotice.textContent = message || "";
 }
-
-/** 成果物・Studio・サーバー共通の既定 Gemini モデル（停止済みモデルを避ける） */
-const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 
 function getToolMode() {
   const name = getSelectedCategory()?.name;
@@ -3206,7 +3209,7 @@ function buildRunnableToolFiles() {
   ].join("\n");
 
   const chipButtons = topicPresets
-    .map((topic) => `      <button type="button" class="chip" data-topic="${escapeAttribute(topic)}">${escapeHtml(topic)}</button>`)
+    .map((topic) => `      <button type="button" class="chip" data-topic="${escapeAttribute(topic)}" onclick="window.__neneSelectTopic&&window.__neneSelectTopic(this)">${escapeHtml(topic)}</button>`)
     .join("\n");
 
   const apiPanelInner = [
@@ -3218,7 +3221,7 @@ function buildRunnableToolFiles() {
     "      </label>",
     `      <label>${toolLabels.apiKey}<input id="api-key" type="password" autocomplete="off" placeholder="APIキー（このタブのみ）" /></label>`,
     `      <p class="note">${escapeHtml(toolLabels.api)}</p>`,
-    '      <button id="probe-button" type="button" class="secondary">' + toolLabels.probe + "</button>",
+    `      <button id="probe-button" type="button" class="secondary" onclick="window.__neneProbe&&window.__neneProbe()">${toolLabels.probe}</button>`,
     '      <pre id="probe-result" class="workflow" hidden></pre>',
   ].join("\n");
 
@@ -3258,8 +3261,8 @@ function buildRunnableToolFiles() {
     "      </label>",
     "      </details>",
     '      <div class="actions">',
-    `        <button id="generate-button" type="button">${toolLabels.generate}</button>`,
-    `        <button id="copy-button" type="button" class="secondary">${toolLabels.copy}</button>`,
+    `        <button id="generate-button" type="button" onclick="window.__neneGenerate&&window.__neneGenerate()">${toolLabels.generate}</button>`,
+    `        <button id="copy-button" type="button" class="secondary" onclick="window.__neneCopy&&window.__neneCopy()">${toolLabels.copy}</button>`,
     "      </div>",
     '      <p id="status" class="status" aria-live="polite"></p>',
     '      <div id="loading-box" class="loading-box" hidden>',
@@ -3920,12 +3923,29 @@ function buildRunnableToolFiles() {
     "  return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';",
     "}",
     "",
+    "window.__neneSelectTopic = function (button) {",
+    "  if (!button) return;",
+    "  selectGenre(button.getAttribute('data-topic') || '', { fillTopic: true });",
+    "  setStatus((LABELS.selectedTheme || '選択テーマ：') + selectedGenre, '');",
+    "};",
+    "window.__neneGenerate = function () { generateResult(); };",
+    "window.__neneCopy = function () { copyResult(); };",
+    "window.__neneProbe = function () { runConnectionProbe(); };",
+    "",
     "if (document.readyState === 'loading') {",
     "  document.addEventListener('DOMContentLoaded', initTool);",
     "} else {",
     "  initTool();",
     "}",
   ].join("\n");
+
+  // ZIP/HTMLとも index.html だけでJSが動くよう自己完結版にする（外部script依存をなくす）
+  const packedIndexHtml = buildLaunchHtml({
+    indexHtml,
+    styleCss,
+    scriptJs,
+    configJs,
+  });
 
   return {
     readme,
@@ -3937,7 +3957,7 @@ function buildRunnableToolFiles() {
     mainPrompt: prompt,
     nodes: workflowLines,
     sampleOutput,
-    indexHtml,
+    indexHtml: packedIndexHtml,
     styleCss,
     scriptJs,
     hasApiKey,
@@ -4116,7 +4136,7 @@ function getExportText(format) {
   const files = buildRunnableToolFiles();
   const keyNote = "※ セキュリティのため APIキーは成果物ファイルに書き込みません。起動画面で入力するか、NENE Studioの「作成したツールを起動する」で一時受け渡ししてください。";
   const exportTextByFormat = {
-    html: buildLaunchHtml(files),
+    html: files.indexHtml,
     folder: `NENE_Tool/
   README.md
   index.html
@@ -4355,7 +4375,7 @@ async function runOutput() {
       const zipBlob = createZipBlob(getRunnableFileMap(files));
       downloadBlob(zipBlob, `${sanitizeFileName(proposal.title)}.zip`);
     } else if (state.exportFormat === "html") {
-      const htmlBlob = new Blob([buildLaunchHtml(files)], { type: "text/html;charset=utf-8" });
+      const htmlBlob = new Blob([files.indexHtml], { type: "text/html;charset=utf-8" });
       downloadBlob(htmlBlob, `${sanitizeFileName(proposal.title)}.html`);
     } else if (navigator.clipboard) {
       await navigator.clipboard.writeText(text);
@@ -4442,7 +4462,7 @@ async function saveCreatedTool() {
 function launchCreatedTool() {
   saveUserApiKey();
   const files = buildRunnableToolFiles();
-  const html = buildLaunchHtml(files);
+  const html = files.indexHtml;
   const blob = new Blob([html], { type: "text/html;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   // noopener だと postMessage できないため、キーの一時受け渡し用に opener を残す
@@ -4465,13 +4485,18 @@ function launchCreatedTool() {
 }
 
 function buildLaunchHtml(files) {
+  // すでに自己完結HTMLならそのまま返す（二重インラインを防ぐ）
+  if (/window\.TOOL_CONFIG/.test(files.indexHtml || "") && /<script>/i.test(files.indexHtml || "") && !/<script\s+src=/i.test(files.indexHtml || "")) {
+    return files.indexHtml;
+  }
   const bodyMatch = files.indexHtml.match(/<body>([\s\S]*?)<\/body>/i);
   const titleMatch = files.indexHtml.match(/<title>([\s\S]*?)<\/title>/i);
   const title = titleMatch ? titleMatch[1] : "作成ツール";
   let bodyContent = bodyMatch ? bodyMatch[1] : "";
   bodyContent = bodyContent
     .replace(/<script src="\.\/config\.js"><\/script>\s*/i, "")
-    .replace(/<script src="\.\/script\.js"><\/script>/i, "");
+    .replace(/<script src="\.\/script\.js"><\/script>/i, "")
+    .replace(/<link rel="stylesheet" href="\.\/style\.css"\s*\/>\s*/i, "");
   // インラインscript内の </script> でHTMLが途中終了するのを防ぐ
   const configJs = escapeInlineScript(files.configJs);
   const scriptJs = escapeInlineScript(files.scriptJs);
