@@ -2785,13 +2785,22 @@ function getModeToolLabelOverrides(mode, isEnglish) {
         length3000: "About 5 (recommended)",
         length5000: "About 8",
         outputTitle: mode === "stock_picker" ? "Stock shortlist" : "Coin shortlist",
-        statusNoInput: "Tap a theme chip first.",
-        generating: "Pulling recent info and building the shortlist...",
-        generatingButton: "Creating shortlist...",
-        waitHint: "Usually takes 10-40 seconds. Please wait.",
+        statusNoKey: "Live mode needs a published URL. Try demo mode first.",
+        needKeyTitle: "Publish required",
+        needKeyButton: "Retry in demo",
+        needKeyHelp: "Demo works locally. For live AI, publish a URL in NENE Studio.",
+        accepted: "Request accepted.",
+        analyzing: "AI is analyzing…",
+        slowHint: "Taking longer than usual.",
+        generating: "AI is analyzing…",
+        generatingButton: "Working...",
+        waitHint: "AI is analyzing…",
         complete: "Shortlist ready.",
         note: "Theme → shortlist. Recent public info is used when available. No URL paste.",
         disclaimer: "Not investment advice. Verify latest prices before buying. This tool does not place orders.",
+        demoMode: "Demo (dummy)",
+        liveMode: "Live (published URL)",
+        demoBadge: "[DEMO]",
       };
     }
     if (mode === "fx_auto") {
@@ -2812,12 +2821,22 @@ function getModeToolLabelOverrides(mode, isEnglish) {
         length5000: "Detailed",
         outputTitle: "Auto-trading signals / rules",
         statusNoInput: "Tap a chip first.",
-        generating: "Building signals and rules...",
-        generatingButton: "Creating signals...",
-        waitHint: "Usually takes 10-40 seconds. Please wait.",
+        statusNoKey: "Live mode needs a published URL. Try demo mode first.",
+        needKeyTitle: "Publish required",
+        needKeyButton: "Retry in demo",
+        needKeyHelp: "Demo works locally. For live AI, publish a URL in NENE Studio.",
+        accepted: "Request accepted.",
+        analyzing: "AI is analyzing…",
+        slowHint: "Taking longer than usual.",
+        generating: "AI is analyzing…",
+        generatingButton: "Working...",
+        waitHint: "AI is analyzing…",
         complete: "Signals ready.",
         note: "Pair/style → auto-trading oriented rules. This tool does not place live orders.",
         disclaimer: "Not investment advice. No live broker orders from this file. Use rules at your own risk.",
+        demoMode: "Demo (dummy)",
+        liveMode: "Live (published URL)",
+        demoBadge: "[DEMO]",
       };
     }
     if (mode === "news_digest") {
@@ -2827,11 +2846,17 @@ function getModeToolLabelOverrides(mode, isEnglish) {
         result: "Review today's must-know topics.",
         inputTitle: "1. Pick a field",
         outputTitle: "Today's digest",
-        generating: "Collecting today's highlights...",
-        generatingButton: "Summarizing...",
-        waitHint: "Usually takes 10-40 seconds. Please wait.",
+        accepted: "Request accepted.",
+        analyzing: "AI is analyzing…",
+        slowHint: "Taking longer than usual.",
+        generating: "AI is analyzing…",
+        generatingButton: "Working...",
+        waitHint: "AI is analyzing…",
         complete: "Digest ready.",
         note: "Field → automatic digest. No article URL paste.",
+        demoMode: "Demo (dummy)",
+        liveMode: "Live (published URL)",
+        demoBadge: "[DEMO]",
       };
     }
     return {
@@ -2840,10 +2865,16 @@ function getModeToolLabelOverrides(mode, isEnglish) {
       result: "Review the ready-to-use result.",
       note: "Theme → semi-automatic result. Minimize manual research.",
       outputTitle: "Result",
-      generating: "Working...",
-      generatingButton: "Running...",
-      waitHint: "Usually takes 10-40 seconds. Please wait.",
+      accepted: "Request accepted.",
+      analyzing: "AI is analyzing…",
+      slowHint: "Taking longer than usual.",
+      generating: "AI is analyzing…",
+      generatingButton: "Working...",
+      waitHint: "AI is analyzing…",
       complete: "Done.",
+      demoMode: "Demo (dummy)",
+      liveMode: "Live (published URL)",
+      demoBadge: "[DEMO]",
     };
   }
 
@@ -2866,17 +2897,22 @@ function getModeToolLabelOverrides(mode, isEnglish) {
       length5000: "約8件",
       outputTitle: mode === "stock_picker" ? "注目株リスト" : "注目コインリスト",
       statusNoInput: "先にテーマボタンを押してください。",
-      statusNoKey: "APIキーが未入力です。上のAPIキー欄に貼ってから、もう一度「選定する」を押してください。「選定中」はキー入力後に表示されます。",
-      needKeyTitle: "APIキーが必要です",
-      needKeyButton: "APIキーを入れて再実行",
-      needKeyHelp: "手順: 1) 画面上部のAPIキー欄に Gemini キーを貼る 2)「選定する」をもう一度押す →「選定中...」になります。",
-      accepted: "受け付けました...",
-      generating: "直近情報を確認しながら選定中です...",
-      generatingButton: "選定中...",
-      waitHint: "通常10〜40秒かかります。そのままお待ちください。",
+      statusNoKey: "本番実行には公開URLが必要です。まずはお試しモードで操作を確認してください。",
+      needKeyTitle: "公開が必要です",
+      needKeyButton: "お試しで再実行",
+      needKeyHelp: "お試し（ダミー）のみローカルで動きます。本番はNENE Studioで公開URLを発行してください。",
+      accepted: "処理を受け付けました。",
+      analyzing: "AIが分析しています…",
+      slowHint: "通常より時間が掛かっています。",
+      generating: "AIが分析しています…",
+      generatingButton: "処理中...",
+      waitHint: "AIが分析しています…",
       complete: "選定できました。",
       note: "テーマを押す → 選定するだけ。直近の公開情報を参照します。URLコピペ不要。",
       disclaimer: "投資助言ではありません。買う前に最新価格を確認してください。このツールは注文しません。",
+      demoMode: "お試し（ダミー）",
+      liveMode: "本番（公開URL）",
+      demoBadge: "【お試しモード】",
     };
   }
   if (mode === "fx_auto") {
@@ -2897,17 +2933,22 @@ function getModeToolLabelOverrides(mode, isEnglish) {
       length5000: "詳しく",
       outputTitle: "自動売買シグナル／ルール",
       statusNoInput: "先にボタンを押してください。",
-      statusNoKey: "APIキーが未入力です。上のAPIキー欄に貼ってから、もう一度実行してください。「作成中」はキー入力後に表示されます。",
-      needKeyTitle: "APIキーが必要です",
-      needKeyButton: "APIキーを入れて再実行",
-      needKeyHelp: "手順: 1) 画面上部のAPIキー欄にキーを貼る 2) もう一度ボタンを押す →「作成中...」になります。",
-      accepted: "受け付けました...",
-      generating: "シグナルとルールを作成中です...",
-      generatingButton: "作成中...",
-      waitHint: "通常10〜40秒かかります。そのままお待ちください。",
+      statusNoKey: "本番実行には公開URLが必要です。まずはお試しモードで操作を確認してください。",
+      needKeyTitle: "公開が必要です",
+      needKeyButton: "お試しで再実行",
+      needKeyHelp: "お試し（ダミー）のみローカルで動きます。本番はNENE Studioで公開URLを発行してください。",
+      accepted: "処理を受け付けました。",
+      analyzing: "AIが分析しています…",
+      slowHint: "通常より時間が掛かっています。",
+      generating: "AIが分析しています…",
+      generatingButton: "処理中...",
+      waitHint: "AIが分析しています…",
       complete: "作成できました。",
       note: "ペア／手法 → 自動売買向けルール。このツール自体は実注文しません。",
       disclaimer: "投資助言ではありません。ブローカーへの自動発注は別途設定が必要です。自己責任で使ってください。",
+      demoMode: "お試し（ダミー）",
+      liveMode: "本番（公開URL）",
+      demoBadge: "【お試しモード】",
     };
   }
   if (mode === "news_digest") {
@@ -2917,11 +2958,17 @@ function getModeToolLabelOverrides(mode, isEnglish) {
       result: "今日の注目トピックが表示されます。",
       inputTitle: "1. 分野を選ぶ",
       outputTitle: "今日の注目まとめ",
-      generating: "注目トピックを整理中です...",
-      generatingButton: "整理中...",
-      waitHint: "通常10〜40秒かかります。そのままお待ちください。",
+      accepted: "処理を受け付けました。",
+      analyzing: "AIが分析しています…",
+      slowHint: "通常より時間が掛かっています。",
+      generating: "AIが分析しています…",
+      generatingButton: "処理中...",
+      waitHint: "AIが分析しています…",
       complete: "整理できました。",
       note: "分野を選ぶだけで自動整理。記事URLのコピペは不要です。",
+      demoMode: "お試し（ダミー）",
+      liveMode: "本番（公開URL）",
+      demoBadge: "【お試しモード】",
     };
   }
   return {
@@ -2930,10 +2977,16 @@ function getModeToolLabelOverrides(mode, isEnglish) {
     result: "すぐ使える結果が表示されます。",
     note: "テーマ選択 → 半自動実行。面倒な下調べや下書きを減らします。",
     outputTitle: "実行結果",
-    generating: "実行中です...",
-    generatingButton: "実行中...",
-    waitHint: "通常10〜40秒かかります。そのままお待ちください。",
+    accepted: "処理を受け付けました。",
+    analyzing: "AIが分析しています…",
+    slowHint: "通常より時間が掛かっています。",
+    generating: "AIが分析しています…",
+    generatingButton: "処理中...",
+    waitHint: "AIが分析しています…",
     complete: "完了しました。",
+    demoMode: "お試し（ダミー）",
+    liveMode: "本番（公開URL）",
+    demoBadge: "【お試しモード】",
   };
 }
 
@@ -3939,6 +3992,8 @@ function buildRunnableToolFiles(options = {}) {
     "    resultBox.classList.remove('is-error');",
     "    resultBox.textContent = LABELS.accepted || '処理を受け付けました。';",
     "  }",
+    "  // お試しでもローディングが一瞬で消えないよう、描画用の短い待ちを入れる",
+    "  await new Promise(function (resolve) { setTimeout(resolve, 450); });",
     "  const modeHints = [];",
     "  if (config.toolMode === 'stock_picker' || config.toolMode === 'crypto_picker') {",
     "    modeHints.push('必須: 注目リストの各項目に「選定理由」「関連ニュース」「発表日」「情報源」を必ず付ける');",
@@ -4751,13 +4806,52 @@ async function runCreatedToolActionTest() {
     const generate = doc.querySelector("#generate-button");
     push(!!generate, "ボタンを押せる（実行ボタンあり）");
     if (generate) {
-      generate.click();
-      await new Promise((r) => setTimeout(r, 120));
-      const loadingVisible = doc.querySelector("#loading-box") && !doc.querySelector("#loading-box").hidden;
-      const loadingText = `${doc.querySelector("#loading-title")?.textContent || ""}${doc.querySelector("#loading-detail")?.textContent || ""}${doc.querySelector("#status")?.textContent || ""}`;
-      push(loadingVisible || /処理を受け付け|AIが分析|Request accepted|analyzing/i.test(loadingText), "ローディングが表示される");
-      await new Promise((r) => setTimeout(r, 250));
-      const resultText = doc.querySelector("#result")?.textContent || "";
+      // お試しモードを明示（UI選択のずれで本番扱いになるのを防ぐ）
+      const runMode = doc.querySelector("#run-mode");
+      if (runMode) runMode.value = "demo";
+
+      let sawLoading = false;
+      const loadingObserver = new MutationObserver(() => {
+        const box = doc.querySelector("#loading-box");
+        const title = doc.querySelector("#loading-title")?.textContent || "";
+        const detail = doc.querySelector("#loading-detail")?.textContent || "";
+        const status = doc.querySelector("#status")?.textContent || "";
+        const buttonText = generate.textContent || "";
+        const blob = `${title}${detail}${status}${buttonText}`;
+        if ((box && !box.hidden) || /処理を受け付け|AIが分析|受け付けました|Request accepted|analyzing|選定中|処理中/i.test(blob)) {
+          sawLoading = true;
+        }
+      });
+      loadingObserver.observe(doc.body, {
+        subtree: true,
+        childList: true,
+        attributes: true,
+        characterData: true,
+      });
+
+      if (typeof win.__neneGenerate === "function") {
+        win.__neneGenerate();
+      } else {
+        generate.click();
+      }
+
+      // ローディング検知用に少し待つ（生成側も約450ms待つ）
+      await new Promise((r) => setTimeout(r, 200));
+      const midBox = doc.querySelector("#loading-box");
+      const midText = `${doc.querySelector("#loading-title")?.textContent || ""}${doc.querySelector("#loading-detail")?.textContent || ""}${doc.querySelector("#status")?.textContent || ""}${generate.textContent || ""}`;
+      if ((midBox && !midBox.hidden) || /処理を受け付け|AIが分析|受け付けました|Request accepted|analyzing|選定中|処理中/i.test(midText)) {
+        sawLoading = true;
+      }
+
+      let resultText = "";
+      for (let i = 0; i < 20; i += 1) {
+        await new Promise((r) => setTimeout(r, 100));
+        resultText = doc.querySelector("#result")?.textContent || "";
+        if (/お試し|ダミー|デモ|サンプル|DEMO/i.test(resultText) && resultText.length > 40) break;
+      }
+      loadingObserver.disconnect();
+
+      push(sawLoading, "ローディングが表示される");
       push(/お試し|ダミー|デモ|サンプル|DEMO/i.test(resultText), "結果が表示される");
       push(resultText.length > 40, "結果テキストが空でない");
     }
@@ -5930,7 +6024,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=44").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=45").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
