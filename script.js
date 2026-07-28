@@ -4481,8 +4481,9 @@ async function copyExport() {
 }
 
 async function runOutput() {
-  // 主成果物は公開URL。旧形式（zip/html等）だけダウンロードする。
-  if (!state.exportFormat || state.exportFormat === "publish") {
+  // 主成果物は公開URL。ZIPは完全廃止。
+  if (!state.exportFormat || state.exportFormat === "publish" || state.exportFormat === "zip" || state.exportFormat === "html") {
+    state.exportFormat = "publish";
     await publishCreatedTool({ openAfter: true, autoTest: true });
     return;
   }
@@ -4795,14 +4796,9 @@ async function runCreatedToolActionTest() {
 }
 
 function downloadCreatedToolZip() {
-  saveUserApiKey();
-  state.exportFormat = "zip";
-  const files = buildRunnableToolFiles({ forceDemo: true, forPublish: false });
-  const proposal = getSelectedProposal();
-  const zipBlob = createZipBlob(getRunnableFileMap(files));
-  downloadBlob(zipBlob, `${sanitizeFileName(proposal.title)}.zip`);
-  state.status = "バックアップZIPを保存しました（キーなし）。本番利用は公開URLを発行してください。";
+  state.status = "ZIPは廃止しました。代わりに公開URLを発行します…";
   renderExportStatusOnly();
+  publishCreatedTool({ openAfter: true, autoTest: true });
 }
 
 async function publishCreatedTool(options = {}) {
@@ -4952,6 +4948,13 @@ function downloadGeneratedFile(text, format, title) {
 }
 
 function downloadBlob(blob, fileName) {
+  // ZIP成果物は廃止。誤ってZIP経路に入っても公開URLへ誘導する
+  if (/\.zip$/i.test(String(fileName || ""))) {
+    state.status = "ZIPダウンロードは廃止しました。公開URLを発行します…";
+    renderExportStatusOnly?.();
+    publishCreatedTool({ openAfter: true, autoTest: true });
+    return;
+  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -5218,7 +5221,7 @@ function loadSavedBlueprint(index) {
   state.answers = { ...saved.answers };
   state.custom = { ...saved.custom, nodeTitle: "", nodeDescription: "" };
   state.summaryEdits = saved.summaryEdits ? { ...saved.summaryEdits } : { ...blankSummaryEdits() };
-  state.exportFormat = saved.exportFormat;
+  state.exportFormat = "publish";
   state.selectedProposalIndex = 0;
   state.proposalOffset = 0;
   syncInputsFromState();
@@ -5921,15 +5924,16 @@ function escapeAttribute(value) {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator) || window.location.protocol === "file:") return;
-  // 新バージョンのSWが有効になったら1回だけ自動リロードして、古いキャッシュのまま使い続けないようにする
   let hasReloadedForUpdate = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
     if (hasReloadedForUpdate || !navigator.serviceWorker.controller) return;
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js").catch(() => {
-    state.status = "PWAのオフライン登録に失敗しました。サーバー起動後に再読み込みしてください。";
-    renderAll();
-  });
+  navigator.serviceWorker.register("./sw.js?v=44").then((registration) => {
+    registration.update().catch(() => {});
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+  }).catch(() => {});
 }

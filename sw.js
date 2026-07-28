@@ -1,4 +1,4 @@
-const CACHE_NAME = "nene-studio-v43";
+const CACHE_NAME = "nene-studio-v44";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -11,49 +11,63 @@ const APP_SHELL = [
   "./assets/icon.svg",
 ];
 
-const NETWORK_FIRST_PATHS = ["/ads.config.js", "/ads.js", "/config.js"];
+// アプリ本体は常に最新を取りに行く（古いZIPフローが残らないようにする）
+const NETWORK_FIRST_PATHS = [
+  "/index.html",
+  "/script.js",
+  "/styles.css",
+  "/sw.js",
+  "/config.js",
+  "/ads.config.js",
+  "/ads.js",
+];
 
-self.addEventListener("install", (event) => {
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") self.skipWaiting();
+});
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(
-      // ?????HTTP???E?E??E????????E?E??E?????E?????????E      APP_SHELL.map((url) => new Request(url, { cache: "reload" })),
-    )),
+      APP_SHELL.map((url) => new Request(url, { cache: "reload" })),
+    )).then(() => self.skipWaiting()),
   );
-  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) => Promise.all(
       keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)),
-    )),
+    )).then(() => self.clients.claim()),
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
-  // ???????E?E?E??E?E??E????E??API???E?E?E??E?ESW???????????????E  // SW???fetch?CSP?connect-src??????E?E??E???????E?E??E???????E  if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.origin !== self.location.origin) return;
   if (requestUrl.pathname.startsWith("/api/")) return;
 
   const isNetworkFirst = NETWORK_FIRST_PATHS.some((path) => (
-    requestUrl.pathname.endsWith(path)
+    requestUrl.pathname.endsWith(path) || requestUrl.pathname === "/" || requestUrl.pathname.endsWith("/")
   ));
 
-  if (isNetworkFirst) {
+  if (isNetworkFirst || event.request.mode === "navigate") {
     event.respondWith(
       fetch(event.request)
-        .then((response) => response)
-        .catch(() => caches.match(event.request)),
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy)).catch(() => {});
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => (
+          cached || (event.request.mode === "navigate" ? caches.match("./index.html") : Response.error())
+        ))),
     );
     return;
   }
 
   event.respondWith(
     caches.match(event.request).then((cached) => (
-      cached || fetch(event.request).catch(() => (
-        // ??????index.html??????????????JS?HTML?????E        event.request.mode === "navigate" ? caches.match("./index.html") : Response.error()
-      ))
+      cached || fetch(event.request)
     )),
   );
 });

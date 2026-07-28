@@ -385,16 +385,16 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               </article>
             </div>
             <details class="export-advanced">
-              <summary>上級者向け：設計図テキスト / バックアップZIP</summary>
+              <summary>上級者向け：設計図テキストのみ（ZIPは廃止）</summary>
               <div class="export-grid">
-                <button class="export-card" data-export-format="zip" type="button" id="download-zip-tool"><strong>ZIP形式</strong><span>バックアップ用（キーなし・お試し動作）</span></button>
                 <button class="export-card" data-export-format="folder" type="button"><strong>フォルダ形式</strong><span>設計図テキスト</span></button>
                 <button class="export-card" data-export-format="codex" type="button"><strong>Codex用</strong><span>外部AIへ渡す内容</span></button>
                 <button class="export-card" data-export-format="claude" type="button"><strong>Claude Code用</strong><span>外部AIへ渡す内容</span></button>
               </div>
               <pre class="code-block" id="export-preview" hidden></pre>
-              <button class="secondary" type="button" id="copy-export">旧形式で書き出す</button>
+              <button class="secondary" type="button" id="copy-export">設計図テキストを書き出す</button>
               <button class="secondary" type="button" id="launch-created-tool" hidden>起動ボタン</button>
+              <button class="secondary" type="button" id="download-zip-tool" hidden>ZIP（廃止）</button>
             </details>
             <div class="save-options">
               <label><input id="save-created-choice" type="checkbox" /> <span id="save-created-label">作成したツールを保存する</span></label>
@@ -491,8 +491,8 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <li>
                 <span class="guide-step-num">5</span>
                 <div>
-                  <h3>作成：形式を選んで出力する</h3>
-                  <p>迷ったら「HTML形式（1ファイル）」を選び、「ツールを作成する」を押します。ファイルが1つダウンロードされます。</p>
+                  <h3>作成：公開URLを発行する</h3>
+                  <p>「公開URLを発行する」を押すだけです。自動テストのあとURLが開き、すぐ使えます。ZIPやHTMLのダウンロードは不要です。</p>
                 </div>
               </li>
             </ol>
@@ -502,23 +502,23 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           </div>
 
           <div class="folder-panel">
-            <h2>出力形式の選び方</h2>
+            <h2>公開URLの使い方</h2>
             <div class="info-grid">
               <article class="guide-recommend">
-                <h3>HTML形式（1ファイル）★おすすめ</h3>
-                <p>ダウンロードしたファイルをダブルクリックで開くだけ。初心者とスマホに一番向いています。</p>
+                <h3>公開URL ★これだけ</h3>
+                <p>発行されたURLを開くだけで使えます。スマホでもPCでも同じです。ZIPやHTMLのダウンロードは不要です。</p>
               </article>
               <article>
-                <h3>ZIP形式</h3>
-                <p>ファイル一式をフォルダで管理したい人向け。解凍して中の `index.html` を開きます。</p>
+                <h3>非公開（デフォルト）</h3>
+                <p>URLを知っている人だけ使えます。検索エンジンには載りません。</p>
               </article>
               <article>
-                <h3>フォルダ形式</h3>
-                <p>中身を自分で分けて編集したい人向け。画面の区切りごとにファイルを作る必要があります。</p>
+                <h3>パスワード保護</h3>
+                <p>URLに加えてパスワードが必要なときに選びます。</p>
               </article>
               <article>
-                <h3>Codex用 / Claude Code用</h3>
-                <p>コード作成AIに渡して、さらに作り込みたい人向けです。まずはHTML形式で十分です。</p>
+                <h3>一般公開</h3>
+                <p>広く共有してよいときに選びます。</p>
               </article>
             </div>
           </div>
@@ -526,7 +526,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           <div class="folder-panel">
             <h2>作ったあとの使い方</h2>
             <ol class="guide-mini-steps">
-              <li>ダウンロードした `.html` ファイルを開く（PCはダブルクリック／スマホはファイルアプリからSafari。または作成画面の「作成したツールを起動する」）</li>
+              <li>発行された公開URLをブラウザで開く</li>
               <li>テーマボタンを1つ押す（ニュースURLのコピペは不要）</li>
               <li>実行ボタンを押すと、半自動で候補・理由・次の行動が出ます</li>
             </ol>
@@ -1010,9 +1010,9 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         <button class="ad-continue-subtle" id="ad-continue" type="button" disabled>続ける</button>
       </div>
     </div>
-    <script src="./ads.config.js"></script>
-    <script src="./ads.js"></script>
-    <script src="./config.js"></script>
-    <script src="./script.js"></script>
+    <script src="./ads.config.js?v=44"></script>
+    <script src="./ads.js?v=44"></script>
+    <script src="./config.js?v=44"></script>
+    <script src="./script.js?v=44"></script>
   </body>
 </html>
