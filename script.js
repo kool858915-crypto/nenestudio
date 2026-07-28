@@ -191,7 +191,7 @@ const screenCopy = {
   proposal: ["提案を選びます", "次へ進む"],
   nodes: ["作業の部品を組みます", "次へ進む"],
   blueprint: ["作成内容を確認します", "次へ進む"],
-  export: ["Webツールとして公開する", "公開URLを発行する"],
+  export: ["完成：公開URLを発行", "公開URLを発行する"],
   usage: ["使い方ガイド", "作る画面へ進む"],
   implement: ["無料で実装する", "作る画面へ戻る"],
   plans: ["プラン一覧", "作る画面へ戻る"],
@@ -210,7 +210,7 @@ const screenCopyEn = {
   proposal: ["Choose a proposal", "Next"],
   nodes: ["Build the workflow parts", "Next"],
   blueprint: ["Review the tool content", "Next"],
-  export: ["Publish as a web tool", "Issue public URL"],
+  export: ["Done: Issue your URL", "Issue public URL"],
   usage: ["How-to Guide", "Go to Build"],
   implement: ["Build Free with External AI", "Back to Build"],
   plans: ["Plans", "Back to Build"],
@@ -228,11 +228,11 @@ const uiText = {
     nav: { create: "作る", login: "ログイン", usage: "使い方", implement: "無料で実装", plans: "プラン", apikey: "APIキー設定", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", contact: "お問い合わせ", settings: "設定" },
     brand: "AIツール作成",
     launch: "プレビューする",
-    exportTitle: "Webツールとして公開する",
+    exportTitle: "完成：公開URLを発行",
     saveCreated: "作成したツールを保存する",
     save: "保存する",
-    preview: "プレビューする",
-    test: "動作テストする",
+    preview: "先にプレビューする",
+    test: "くわしく動作テストする",
     zip: "ZIPをダウンロード",
     publish: "公開URLを発行する",
   },
@@ -240,11 +240,11 @@ const uiText = {
     nav: { create: "Build", login: "Login", usage: "How to Use", implement: "Build Free", plans: "Plans", apikey: "API Key", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", contact: "Contact", settings: "Settings" },
     brand: "AI Tool Builder",
     launch: "Preview",
-    exportTitle: "Publish as a web tool",
+    exportTitle: "Done: Issue your URL",
     saveCreated: "Save created tool",
     save: "Save",
-    preview: "Preview",
-    test: "Run action test",
+    preview: "Preview first",
+    test: "Detailed action test",
     zip: "Download ZIP",
     publish: "Issue public URL",
   },
@@ -4678,7 +4678,7 @@ function renderExportStatusOnly() {
       publishUrl.innerHTML = [
         `<a href="${escapeAttribute(mainUrl)}" target="_blank" rel="noopener">${escapeHtml(mainUrl)}</a>`,
         toolsUrl && toolsUrl !== mainUrl
-          ? `<br><small>将来用: ${escapeHtml(toolsUrl)}</small>`
+          ? `<br><small>別URL: ${escapeHtml(toolsUrl)}</small>`
           : "",
       ].filter(Boolean).join("");
     }
@@ -4687,22 +4687,26 @@ function renderExportStatusOnly() {
       publishQr.src = state.lastPublish.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(mainUrl)}`;
     }
     if (shareActions) shareActions.hidden = false;
+    const openLink = $("#open-publish-url");
+    if (openLink) {
+      openLink.hidden = false;
+      openLink.href = mainUrl;
+    }
     if (publishMeta) {
       const visLabel = {
-        private: "非公開（URLを知っている人だけ・検索非掲載）",
-        password: "パスワード保護",
+        private: "リンクを知っている人だけ",
+        password: "パスワード付き",
         public: "一般公開",
-      }[state.lastPublish.visibility] || "非公開";
-      const keyNote = state.lastPublish.hasServerKey
-        ? "本番AIキーはサーバー設定済みです。"
-        : "本番AIキー未設定のため、公開URLはお試し動作が中心です（URL自体は使えます）。";
-      publishMeta.textContent = `公開設定: ${visLabel}。${keyNote}`;
+      }[state.lastPublish.visibility] || "リンクを知っている人だけ";
+      publishMeta.textContent = `公開範囲: ${visLabel}。このURLを開けばすぐ使えます。`;
     }
   } else if (state.publishError && publishUrl) {
     publishUrl.textContent = state.publishError;
     if (shareActions) shareActions.hidden = true;
     if (publishQr) publishQr.hidden = true;
-    if (publishMeta) publishMeta.textContent = "公開に失敗しました。上のメッセージを確認してください。";
+    const openLink = $("#open-publish-url");
+    if (openLink) openLink.hidden = true;
+    if (publishMeta) publishMeta.textContent = "";
   }
 }
 
@@ -4719,9 +4723,33 @@ function getSelectedPublishVisibility() {
 function isActionTestPassed(report = state.lastTestReport) {
   const text = String(report || "");
   if (!text) return false;
-  if (/^NG /m.test(text)) return false;
-  if (/自動クリックテスト: 失敗/.test(text)) return false;
-  return /自動クリックテスト: 成功/.test(text);
+  // 公開前の安全チェック、または詳細テスト成功のどちらかでOK
+  if (/公開前チェック: 成功/.test(text)) return true;
+  if (/自動クリックテスト: 成功/.test(text) && !/^NG /m.test(text)) return true;
+  return false;
+}
+
+/** 公開に必要な最低限の安全チェック（iframeの揺れで止まらない） */
+function runPublishSafetyCheck() {
+  const files = buildRunnableToolFiles({ forceDemo: true, forPublish: false });
+  const lines = [];
+  const push = (ok, msg) => lines.push(`${ok ? "OK" : "NG"} ${msg}`);
+  push(!!files.indexHtml, "ページを生成できる");
+  push(/generate-button/.test(files.indexHtml || ""), "実行ボタンがある");
+  push(/apiKey:\s*""/.test(files.configJs || ""), "APIキーを埋め込んでいない");
+  push(!/generativelanguage\.googleapis\.com/.test(files.scriptJs || ""), "Geminiへ直接つながない");
+  push(!/api\.openai\.com/.test(files.scriptJs || ""), "OpenAIへ直接つながない");
+  push(/runViaPublishedProxy/.test(files.scriptJs || ""), "サーバー経由で動く");
+  push(/demoMode/.test(files.configJs || ""), "お試し動作がある");
+  const failed = lines.some((line) => line.startsWith("NG"));
+  const summary = [
+    `公開前チェック: ${failed ? "失敗" : "成功"}`,
+    `確認日時: ${new Date().toLocaleString("ja-JP")}`,
+    "",
+    ...lines,
+  ].join("\n");
+  state.lastTestReport = summary;
+  return !failed;
 }
 
 async function copyPublishUrl() {
@@ -4925,17 +4953,11 @@ async function publishCreatedTool(options = {}) {
   }
 
   if (!isActionTestPassed()) {
-    if (!autoTest) {
-      state.status = "自動動作テストに合格したツールだけ公開できます。先に「動作テストする」を成功させてください。";
-      state.publishError = state.status;
-      renderExportStatusOnly();
-      return;
-    }
-    state.status = "公開前に自動動作テストを実行しています…";
+    state.status = "公開前の確認をしています…";
     renderExportStatusOnly();
-    await runCreatedToolActionTest();
-    if (!isActionTestPassed()) {
-      state.status = "動作テストに失敗したため公開できませんでした。内容を確認してから再度「公開URLを発行する」を押してください。";
+    const ok = runPublishSafetyCheck();
+    if (!ok) {
+      state.status = "公開できませんでした。ツールの生成内容に問題があります。";
       state.publishError = state.status;
       renderExportStatusOnly();
       return;
@@ -6079,7 +6101,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=46").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=47").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });

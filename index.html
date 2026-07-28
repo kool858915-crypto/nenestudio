@@ -350,17 +350,16 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
 
         <section class="screen" id="export">
           <div class="folder-panel export-complete-panel">
-            <h2 id="export-heading">Webツールとして公開する</h2>
-            <p class="guide-note" id="export-mobile-tip">ログインした状態で「公開URLを発行する」を押すと、下にURLが表示されます（別タブが開かなくてもOK）。例: https://api.nenestudio.net/t/xxxxx</p>
-            <div class="export-actions" role="group" aria-label="成果物操作">
-              <button class="primary" type="button" id="preview-tool">プレビューする</button>
-              <button class="secondary" type="button" id="test-tool">動作テストする</button>
+            <h2 id="export-heading">完成：公開URLを発行</h2>
+            <p class="guide-note" id="export-mobile-tip">成果物はURLです。ログインして下の青いボタンを押すと、すぐに使えるリンクが出ます。</p>
+            <div class="export-actions export-actions-simple" role="group" aria-label="成果物操作">
               <button class="primary" type="button" id="publish-tool">公開URLを発行する</button>
+              <button class="secondary" type="button" id="preview-tool">先にプレビューする</button>
             </div>
             <fieldset class="publish-visibility" id="publish-visibility">
-              <legend>公開オプション</legend>
-              <label><input type="radio" name="publish-visibility" value="private" checked /> 非公開（デフォルト・URLを知っている人だけ・検索非掲載）</label>
-              <label><input type="radio" name="publish-visibility" value="password" /> パスワード保護</label>
+              <legend>公開の範囲</legend>
+              <label><input type="radio" name="publish-visibility" value="private" checked /> リンクを知っている人だけ（おすすめ）</label>
+              <label><input type="radio" name="publish-visibility" value="password" /> パスワード付き</label>
               <label class="publish-password-row" hidden>
                 <span>パスワード（4文字以上）</span>
                 <input type="password" id="publish-password" autocomplete="new-password" minlength="4" />
@@ -368,24 +367,24 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <label><input type="radio" name="publish-visibility" value="public" /> 一般公開</label>
             </fieldset>
             <div class="notice" id="api-format-notice" hidden></div>
-            <div class="export-result-grid">
-              <article class="export-result-card">
-                <h3>動作確認結果</h3>
-                <pre class="code-block" id="export-test-report">まだテストしていません。「動作テストする」を押してください。合格後のみ公開できます。</pre>
-              </article>
-              <article class="export-result-card">
-                <h3>公開URL / QR</h3>
-                <p class="status-message" id="publish-url" aria-live="polite">未公開です。</p>
-                <img id="publish-qr" alt="公開URLのQRコード" hidden width="220" height="220" />
-                <div class="publish-share-actions" id="publish-share-actions" hidden>
-                  <button type="button" class="secondary" id="copy-publish-url">コピー</button>
-                  <button type="button" class="secondary" id="share-publish-url">共有</button>
-                </div>
-                <p class="guide-note" id="publish-meta"></p>
-              </article>
-            </div>
+            <article class="export-result-card export-url-hero">
+              <h3>あなたの公開URL</h3>
+              <p class="status-message publish-url-text" id="publish-url" aria-live="polite">まだ発行していません。上の「公開URLを発行する」を押してください。</p>
+              <img id="publish-qr" alt="公開URLのQRコード" hidden width="220" height="220" />
+              <div class="publish-share-actions" id="publish-share-actions" hidden>
+                <button type="button" class="secondary" id="copy-publish-url">コピー</button>
+                <button type="button" class="secondary" id="share-publish-url">共有</button>
+                <a class="secondary" id="open-publish-url" href="#" target="_blank" rel="noopener" hidden>URLを開く</a>
+              </div>
+              <p class="guide-note" id="publish-meta"></p>
+            </article>
             <details class="export-advanced">
-              <summary>上級者向け：設計図テキストのみ（ZIPは廃止）</summary>
+              <summary>詳細チェック（任意）</summary>
+              <button class="secondary" type="button" id="test-tool">くわしく動作テストする</button>
+              <pre class="code-block" id="export-test-report">公開に必須ではありません。気になるときだけ使います。</pre>
+            </details>
+            <details class="export-advanced">
+              <summary>上級者向け：設計図テキスト（ZIPは廃止）</summary>
               <div class="export-grid">
                 <button class="export-card" data-export-format="folder" type="button"><strong>フォルダ形式</strong><span>設計図テキスト</span></button>
                 <button class="export-card" data-export-format="codex" type="button"><strong>Codex用</strong><span>外部AIへ渡す内容</span></button>
@@ -404,7 +403,7 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           </div>
           <dialog class="tool-preview-dialog" id="tool-preview-dialog">
             <form method="dialog" class="tool-preview-bar">
-              <strong>プレビュー（お試しモード）</strong>
+              <strong>プレビュー（お試し）</strong>
               <button class="secondary" value="close" type="submit">閉じる</button>
             </form>
             <iframe id="tool-preview-frame" title="ツールプレビュー" sandbox="allow-scripts allow-forms allow-popups allow-same-origin"></iframe>
@@ -1010,9 +1009,9 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         <button class="ad-continue-subtle" id="ad-continue" type="button" disabled>続ける</button>
       </div>
     </div>
-    <script src="./ads.config.js?v=46"></script>
-    <script src="./ads.js?v=46"></script>
-    <script src="./config.js?v=46"></script>
-    <script src="./script.js?v=46"></script>
+    <script src="./ads.config.js?v=47"></script>
+    <script src="./ads.js?v=47"></script>
+    <script src="./config.js?v=47"></script>
+    <script src="./script.js?v=47"></script>
   </body>
 </html>

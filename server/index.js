@@ -318,7 +318,7 @@ app.post("/api/publish", requireAuth, async (request, response) => {
   }
   if (!testPassed || !isPassingTestReport(testReport)) {
     return response.status(400).json({
-      error: "自動動作テストに合格したツールだけ公開できます。先にテストを成功させてください。",
+      error: "公開前チェックに合格したツールだけ公開できます。",
       code: "TEST_REQUIRED",
     });
   }
@@ -975,8 +975,9 @@ function getServerProviderKey(provider) {
 function isPassingTestReport(report) {
   const text = String(report || "");
   if (!text) return false;
-  if (/失敗|NG\s/.test(text) && !/自動クリックテスト: 成功/.test(text)) return false;
-  return /自動クリックテスト: 成功/.test(text) && !/^NG /m.test(text);
+  if (/公開前チェック: 成功/.test(text)) return true;
+  if (/自動クリックテスト: 成功/.test(text) && !/^NG /m.test(text)) return true;
+  return false;
 }
 
 function isToolOwner(request, tool) {

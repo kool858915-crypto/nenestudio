@@ -475,9 +475,40 @@ button {
 
 .export-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin: 18px 0;
+}
+
+.export-actions-simple {
+  grid-template-columns: 1.4fr 1fr;
+}
+
+.export-url-hero {
+  margin-top: 16px;
+}
+
+.publish-url-text {
+  font-size: 1.05rem;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.publish-url-text a {
+  color: #7dd3fc;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+#open-publish-url {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .export-actions .primary,
