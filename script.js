@@ -1795,28 +1795,49 @@ async function apiRequest(path, options = {}) {
   const bases = getApiBaseCandidates();
   let lastError = null;
 
-  for (let index = 0; index < bases.length; index += 1) {
-    const base = bases[index];
+  // Renderスリープ対策：先に軽い疎通で起こす
+  for (const base of bases) {
     try {
-      const response = await fetch(`${base}${path}`, {
-        ...options,
-        headers,
-        credentials: "include",
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(data.error || "サーバー処理に失敗しました。");
-      }
-      resolvedApiBase = base;
-      return data;
-    } catch (error) {
-      lastError = error;
-      if (index < bases.length - 1) continue;
+      await fetch(`${base}/server/status`, { method: "GET", credentials: "include" });
       break;
+    } catch {
+      // 続行して本番リクエストへ
     }
   }
 
-  throw lastError || new Error("サーバーに接続できません。");
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    for (let index = 0; index < bases.length; index += 1) {
+      const base = bases[index];
+      try {
+        const response = await fetch(`${base}${path}`, {
+          ...options,
+          headers,
+          credentials: "include",
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const err = new Error(data.error || "サーバー処理に失敗しました。");
+          err.code = data.code || `HTTP_${response.status}`;
+          throw err;
+        }
+        resolvedApiBase = base;
+        return data;
+      } catch (error) {
+        lastError = error;
+        const message = String(error?.message || error || "");
+        const isNetwork = /failed to fetch|networkerror|load failed|ネットワーク/i.test(message);
+        if (!isNetwork) {
+          // 認証エラー等はすぐ返す
+          throw error;
+        }
+      }
+    }
+    // ネットワーク失敗時だけ待って再試行
+    await new Promise((resolve) => setTimeout(resolve, 700 * (attempt + 1)));
+  }
+
+  const hint = "サーバーに接続できませんでした。数秒待って再試行するか、https://nenestudio.net （wwwなし）で開き直してください。";
+  throw new Error(hint);
 }
 
 const oauthUiState = {
@@ -6101,7 +6122,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=47").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=48").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });

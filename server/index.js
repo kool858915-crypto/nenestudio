@@ -30,6 +30,21 @@ const corsOrigins = (process.env.CORS_ORIGIN || publicAppUrl)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+function isAllowedCorsOrigin(origin) {
+  if (!origin) return false;
+  if (corsOrigins.includes("*") || corsOrigins.includes(origin)) return true;
+  try {
+    const host = new URL(origin).hostname.toLowerCase();
+    // 本番ドメインゆれ（www有無・pages.dev）で Failed to fetch にならないようにする
+    if (host === "nenestudio.net" || host.endsWith(".nenestudio.net")) return true;
+    if (host === "nenestudio.pages.dev" || host.endsWith(".nenestudio.pages.dev")) return true;
+    if (host === "localhost" || host === "127.0.0.1") return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
 const jwtSecret = process.env.JWT_SECRET || "dev-only-change-me";
 const isProduction = process.env.NODE_ENV === "production";
 const cookieDomain = process.env.COOKIE_DOMAIN || "";
@@ -64,7 +79,7 @@ app.use((request, response, next) => {
 
 app.use((request, response, next) => {
   const origin = request.headers.origin;
-  if (origin && (corsOrigins.includes(origin) || corsOrigins.includes("*"))) {
+  if (isAllowedCorsOrigin(origin)) {
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Vary", "Origin");
     response.setHeader("Access-Control-Allow-Credentials", "true");
