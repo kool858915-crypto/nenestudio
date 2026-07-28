@@ -350,31 +350,44 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
 
         <section class="screen" id="export">
           <div class="folder-panel export-complete-panel">
-            <h2 id="export-heading">成果物を完成させる</h2>
-            <p class="guide-note" id="export-mobile-tip">HTMLを渡して終わりではありません。プレビュー → 動作テスト → 公開URL発行までが完成です。APIキーはファイルに入れず、公開時だけサーバーへ安全登録します。</p>
+            <h2 id="export-heading">Webツールとして公開する</h2>
+            <p class="guide-note" id="export-mobile-tip">HTMLのダウンロードは廃止しました。プレビュー → 自動動作テスト → 公開URL発行が完成です。APIキーはサーバー環境変数のみで使い、成果物には埋め込みません。</p>
             <div class="export-actions" role="group" aria-label="成果物操作">
               <button class="primary" type="button" id="preview-tool">プレビューする</button>
               <button class="secondary" type="button" id="test-tool">動作テストする</button>
-              <button class="secondary" type="button" id="download-zip-tool">ZIPをダウンロード</button>
-              <button class="primary" type="button" id="publish-tool">Webに公開する</button>
+              <button class="primary" type="button" id="publish-tool">公開URLを発行する</button>
             </div>
+            <fieldset class="publish-visibility" id="publish-visibility">
+              <legend>公開オプション</legend>
+              <label><input type="radio" name="publish-visibility" value="private" checked /> 非公開（デフォルト・URLを知っている人だけ・検索非掲載）</label>
+              <label><input type="radio" name="publish-visibility" value="password" /> パスワード保護</label>
+              <label class="publish-password-row" hidden>
+                <span>パスワード（4文字以上）</span>
+                <input type="password" id="publish-password" autocomplete="new-password" minlength="4" />
+              </label>
+              <label><input type="radio" name="publish-visibility" value="public" /> 一般公開</label>
+            </fieldset>
             <div class="notice" id="api-format-notice" hidden></div>
             <div class="export-result-grid">
               <article class="export-result-card">
                 <h3>動作確認結果</h3>
-                <pre class="code-block" id="export-test-report">まだテストしていません。「動作テストする」を押してください。</pre>
+                <pre class="code-block" id="export-test-report">まだテストしていません。「動作テストする」を押してください。合格後のみ公開できます。</pre>
               </article>
               <article class="export-result-card">
                 <h3>公開URL / QR</h3>
                 <p class="status-message" id="publish-url" aria-live="polite">未公開です。</p>
                 <img id="publish-qr" alt="公開URLのQRコード" hidden width="220" height="220" />
+                <div class="publish-share-actions" id="publish-share-actions" hidden>
+                  <button type="button" class="secondary" id="copy-publish-url">コピー</button>
+                  <button type="button" class="secondary" id="share-publish-url">共有</button>
+                </div>
                 <p class="guide-note" id="publish-meta"></p>
               </article>
             </div>
             <details class="export-advanced">
-              <summary>上級者向け：設計図テキスト / 旧形式</summary>
+              <summary>上級者向け：設計図テキスト / バックアップZIP</summary>
               <div class="export-grid">
-                <button class="export-card" data-export-format="zip" type="button"><strong>ZIP形式</strong><span>バックアップ用（キーなし・お試し動作）</span></button>
+                <button class="export-card" data-export-format="zip" type="button" id="download-zip-tool"><strong>ZIP形式</strong><span>バックアップ用（キーなし・お試し動作）</span></button>
                 <button class="export-card" data-export-format="folder" type="button"><strong>フォルダ形式</strong><span>設計図テキスト</span></button>
                 <button class="export-card" data-export-format="codex" type="button"><strong>Codex用</strong><span>外部AIへ渡す内容</span></button>
                 <button class="export-card" data-export-format="claude" type="button"><strong>Claude Code用</strong><span>外部AIへ渡す内容</span></button>
@@ -418,23 +431,23 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
             <div class="guide-hero-copy">
               <p class="guide-kicker">初心者向けの最短ルート</p>
               <ol class="guide-route">
-                <li>設定でAPIキーを保存する（公開時にサーバー登録）</li>
                 <li>作るで質問に答えて提案を選ぶ</li>
-                <li>プレビュー → 動作テスト → Webに公開する</li>
-                <li>発行されたURL / QRでスマホから使う</li>
+                <li>プレビュー → 動作テスト（合格必須）</li>
+                <li>公開オプションを選び、公開URLを発行する</li>
+                <li>発行されたURL / QRでスマホから使う（HTMLダウンロード不要）</li>
               </ol>
             </div>
             <div class="guide-hero-actions">
               <button class="primary" type="button" data-goto="create">今すぐ作る</button>
-              <button class="secondary" type="button" data-goto="settings">先にAPIキーを設定する</button>
+              <button class="secondary" type="button" data-goto="settings">設定を確認する</button>
             </div>
           </div>
 
           <div class="guide-callout">
-            <strong>準備（最初の1回だけ）：APIキーを設定する</strong>
-            <p>APIキーは、AIを動かすための「利用券」のような認証コードです。Google Geminiなら無料枠があります。</p>
+            <strong>ポイント：APIキーは成果物に入りません</strong>
+            <p>AIは「ブラウザ → NENE Studio API → Gemini」の経路だけで動きます。公開ツールのHTMLにキーは埋め込みません。</p>
             <ol class="guide-mini-steps">
-              <li>左メニュー「APIキー設定」で取得手順を見る</li>
+              <li>左メニュー「APIキー設定」はStudio側の設定用です</li>
               <li>取得したキーを「設定」画面に貼り付けて「保存する」</li>
               <li>これで作成したツールにキーが自動で入ります</li>
             </ol>

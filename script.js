@@ -191,7 +191,7 @@ const screenCopy = {
   proposal: ["提案を選びます", "次へ進む"],
   nodes: ["作業の部品を組みます", "次へ進む"],
   blueprint: ["作成内容を確認します", "次へ進む"],
-  export: ["成果物を完成させる", "Webに公開する"],
+  export: ["Webツールとして公開する", "公開URLを発行する"],
   usage: ["使い方ガイド", "作る画面へ進む"],
   implement: ["無料で実装する", "作る画面へ戻る"],
   plans: ["プラン一覧", "作る画面へ戻る"],
@@ -210,7 +210,7 @@ const screenCopyEn = {
   proposal: ["Choose a proposal", "Next"],
   nodes: ["Build the workflow parts", "Next"],
   blueprint: ["Review the tool content", "Next"],
-  export: ["Finish the deliverable", "Publish to Web"],
+  export: ["Publish as a web tool", "Issue public URL"],
   usage: ["How-to Guide", "Go to Build"],
   implement: ["Build Free with External AI", "Back to Build"],
   plans: ["Plans", "Back to Build"],
@@ -228,25 +228,25 @@ const uiText = {
     nav: { create: "作る", login: "ログイン", usage: "使い方", implement: "無料で実装", plans: "プラン", apikey: "APIキー設定", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", contact: "お問い合わせ", settings: "設定" },
     brand: "AIツール作成",
     launch: "プレビューする",
-    exportTitle: "成果物を完成させる",
+    exportTitle: "Webツールとして公開する",
     saveCreated: "作成したツールを保存する",
     save: "保存する",
     preview: "プレビューする",
     test: "動作テストする",
     zip: "ZIPをダウンロード",
-    publish: "Webに公開する",
+    publish: "公開URLを発行する",
   },
   en: {
     nav: { create: "Build", login: "Login", usage: "How to Use", implement: "Build Free", plans: "Plans", apikey: "API Key", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", contact: "Contact", settings: "Settings" },
     brand: "AI Tool Builder",
     launch: "Preview",
-    exportTitle: "Finish the deliverable",
+    exportTitle: "Publish as a web tool",
     saveCreated: "Save created tool",
     save: "Save",
     preview: "Preview",
     test: "Run action test",
     zip: "Download ZIP",
-    publish: "Publish to Web",
+    publish: "Issue public URL",
   },
 };
 
@@ -1456,6 +1456,12 @@ function bindEvents() {
   $("#test-tool")?.addEventListener("click", () => runCreatedToolActionTest());
   $("#download-zip-tool")?.addEventListener("click", () => downloadCreatedToolZip());
   $("#publish-tool")?.addEventListener("click", () => publishCreatedTool());
+  $("#copy-publish-url")?.addEventListener("click", () => copyPublishUrl());
+  $("#share-publish-url")?.addEventListener("click", () => sharePublishUrl());
+  $$("input[name='publish-visibility']").forEach((input) => {
+    input.addEventListener("change", syncPublishVisibilityUi);
+  });
+  syncPublishVisibilityUi();
   $("#save-created-tool").addEventListener("click", saveCreatedTool);
   $("#create-agent").addEventListener("click", createAgent);
   $("#save-agent").addEventListener("click", saveAgent);
@@ -1611,9 +1617,11 @@ function renderLanguage() {
   const testBtn = $("#test-tool");
   if (testBtn) testBtn.textContent = text.test || "動作テストする";
   const zipBtn = $("#download-zip-tool");
-  if (zipBtn) zipBtn.textContent = text.zip || "ZIPをダウンロード";
+  if (zipBtn && !zipBtn.classList.contains("export-card")) {
+    zipBtn.textContent = text.zip || "ZIPをダウンロード";
+  }
   const publishBtn = $("#publish-tool");
-  if (publishBtn) publishBtn.textContent = text.publish || "Webに公開する";
+  if (publishBtn) publishBtn.textContent = text.publish || "公開URLを発行する";
 }
 
 function renderStaticLanguage() {
@@ -2953,17 +2961,17 @@ function buildRunnableToolFiles(options = {}) {
   const toolLabels = isEnglish
     ? {
         usage: "How to use",
-        open: "Open the published URL on your phone, or preview inside NENE Studio.",
-        api: "Live AI runs only through NENE Studio server. Downloaded files use demo mode (no API key in the file).",
+        open: "Open the published URL on phone or PC (no HTML download).",
+        api: "Live AI runs only as browser → NENE Studio API → Gemini. Keys stay in server env vars only.",
         paste: "Tap one genre chip, then press Create article. No news URL paste.",
         generate: "Create article",
         copy: "Copy result",
         copied: "Copied.",
         result: "Review the SEO article that appears.",
         requirements: "Requirements",
-        apiKey: `${providerLabel} API key`,
-        apiTitle: "API key (this screen only — never saved into the file)",
-        apiReadyTitle: "API key",
+        apiKey: "Run mode",
+        apiTitle: "Run mode",
+        apiReadyTitle: "Run mode",
         inputTitle: "1. Pick a genre",
         workflowTitle: "What this tool does",
         genre: "Genre / what kind of topic",
@@ -2977,32 +2985,42 @@ function buildRunnableToolFiles(options = {}) {
         length3000: "About 3000 chars (recommended)",
         length5000: "About 5000 chars",
         outputTitle: "SEO article",
-        statusNoKey: "API key is missing. Paste it above, then press again. Loading starts only after the key is set.",
+        statusNoKey: "Live mode needs a published URL. Try demo mode first.",
         statusNoInput: "Tap a genre chip first.",
-        needKeyTitle: "API key required",
-        needKeyButton: "Add API key and retry",
-        needKeyHelp: "Steps: 1) Paste your Gemini key above 2) Press again → loading starts. The key stays in memory for this tab only.",
-        accepted: "Got it...",
-        generating: "Researching and writing the article...",
-        generatingButton: "Creating...",
-        waitHint: "Usually takes 10-40 seconds. Please wait.",
+        needKeyTitle: "Publish required",
+        needKeyButton: "Retry in demo",
+        needKeyHelp: "Demo works locally. For live AI, publish a URL in NENE Studio.",
+        accepted: "Request accepted.",
+        analyzing: "AI is analyzing…",
+        slowHint: "Taking longer than usual.",
+        generating: "AI is analyzing…",
+        generatingButton: "Working...",
+        waitHint: "AI is analyzing…",
         complete: "Article ready.",
         empty: "The result was empty.",
         error: "Error: ",
-        note: "Tap a genre → Create article. Gemini uses public info. No URL paste. API keys are never embedded in the file.",
+        errNetwork: "Network error: connection failed. Check your connection and retry.",
+        errApiKey: "API key error: server key configuration is missing or invalid.",
+        errAi: "AI error: the model failed to respond.",
+        errEmpty: "Empty response: the AI returned no content.",
+        errGeneric: "Request failed. Please try again later.",
+        note: "Tap a genre → run. Live mode uses published URL only. No browser-direct Gemini/OpenAI.",
         provider: "Provider",
         saveKey: "Remember key (disabled)",
-        warning: "API keys are never written into exported files. Manage your key yourself.",
-        keyReady: "API key received (valid for this tab only).",
+        warning: "API keys are never written into files. Server env vars only.",
+        keyReady: "Publish settings loaded.",
         probe: "Connection test",
-        probeOk: "Gemini: OK",
-        probeSearchOk: "Search: available",
-        probeSearchNg: "Search: unavailable (selection stopped)",
+        probeOk: "Route: OK",
+        probeSearchOk: "Search: available on published URL",
+        probeSearchNg: "Search: unused in demo",
         probeFail: "Connection test failed",
         searchFailed: "Could not fetch latest news. Stock selection stopped. Try again later.",
         openaiNoSearch: "News-grounded tools require Gemini. OpenAI is not supported here.",
         sourcesTitle: "Sources",
         selectedTheme: "Selected theme: ",
+        demoMode: "Demo (dummy)",
+        liveMode: "Live (published URL)",
+        demoBadge: "[DEMO]",
         promptGenre: "Genre/theme:",
         promptTopic: "Topic:",
         promptAngle: "Angle/keywords:",
@@ -3011,9 +3029,9 @@ function buildRunnableToolFiles(options = {}) {
       }
     : {
         usage: "使い方",
-        open: "HTMLファイルをブラウザで開きます（ダブルクリックでOK）。iPhoneはファイルアプリからSafariで開いてください。",
-        api: "本番AIはNENE Studioサーバー経由のみです。ダウンロード単体はお試し（ダミー）で動きます。公開URLならサーバー登録キーで実行します。",
-        paste: "ジャンルボタンを1つ押して「記事を作成する」。ニュースURLのコピペは不要です。",
+        open: "発行された公開URLをスマホやPCのブラウザで開きます（HTMLダウンロード不要）。",
+        api: "本番AIはブラウザ→NENE Studio API→Geminiのみ。キーはサーバー環境変数で管理し、画面にもファイルにも出しません。",
+        paste: "ジャンルボタンを1つ押して実行。ニュースURLのコピペは不要です。",
         generate: "記事を作成する",
         copy: "結果をコピー",
         copied: "コピーしました。",
@@ -3039,18 +3057,25 @@ function buildRunnableToolFiles(options = {}) {
         statusNoInput: "先にジャンルボタンを押してください。",
         needKeyTitle: "公開が必要です",
         needKeyButton: "お試しで再実行",
-        needKeyHelp: "ダウンロード単体ではお試し（ダミー）のみ動きます。本番はNENE Studioで「Webに公開する」を押してください。",
-        accepted: "受け付けました...",
-        generating: "最新情報を確認しながら記事を作成中です...",
-        generatingButton: "作成中...",
-        waitHint: "通常10〜40秒かかります。そのままお待ちください。",
+        needKeyHelp: "お試し（ダミー）のみローカルで動きます。本番はNENE Studioで公開URLを発行してください。",
+        accepted: "処理を受け付けました。",
+        analyzing: "AIが分析しています…",
+        slowHint: "通常より時間が掛かっています。",
+        generating: "AIが分析しています…",
+        generatingButton: "処理中...",
+        waitHint: "AIが分析しています…",
         complete: "記事ができました。",
         empty: "結果が空でした。",
         error: "エラー: ",
-        note: "テーマを押す → 実行。ダウンロード単体はお試し。本番は公開URL（サーバー経由）のみ。ブラウザからGemini/OpenAIへ直接はつなぎません。",
+        errNetwork: "ネットワークエラー：通信に失敗しました。接続を確認して再試行してください。",
+        errApiKey: "APIキーエラー：サーバー側のキー設定を確認してください。",
+        errAi: "AIエラー：モデルからの応答に失敗しました。",
+        errEmpty: "空レスポンス：AIから内容が返りませんでした。",
+        errGeneric: "通信失敗：しばらくしてから再試行してください。",
+        note: "テーマを押す → 実行。本番は公開URLのみ。ブラウザからGemini/OpenAIへ直接はつなぎません。",
         provider: "プロバイダー",
         saveKey: "無効",
-        warning: "APIキーはHTML/ZIPに書き込みません。本番キーは公開時のみサーバーへ登録します。",
+        warning: "APIキーはHTMLに書き込みません。サーバー環境変数のみで管理します。",
         keyReady: "公開設定を読み込みました。",
         probe: "接続テスト",
         probeOk: "実行経路：正常",
@@ -3086,13 +3111,13 @@ function buildRunnableToolFiles(options = {}) {
         cautionTitle: "## Caution",
         noLogin: "No NENE Studio login required. This folder works on its own.",
         setupSteps: [
-          "1. Open the HTML file (or unzip and open index.html).",
-          "2. If needed, enter your API key.",
-          "3. Tap a theme chip.",
-          "4. Press the run button.",
+          "1. Open the published URL in a browser.",
+          "2. Tap a theme chip.",
+          "3. Press the run button.",
+          "4. Review the result (no HTML download needed).",
         ],
-        setupRecommend: "Recommended: Google Gemini",
-        setupOpenAiNote: "OpenAI may fail in some browsers. Use Gemini then.",
+        setupRecommend: "Recommended: use the published URL",
+        setupOpenAiNote: "API keys stay on the server only. End users never see them.",
       }
     : {
         sampleTitle: `# ${proposal.title} サンプル出力`,
@@ -3108,13 +3133,13 @@ function buildRunnableToolFiles(options = {}) {
         cautionTitle: "## 注意",
         noLogin: "NENE Studio へのログインは不要です。このフォルダだけで使えます。",
         setupSteps: [
-          "1. HTMLファイルを開きます（ZIPなら解凍後の index.html）。",
-          "2. 必要なら APIキーを入れます。",
-          "3. テーマボタンを押します。",
-          "4. 画面の実行ボタンを押します。",
+          "1. 発行された公開URLをブラウザで開きます。",
+          "2. テーマボタンを押します。",
+          "3. 画面の実行ボタンを押します。",
+          "4. 結果を確認します（HTMLダウンロードは不要）。",
         ],
-        setupRecommend: "おすすめ: Google Gemini",
-        setupOpenAiNote: "OpenAI が失敗する場合は Gemini を使ってください。",
+        setupRecommend: "おすすめ: 公開URLで利用",
+        setupOpenAiNote: "APIキーはサーバー側のみ。利用者には見せません。",
       };
 
   const mode = getToolMode();
@@ -3272,6 +3297,7 @@ function buildRunnableToolFiles(options = {}) {
     "<head>",
     '  <meta charset="utf-8" />',
     '  <meta name="viewport" content="width=device-width, initial-scale=1" />',
+    '  <meta name="robots" content="noindex,nofollow" />',
     `  <title>${escapeHtml(proposal.title)}</title>`,
     '  <link rel="stylesheet" href="./style.css" />',
     "</head>",
@@ -3280,8 +3306,8 @@ function buildRunnableToolFiles(options = {}) {
     `    <h1>${escapeHtml(proposal.title)}</h1>`,
     `    <p class="lead">${escapeHtml(summary.purpose)}</p>`,
     `    <p class="note">${escapeHtml(toolLabels.note)}</p>`,
-    '    <noscript>このツールはJavaScriptが必要です。ダウンロード直後のプレビューではなく、Chrome / Safari でファイルを開いてください。</noscript>',
-    `    <p class="note" id="boot-tip">ボタンが反応しないときは、ファイルをブラウザで開き直すか、NENE Studioの「作成したツールを起動する」を使ってください。</p>`,
+    '    <noscript>このツールはJavaScriptが必要です。公開URLをブラウザで開いてください。</noscript>',
+    `    <p class="note" id="boot-tip">読み込み中です…</p>`,
     `    <section class="panel">\n      <h2>${toolLabels.apiTitle}</h2>\n${apiPanelInner}\n    </section>`,
     '    <section class="panel">',
     `      <h2>${toolLabels.inputTitle}</h2>`,
@@ -3504,6 +3530,17 @@ function buildRunnableToolFiles(options = {}) {
     "  line-height: 1.7;",
     "}",
     "pre.workflow { min-height: 0; margin: 0; background: transparent; border: 0; padding: 0; color: var(--muted); }",
+    "@media (max-width: 720px) {",
+    "  .tool-shell { padding: 18px 12px 36px; }",
+    "  h1 { font-size: 1.45rem; }",
+    "  .panel { padding: 14px; }",
+    "  .actions { flex-direction: column; }",
+    "  .actions button { width: 100%; }",
+    "  .chip { min-height: 48px; }",
+    "}",
+    "@media (min-width: 1024px) {",
+    "  .tool-shell { padding: 36px 20px 56px; }",
+    "}",
   ].join("\n");
 
   const scriptJs = [
@@ -3569,13 +3606,17 @@ function buildRunnableToolFiles(options = {}) {
     "    generateButton.disabled = !!isBusy;",
     "    generateButton.classList.toggle('is-loading', !!isBusy);",
     "    generateButton.textContent = isBusy",
-    "      ? (LABELS.generatingButton || LABELS.generating || '作成中...')",
+    "      ? (LABELS.generatingButton || LABELS.generating || '処理中...')",
     "      : defaultGenerateLabel;",
     "  }",
     "  if (probeButton) probeButton.disabled = !!isBusy;",
     "  if (loadingBox) {",
-    "    loadingBox.classList.remove('is-error');",
-    "    loadingBox.hidden = !isBusy;",
+    "    if (isBusy) {",
+    "      loadingBox.classList.remove('is-error');",
+    "      loadingBox.hidden = false;",
+    "    } else if (!loadingBox.classList.contains('is-error')) {",
+    "      loadingBox.hidden = true;",
+    "    }",
     "  }",
     "  if (resultBox) {",
     "    resultBox.classList.toggle('is-loading', !!isBusy);",
@@ -3587,14 +3628,21 @@ function buildRunnableToolFiles(options = {}) {
     "  }",
     "  if (!isBusy) return;",
     "  loadingStartedAt = Date.now();",
-    "  if (loadingTitle) loadingTitle.textContent = LABELS.generating || '作成中...';",
+    "  if (loadingTitle) loadingTitle.textContent = LABELS.accepted || '処理を受け付けました。';",
+    "  if (loadingDetail) loadingDetail.textContent = LABELS.analyzing || LABELS.generating || 'AIが分析しています…';",
+    "  setStatus(LABELS.accepted || '処理を受け付けました。', 'is-busy');",
     "  const updateDetail = function () {",
     "    const sec = Math.max(1, Math.floor((Date.now() - loadingStartedAt) / 1000));",
-    "    const hint = LABELS.waitHint || 'しばらくお待ちください。';",
-    "    if (loadingDetail) loadingDetail.textContent = hint + '（経過 ' + sec + ' 秒）';",
-    "    setStatus((LABELS.generating || '作成中...') + '（' + sec + '秒）', 'is-busy');",
+    "    if (sec >= 5) {",
+    "      if (loadingTitle) loadingTitle.textContent = LABELS.slowHint || '通常より時間が掛かっています。';",
+    "      if (loadingDetail) loadingDetail.textContent = (LABELS.analyzing || 'AIが分析しています…') + '（経過 ' + sec + ' 秒）';",
+    "      setStatus((LABELS.slowHint || '通常より時間が掛かっています。') + '（' + sec + '秒）', 'is-busy');",
+    "    } else {",
+    "      if (loadingTitle) loadingTitle.textContent = LABELS.analyzing || LABELS.generating || 'AIが分析しています…';",
+    "      if (loadingDetail) loadingDetail.textContent = (LABELS.waitHint || LABELS.analyzing || 'AIが分析しています…') + '（経過 ' + sec + ' 秒）';",
+    "      setStatus((LABELS.analyzing || 'AIが分析しています…') + '（' + sec + '秒）', 'is-busy');",
+    "    }",
     "  };",
-    "  updateDetail();",
     "  loadingTimer = setInterval(updateDetail, 1000);",
     "}",
     "",
@@ -3803,7 +3851,7 @@ function buildRunnableToolFiles(options = {}) {
     "    'テーマ: ' + theme,",
     "    '',",
     "    '結論: プレビュー用のサンプル出力',",
-    "    '次の行動: NENE Studioで「Webに公開する」と本番URLで確認',",
+    "    '次の行動: NENE Studioで公開URLを発行して本番確認',",
     "    '確認日時: ' + nowStamp(),",
     "  ].join('\\n');",
     "}",
@@ -3812,20 +3860,45 @@ function buildRunnableToolFiles(options = {}) {
     "  const slug = String(config.publishSlug || '').trim();",
     "  const apiBase = String(config.apiBase || '').replace(/\\/$/, '');",
     "  if (!slug || slug.indexOf('__NENE_') === 0 || !apiBase || apiBase.indexOf('__NENE_') === 0) {",
-    "    throw new Error(LABELS.needKeyHelp || '本番実行には公開URLが必要です。');",
+    "    const err = new Error(LABELS.needKeyHelp || '本番実行には公開URLが必要です。');",
+    "    err.code = 'NOT_PUBLISHED';",
+    "    throw err;",
     "  }",
-    "  const response = await fetch(apiBase + '/public/tools/' + encodeURIComponent(slug) + '/run', {",
-    "    method: 'POST',",
-    "    headers: { 'Content-Type': 'application/json' },",
-    "    body: JSON.stringify({",
-    "      systemPrompt: SYSTEM_PROMPT,",
-    "      input: userInput,",
-    "      demo: false,",
-    "    }),",
-    "  });",
+    "  let response;",
+    "  try {",
+    "    response = await fetch(apiBase + '/public/tools/' + encodeURIComponent(slug) + '/run', {",
+    "      method: 'POST',",
+    "      headers: { 'Content-Type': 'application/json' },",
+    "      credentials: 'include',",
+    "      body: JSON.stringify({",
+    "        systemPrompt: SYSTEM_PROMPT,",
+    "        input: userInput,",
+    "        demo: false,",
+    "      }),",
+    "    });",
+    "  } catch (networkError) {",
+    "    const err = new Error(LABELS.errNetwork || 'ネットワークエラー');",
+    "    err.code = 'NETWORK_ERROR';",
+    "    throw err;",
+    "  }",
     "  const data = await response.json().catch(function () { return {}; });",
-    "  if (!response.ok) throw new Error((data && data.error) || '公開ツールの実行に失敗しました。');",
-    "  return { text: data.text || '', sources: [] };",
+    "  if (!response.ok) {",
+    "    const code = (data && data.code) || 'AI_ERROR';",
+    "    let message = (data && data.error) || LABELS.errGeneric || '通信失敗';",
+    "    if (code === 'SERVER_API_KEY_MISSING' || code === 'API_KEY_ERROR') message = LABELS.errApiKey || message;",
+    "    else if (code === 'NETWORK_ERROR') message = LABELS.errNetwork || message;",
+    "    else if (code === 'EMPTY_RESPONSE') message = LABELS.errEmpty || message;",
+    "    else if (code === 'AI_ERROR') message = LABELS.errAi || message;",
+    "    const err = new Error(message);",
+    "    err.code = code;",
+    "    throw err;",
+    "  }",
+    "  if (!String(data.text || '').trim()) {",
+    "    const err = new Error(LABELS.errEmpty || '空レスポンス');",
+    "    err.code = 'EMPTY_RESPONSE';",
+    "    throw err;",
+    "  }",
+    "  return { text: data.text || '', sources: [], usage: data.usage || null };",
     "}",
     "",
     "async function copyResult() {",
@@ -3840,12 +3913,18 @@ function buildRunnableToolFiles(options = {}) {
     "",
     "async function generateResult() {",
     "  if (generateButton && generateButton.disabled) return;",
-    "  if (generateButton) generateButton.textContent = LABELS.accepted || '受け付けました...';",
+    "  if (generateButton) {",
+    "    generateButton.disabled = true;",
+    "    generateButton.textContent = LABELS.accepted || '処理を受け付けました。';",
+    "  }",
     "  const topic = ((topicInput && topicInput.value) || expandTopic(selectedGenre) || selectedGenre || '').trim();",
     "  const angle = ((angleInput && angleInput.value) || '').trim();",
     "  const length = (lengthSelect && lengthSelect.value) || '3000';",
     "  if (!topic && !selectedGenre) {",
-    "    if (generateButton) generateButton.textContent = defaultGenerateLabel;",
+    "    if (generateButton) {",
+    "      generateButton.disabled = false;",
+    "      generateButton.textContent = defaultGenerateLabel;",
+    "    }",
     "    setStatus(LABELS.statusNoInput, 'is-error');",
     "    return;",
     "  }",
@@ -3856,7 +3935,7 @@ function buildRunnableToolFiles(options = {}) {
     "  setBusy(true);",
     "  if (resultBox) {",
     "    resultBox.classList.remove('is-error');",
-    "    resultBox.textContent = LABELS.generating || '作成中...';",
+    "    resultBox.textContent = LABELS.accepted || '処理を受け付けました。';",
     "  }",
     "  const modeHints = [];",
     "  if (config.toolMode === 'stock_picker' || config.toolMode === 'crypto_picker') {",
@@ -3896,12 +3975,25 @@ function buildRunnableToolFiles(options = {}) {
     "    if (resultBox) resultBox.textContent = text;",
     "    setStatus(LABELS.complete, 'is-done');",
     "  } catch (error) {",
+    "    const code = error && error.code;",
+    "    let message = error && error.message ? error.message : String(error);",
+    "    if (code === 'NETWORK_ERROR') message = LABELS.errNetwork || message;",
+    "    else if (code === 'API_KEY_ERROR' || code === 'SERVER_API_KEY_MISSING') message = LABELS.errApiKey || message;",
+    "    else if (code === 'EMPTY_RESPONSE') message = LABELS.errEmpty || message;",
+    "    else if (code === 'AI_ERROR') message = LABELS.errAi || message;",
+    "    else if (!code) message = (LABELS.errGeneric || '通信失敗') + ' / ' + message;",
     "    if (resultBox) {",
     "      resultBox.classList.remove('is-loading');",
     "      resultBox.classList.add('is-error');",
-    "      resultBox.textContent = LABELS.error + (error.message || error);",
+    "      resultBox.textContent = message;",
     "    }",
-    "    setStatus(LABELS.error + (error.message || error), 'is-error');",
+    "    if (loadingBox) {",
+    "      loadingBox.hidden = false;",
+    "      loadingBox.classList.add('is-error');",
+    "      if (loadingTitle) loadingTitle.textContent = LABELS.error || 'エラー';",
+    "      if (loadingDetail) loadingDetail.textContent = message;",
+    "    }",
+    "    setStatus(message, 'is-error');",
     "  } finally {",
     "    setBusy(false);",
     "  }",
@@ -4519,6 +4611,7 @@ function renderExportStatusOnly() {
   const publishUrl = $("#publish-url");
   const publishQr = $("#publish-qr");
   const publishMeta = $("#publish-meta");
+  const shareActions = $("#publish-share-actions");
   if (state.lastPublish) {
     if (publishUrl) {
       publishUrl.innerHTML = `<a href="${escapeAttribute(state.lastPublish.url)}" target="_blank" rel="noopener">${escapeHtml(state.lastPublish.url)}</a>`;
@@ -4527,12 +4620,72 @@ function renderExportStatusOnly() {
       publishQr.hidden = false;
       publishQr.src = state.lastPublish.qrUrl;
     }
+    if (shareActions) shareActions.hidden = false;
     if (publishMeta) {
-      publishMeta.textContent = state.lastPublish.hasApiKey
-        ? "APIキーはサーバーへ安全登録済み。公開URLはサーバー経由のみでAI実行します。"
-        : "キー未登録のため公開URLはお試し中心です。設定でキーを保存して再公開すると本番実行できます。";
+      const visLabel = {
+        private: "非公開（URLを知っている人だけ・検索非掲載）",
+        password: "パスワード保護",
+        public: "一般公開",
+      }[state.lastPublish.visibility] || "非公開";
+      publishMeta.textContent = `公開設定: ${visLabel}。AIキーはサーバー環境変数のみ。検索エンジンには載りません。`;
     }
   }
+}
+
+function syncPublishVisibilityUi() {
+  const selected = document.querySelector("input[name='publish-visibility']:checked");
+  const row = document.querySelector(".publish-password-row");
+  if (row) row.hidden = selected?.value !== "password";
+}
+
+function getSelectedPublishVisibility() {
+  return document.querySelector("input[name='publish-visibility']:checked")?.value || "private";
+}
+
+function isActionTestPassed(report = state.lastTestReport) {
+  const text = String(report || "");
+  if (!text) return false;
+  if (/^NG /m.test(text)) return false;
+  if (/自動クリックテスト: 失敗/.test(text)) return false;
+  return /自動クリックテスト: 成功/.test(text);
+}
+
+async function copyPublishUrl() {
+  const url = state.lastPublish?.url;
+  if (!url) {
+    state.status = "まだ公開URLがありません。";
+    renderExportStatusOnly();
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    state.status = "公開URLをコピーしました。";
+  } catch {
+    state.status = "コピーに失敗しました。URLを長押ししてコピーしてください。";
+  }
+  renderExportStatusOnly();
+}
+
+async function sharePublishUrl() {
+  const url = state.lastPublish?.url;
+  const title = state.lastPublish?.title || getSelectedProposal()?.title || "NENE Tool";
+  if (!url) {
+    state.status = "まだ公開URLがありません。";
+    renderExportStatusOnly();
+    return;
+  }
+  if (navigator.share) {
+    try {
+      await navigator.share({ title, text: state.lastPublish.shareText || title, url });
+      state.status = "共有しました。";
+    } catch {
+      state.status = "共有をキャンセルしました。";
+    }
+  } else {
+    await copyPublishUrl();
+    state.status = "共有機能が使えないため、URLをコピーしました。";
+  }
+  renderExportStatusOnly();
 }
 
 async function runCreatedToolActionTest() {
@@ -4543,16 +4696,23 @@ async function runCreatedToolActionTest() {
   try {
     if (reportEl) reportEl.textContent = "自動クリックテスト中...";
     const files = buildRunnableToolFiles({ forceDemo: true, forPublish: false });
-    push(!!files.indexHtml, "成果物HTMLを生成");
-    push(/generate-button/.test(files.indexHtml), "選定ボタンがある");
+    push(!!files.indexHtml, "ページHTMLを生成");
+    push(/generate-button/.test(files.indexHtml), "実行ボタンがある");
     push(/__neneGenerate/.test(files.indexHtml), "ボタン用JavaScriptがある");
     push(/demoMode/.test(files.configJs), "お試しモード設定がある");
     push(/apiKey:\s*""/.test(files.configJs), "HTMLにAPIキーを埋め込んでいない");
+    push(/noindex,nofollow/.test(files.indexHtml), "検索除外メタがある");
+    push(/処理を受け付けました|Request accepted/.test(files.scriptJs), "受付ローディング文言がある");
+    push(/通常より時間が掛かっています|Taking longer than usual/.test(files.scriptJs), "5秒超ローディング文言がある");
+    push(/errNetwork|NETWORK_ERROR/.test(files.scriptJs), "ネットワークエラー表示がある");
+    push(/errApiKey|API_KEY_ERROR/.test(files.scriptJs), "APIキーエラー表示がある");
+    push(/errEmpty|EMPTY_RESPONSE/.test(files.scriptJs), "空レスポンス表示がある");
+    push(/errAi|AI_ERROR/.test(files.scriptJs), "AIエラー表示がある");
+    push(/viewport/.test(files.indexHtml), "レスポンシブ用viewportがある");
 
     const iframe = document.createElement("iframe");
-    // 自作HTMLの自動テスト用。allow-same-origin が無いと contentDocument が取れない
     iframe.setAttribute("sandbox", "allow-scripts allow-same-origin");
-    iframe.style.cssText = "position:fixed;left:-9999px;width:800px;height:900px;opacity:0;pointer-events:none;";
+    iframe.style.cssText = "position:fixed;left:-9999px;width:390px;height:844px;opacity:0;pointer-events:none;";
     document.body.appendChild(iframe);
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error("プレビュー読み込みタイムアウト")), 8000);
@@ -4566,6 +4726,7 @@ async function runCreatedToolActionTest() {
     const win = iframe.contentWindow;
     const doc = iframe.contentDocument;
     if (!win || !doc) throw new Error("プレビューDOMを取得できません");
+    push(true, "ページが開く（スマホ幅390px）");
 
     const chip = doc.querySelector("[data-topic]");
     push(!!chip, "テーマボタンがある");
@@ -4576,15 +4737,36 @@ async function runCreatedToolActionTest() {
       push(selected.includes(chip.getAttribute("data-topic") || ""), "テーマボタンで選択テーマが変わる");
     }
 
+    const angle = doc.querySelector("#tool-angle");
+    if (angle) {
+      angle.value = "テスト入力";
+      push(angle.value === "テスト入力", "入力できる");
+    } else {
+      push(true, "入力欄（任意）は省略可");
+    }
+
     const generate = doc.querySelector("#generate-button");
-    push(!!generate, "実行ボタンがある");
+    push(!!generate, "ボタンを押せる（実行ボタンあり）");
     if (generate) {
       generate.click();
-      await new Promise((r) => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 120));
+      const loadingVisible = doc.querySelector("#loading-box") && !doc.querySelector("#loading-box").hidden;
+      const loadingText = `${doc.querySelector("#loading-title")?.textContent || ""}${doc.querySelector("#loading-detail")?.textContent || ""}${doc.querySelector("#status")?.textContent || ""}`;
+      push(loadingVisible || /処理を受け付け|AIが分析|Request accepted|analyzing/i.test(loadingText), "ローディングが表示される");
+      await new Promise((r) => setTimeout(r, 250));
       const resultText = doc.querySelector("#result")?.textContent || "";
-      push(/お試し|ダミー|デモ|サンプル/.test(resultText), "お試し実行でダミー結果が出る");
+      push(/お試し|ダミー|デモ|サンプル|DEMO/i.test(resultText), "結果が表示される");
       push(resultText.length > 40, "結果テキストが空でない");
     }
+
+    // PC幅でも崩れない簡易チェック
+    iframe.style.width = "1280px";
+    iframe.style.height = "800px";
+    await new Promise((r) => setTimeout(r, 80));
+    const shell = doc.querySelector(".tool-shell");
+    const shellWidth = shell?.getBoundingClientRect?.().width || 0;
+    push(shellWidth > 200, "PC幅でもレイアウトが存在する");
+    push(!!doc.querySelector("h1"), "見出しが表示される");
 
     push(!/generativelanguage\.googleapis\.com/.test(files.scriptJs), "ブラウザからGemini直結していない");
     push(!/api\.openai\.com/.test(files.scriptJs), "ブラウザからOpenAI直結していない");
@@ -4593,15 +4775,15 @@ async function runCreatedToolActionTest() {
     iframe.remove();
     const failed = lines.some((line) => line.startsWith("NG"));
     const summary = [
-      `自動クリックテスト: ${failed ? "失敗あり" : "成功"}`,
+      `自動クリックテスト: ${failed ? "失敗" : "成功"}`,
       `確認日時: ${new Date().toLocaleString("ja-JP")}`,
       "",
       ...lines,
     ].join("\n");
     state.lastTestReport = summary;
     state.status = failed
-      ? "動作テストでNGがあります。内容を確認して修正してください。"
-      : "動作テスト成功。次は「Webに公開する」でURLを発行できます。";
+      ? "動作テストでNGがあります。合格するまで公開できません。"
+      : "動作テスト成功。公開オプションを選んで「公開URLを発行する」へ進んでください。";
   } catch (error) {
     state.lastTestReport = `自動クリックテスト: 失敗\n${error.message || error}`;
     state.status = `動作テスト失敗: ${error.message || error}`;
@@ -4617,7 +4799,7 @@ function downloadCreatedToolZip() {
   const proposal = getSelectedProposal();
   const zipBlob = createZipBlob(getRunnableFileMap(files));
   downloadBlob(zipBlob, `${sanitizeFileName(proposal.title)}.zip`);
-  state.status = "ZIPをダウンロードしました（キーなし・お試し動作）。本番は「Webに公開する」を使ってください。";
+  state.status = "バックアップZIPを保存しました（キーなし）。本番利用は公開URLを発行してください。";
   renderExportStatusOnly();
 }
 
@@ -4629,29 +4811,24 @@ async function publishCreatedTool() {
     activateScreen("login");
     return;
   }
-  if (!state.lastTestReport || /失敗|NG/.test(state.lastTestReport)) {
-    const proceed = window.confirm("動作テストが未実施、またはNGがあります。このまま公開しますか？\n（推奨: 先に「動作テストする」）");
-    if (!proceed) {
-      state.status = "公開を中断しました。先に動作テストしてください。";
-      renderExportStatusOnly();
-      return;
-    }
+  if (!isActionTestPassed()) {
+    state.status = "自動動作テストに合格したツールだけ公開できます。先に「動作テストする」を成功させてください。";
+    renderExportStatusOnly();
+    return;
+  }
+
+  const visibility = getSelectedPublishVisibility();
+  const password = String($("#publish-password")?.value || "");
+  if (visibility === "password" && password.length < 4) {
+    state.status = "パスワード保護には4文字以上のパスワードが必要です。";
+    renderExportStatusOnly();
+    return;
   }
 
   const proposal = getSelectedProposal();
   const files = buildRunnableToolFiles({ forceDemo: false, forPublish: true });
-  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
-  if (!key) {
-    const proceed = window.confirm("設定にAPIキーがありません。キーなしで公開するとお試し中心になります。続行しますか？");
-    if (!proceed) {
-      state.status = "公開を中断しました。設定でAPIキーを保存してから再公開してください。";
-      renderExportStatusOnly();
-      activateScreen("settings");
-      return;
-    }
-  }
 
-  state.status = "公開処理中...";
+  state.status = "公開処理中（テスト合格済みの成果物のみ発行）...";
   renderExportStatusOnly();
   try {
     const data = await apiRequest("/publish", {
@@ -4662,12 +4839,17 @@ async function publishCreatedTool() {
         systemPrompt: files.mainPrompt,
         toolMode: getToolMode(),
         provider: state.settings.userApiProvider || "gemini",
-        userApiKey: key,
         requireSearch: requiresNewsGrounding(),
         testReport: state.lastTestReport || "",
+        testPassed: true,
+        visibility,
+        password: visibility === "password" ? password : "",
       }),
     });
-    state.lastPublish = data;
+    state.lastPublish = {
+      ...data,
+      title: proposal.title,
+    };
     state.status = `公開しました: ${data.url}`;
     state.createdOutput = {
       title: proposal.title,
@@ -4703,6 +4885,7 @@ function buildLaunchHtml(files) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
   <title>${title}</title>
   <style>${styleCss}</style>
 </head>

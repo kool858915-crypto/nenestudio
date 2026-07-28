@@ -475,7 +475,7 @@ button {
 
 .export-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin: 18px 0;
 }
@@ -484,6 +484,49 @@ button {
 .export-actions .secondary {
   min-height: 52px;
   font-size: 1rem;
+}
+
+.publish-visibility {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+  display: grid;
+  gap: 10px;
+}
+
+.publish-visibility legend {
+  padding: 0 6px;
+  font-weight: 700;
+}
+
+.publish-visibility label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+.publish-password-row {
+  display: grid;
+  gap: 6px;
+  margin-left: 1.6rem;
+}
+
+.publish-password-row input {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
+}
+
+.publish-share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
 }
 
 .export-result-grid {

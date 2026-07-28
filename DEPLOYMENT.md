@@ -247,14 +247,34 @@ $env:CLOUDFLARE_ACCOUNT_ID="..."
 
 ---
 
+## 2.5 公開ツール用サブドメイン（tools.nenestudio.net）
+
+成果物は HTML ダウンロードではなく `https://tools.nenestudio.net/<ランダムID>` で公開します。
+
+1. Cloudflare DNS で `tools` を **CNAME**（または Render の場合は Render のカスタムドメイン）し、**APIサーバーと同じオリジン**へ向ける
+2. Render の環境変数に追加:
+   - `TOOLS_PUBLIC_BASE_URL=https://tools.nenestudio.net`
+   - `GEMINI_API_KEY=...`（公開ツールの本番AI用。HTMLには入れない）
+   - `PUBLIC_API_URL=https://api.nenestudio.net`
+3. 確認:
+   - `https://tools.nenestudio.net/robots.txt` → `Disallow: /`
+   - 公開後のURLを開く → `noindex` メタがあり、検索非掲載
+   - 非公開 / パスワード / 一般公開 が選べる
+
+DNS が未設定の間は、API 側の互換URL `https://api.nenestudio.net/t/<slug>` でも開けます。
+
+---
+
 ## 5. 動作確認
 
 1. `https://nenestudio.net` が開く
 2. ログイン / 新規登録ができる
 3. **Google ログイン**（`GOOGLE_CLIENT_ID` 設定後）ができる
 4. `https://api.nenestudio.net/api/auth/me` がログイン後に応答する（ブラウザからは直接叩かない）
-5. Stripeテスト決済 → Webhook → 広告なしプランが有効になる
-6. PWAとして「インストール」できる
+5. ツール作成 → 動作テスト合格 → 公開URL発行ができる
+6. 公開URLで AI が `ブラウザ → NENE API → Gemini` 経由で動く（HTMLにキー無し）
+7. Stripeテスト決済 → Webhook → 広告なしプランが有効になる
+8. PWAとして「インストール」できる
 
 ---
 

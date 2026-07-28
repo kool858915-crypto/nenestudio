@@ -133,6 +133,36 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (requ
 
 app.use(express.json({ limit: "2mb" }));
 
+const TOOLS_PUBLIC_BASE = String(process.env.TOOLS_PUBLIC_BASE_URL || "https://tools.nenestudio.net").replace(/\/$/, "");
+
+function isToolsHost(request) {
+  const host = String(request.headers["x-forwarded-host"] || request.headers.host || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLowerCase();
+  return host === "tools.nenestudio.net"
+    || host === "tools.localhost"
+    || host.startsWith("tools.");
+}
+
+/** tools.nenestudio.net 用：検索除外・ツール配信 */
+app.use((request, response, next) => {
+  if (!isToolsHost(request)) return next();
+  if (request.path.startsWith("/api/")) return next();
+  if (request.path === "/robots.txt") {
+    return response.type("text").send("User-agent: *\nDisallow: /\n");
+  }
+  if (request.method === "GET" && (request.path === "/" || request.path === "")) {
+    return response.type("html").send(buildToolsPortalHtml());
+  }
+  if (request.method === "GET" && /^\/[a-z0-9]{6,40}\/?$/i.test(request.path)) {
+    const slug = request.path.replace(/\//g, "");
+    return servePublishedToolPage(request, response, slug);
+  }
+  return response.status(404).type("html").send(buildNoIndexHtml("ページが見つかりません", "<p>このURLは無効です。</p>"));
+});
+
 app.use((request, response, next) => {
   if (!isPublicStaticPath(request.path)) {
     return next();
@@ -143,37 +173,78 @@ app.use((request, response, next) => {
   return response.sendFile(path.join(appRoot, request.path.replace(/^\//, "")));
 });
 
-/** 公開ツールHTML（スマホで開ける成果物URL） */
-app.get("/t/:slug", (request, response) => {
+/** 互換: api ドメインでも /t/:slug で開ける */
+app.get("/t/:slug", (request, response) => servePublishedToolPage(request, response, request.params.slug));
+
+app.get("/t/:slug/robots.txt", (request, response) => {
+  response.type("text").send("User-agent: *\nDisallow: /\n");
+});
+
+function servePublishedToolPage(request, response, slug) {
   ensurePublishedStore();
-  const tool = store.publishedTools.find((item) => item.slug === request.params.slug && item.status === "active");
+  const tool = store.publishedTools.find((item) => item.slug === slug && item.status === "active");
   if (!tool) {
-    return response.status(404).type("html").send("<!doctype html><meta charset='utf-8'><title>未公開</title><p>この公開URLは見つかりません。</p>");
+    return response.status(404).type("html").send(buildNoIndexHtml("未公開", "<p>この公開URLは見つかりません。</p>"));
   }
-  const apiBase = `${getPublicApiOrigin(request)}/api`;
-  const html = String(tool.html || "")
+
+  // private=リンクを知っている人のみ（検索非掲載・デフォルト）
+  // password=パスワード保護 / public=一般公開（将来の一覧掲載用フラグ）
+  const visibility = tool.visibility || "private";
+  const unlock = getToolUnlock(request, slug);
+
+  if (visibility === "password" && !unlock && !isToolOwner(request, tool)) {
+    return response.type("html").send(buildPasswordGateHtml(slug, tool.title));
+  }
+
+  // 同一オリジン /api に固定（パスワードCookieが届くようにする）
+  const apiBase = "/api";
+  let html = String(tool.html || "")
     .replaceAll("__NENE_SLUG__", tool.slug)
     .replaceAll("__NENE_API_BASE__", apiBase)
     .replaceAll("__NENE_DEMO_MODE__", "false");
+  if (!/<meta\s+name=["']robots["']/i.test(html)) {
+    html = html.replace(/<head([^>]*)>/i, '<head$1>\n  <meta name="robots" content="noindex,nofollow" />');
+  }
+  response.setHeader("X-Robots-Tag", "noindex, nofollow");
   response.setHeader("Content-Security-Policy", [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
-    `connect-src 'self' ${apiBase} https://api.nenestudio.net https://nenestudio.onrender.com`,
+    "connect-src 'self' https://api.nenestudio.net https://nenestudio.onrender.com",
     "object-src 'none'",
     "base-uri 'self'",
   ].join("; "));
-  response.type("html").send(html);
+  return response.type("html").send(html);
+}
+
+app.post("/api/public/tools/:slug/unlock", (request, response) => {
+  ensurePublishedStore();
+  const tool = store.publishedTools.find((item) => item.slug === request.params.slug && item.status === "active");
+  if (!tool) return response.status(404).json({ error: "公開ツールが見つかりません。" });
+  if ((tool.visibility || "private") !== "password") {
+    return response.status(400).json({ error: "このツールはパスワード保護ではありません。" });
+  }
+  const password = String(request.body?.password || "");
+  if (!tool.passwordHash || !bcrypt.compareSync(password, tool.passwordHash)) {
+    return response.status(401).json({ error: "パスワードが違います。", code: "BAD_PASSWORD" });
+  }
+  const token = signToolUnlock(tool.slug);
+  response.setHeader("Set-Cookie", buildToolUnlockCookie(tool.slug, token));
+  return response.json({ ok: true });
 });
 
-/** 公開ツールのAI実行（ブラウザはGemini/OpenAIへ直接つながない） */
+/** 公開ツールのAI実行（ブラウザ→NENE API→Gemini。直結禁止） */
 app.post("/api/public/tools/:slug/run", async (request, response) => {
   ensurePublishedStore();
   const tool = store.publishedTools.find((item) => item.slug === request.params.slug && item.status === "active");
   if (!tool) {
-    return response.status(404).json({ error: "公開ツールが見つかりません。" });
+    return response.status(404).json({ error: "公開ツールが見つかりません。", code: "NOT_FOUND" });
   }
+  if (!canAccessPublishedTool(request, tool)) {
+    return response.status(403).json({ error: "このツールへのアクセス権がありません。", code: "FORBIDDEN" });
+  }
+
   const { input, systemPrompt, demo } = request.body || {};
   if (demo) {
     return response.json({
@@ -182,34 +253,52 @@ app.post("/api/public/tools/:slug/run", async (request, response) => {
       demo: true,
     });
   }
-  if (!tool.apiKeyEnc) {
+
+  const provider = tool.provider || "gemini";
+  const apiKey = getServerProviderKey(provider);
+  if (!apiKey) {
     return response.status(503).json({
-      error: "この公開ツールにはAPIキーが登録されていません。お試し（ダミー）モードで使うか、再公開してください。",
-      code: "NO_PUBLISHED_KEY",
+      error: "サーバー側のAPIキー（環境変数）が未設定です。運営に連絡してください。",
+      code: "SERVER_API_KEY_MISSING",
     });
   }
-  const apiKey = decryptSecret(tool.apiKeyEnc);
-  if (!apiKey) {
-    return response.status(500).json({ error: "登録キーの復号に失敗しました。再公開してください。" });
-  }
+
   try {
     const text = await runExternalAi({
-      provider: tool.provider || "gemini",
+      provider,
       apiKey,
       systemPrompt: systemPrompt || tool.systemPrompt || "入力を整理してください。",
       input: String(input || ""),
       requireSearch: Boolean(tool.requireSearch),
     });
+    if (!String(text || "").trim()) {
+      return response.status(502).json({ error: "AIから空の応答が返りました。", code: "EMPTY_RESPONSE" });
+    }
     tool.runCount = (tool.runCount || 0) + 1;
     tool.lastRunAt = new Date().toISOString();
+    tool.updatedAt = tool.lastRunAt;
     saveStore();
-    return response.json({ text, source: "published_proxy", demo: false });
+    return response.json({
+      text,
+      source: "server_env_proxy",
+      demo: false,
+      usage: {
+        runCount: tool.runCount,
+        lastRunAt: tool.lastRunAt,
+      },
+    });
   } catch (error) {
-    return response.status(400).json({ error: error.message || "公開ツールの実行に失敗しました。" });
+    const message = error.message || "公開ツールの実行に失敗しました。";
+    const code = /API key|api key|権限|invalid|401|403/i.test(message)
+      ? "API_KEY_ERROR"
+      : /network|fetch|ENOTFOUND|timeout/i.test(message)
+        ? "NETWORK_ERROR"
+        : "AI_ERROR";
+    return response.status(400).json({ error: message, code });
   }
 });
 
-/** Studioから公開（キーはサーバー保存、HTMLには埋め込まない） */
+/** Studioから公開：自動テスト合格必須。キーはサーバー環境変数のみ使用 */
 app.post("/api/publish", requireAuth, async (request, response) => {
   ensurePublishedStore();
   const {
@@ -218,15 +307,37 @@ app.post("/api/publish", requireAuth, async (request, response) => {
     systemPrompt,
     toolMode,
     provider,
-    userApiKey,
     requireSearch,
     testReport,
+    testPassed,
+    visibility,
+    password,
   } = request.body || {};
   if (!title || !html) {
-    return response.status(400).json({ error: "公開するツール名とHTMLが必要です。" });
+    return response.status(400).json({ error: "公開するツール名とHTMLが必要です。", code: "BAD_REQUEST" });
   }
-  const slug = makePublishSlug(title);
-  const ownKey = String(userApiKey || "").trim();
+  if (!testPassed || !isPassingTestReport(testReport)) {
+    return response.status(400).json({
+      error: "自動動作テストに合格したツールだけ公開できます。先にテストを成功させてください。",
+      code: "TEST_REQUIRED",
+    });
+  }
+
+  const vis = ["private", "password", "public"].includes(visibility) ? visibility : "private";
+  if (vis === "password" && String(password || "").length < 4) {
+    return response.status(400).json({ error: "パスワード保護には4文字以上のパスワードが必要です。", code: "PASSWORD_REQUIRED" });
+  }
+
+  const serverKey = getServerProviderKey(provider === "openai" ? "openai" : "gemini");
+  if (!serverKey) {
+    return response.status(503).json({
+      error: "公開にはサーバー環境変数 GEMINI_API_KEY（または OPENAI_API_KEY）の設定が必要です。",
+      code: "SERVER_API_KEY_MISSING",
+    });
+  }
+
+  const slug = makePublishSlug();
+  const now = new Date().toISOString();
   const record = {
     id: nextId("publishedTools"),
     slug,
@@ -237,26 +348,57 @@ app.post("/api/publish", requireAuth, async (request, response) => {
     toolMode: String(toolMode || "task_auto"),
     provider: provider === "openai" ? "openai" : "gemini",
     requireSearch: Boolean(requireSearch),
-    apiKeyEnc: ownKey ? encryptSecret(ownKey) : "",
+    visibility: vis,
+    passwordHash: vis === "password" ? bcrypt.hashSync(String(password), 10) : "",
+    // 将来の販売・課金・モデル切替用フィールド
+    monetization: {
+      sellable: false,
+      subscription: false,
+      creditCost: 0,
+      usageLimit: 0,
+      modelId: provider === "openai"
+        ? (process.env.OPENAI_MODEL || "gpt-4o-mini")
+        : (process.env.GEMINI_MODEL || "gemini-2.5-flash"),
+    },
     testReport: testReport || null,
     status: "active",
     runCount: 0,
     lastRunAt: "",
-    createdAt: new Date().toISOString(),
+    createdAt: now,
+    updatedAt: now,
   };
   store.publishedTools.push(record);
   saveStore();
-  const publicUrl = `${getPublicAppOrigin(request)}/t/${slug}`;
-  // APIサーバー直URLも返す（Cloudflare Pagesでは /t が無いため）
-  const apiToolUrl = `${getPublicApiOrigin(request)}/t/${slug}`;
+
+  const url = `${TOOLS_PUBLIC_BASE}/${slug}`;
+  const apiFallbackUrl = `${getPublicApiOrigin(request)}/t/${slug}`;
   return response.json({
     id: record.id,
     slug,
-    url: apiToolUrl,
-    appUrl: publicUrl,
-    hasApiKey: Boolean(ownKey),
+    url,
+    apiFallbackUrl,
+    visibility: vis,
+    hasServerKey: true,
     testReport: record.testReport,
-    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(apiToolUrl)}`,
+    createdAt: record.createdAt,
+    qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(url)}`,
+    shareText: `${record.title}\n${url}`,
+  });
+});
+
+app.get("/api/published/:slug/stats", requireAuth, (request, response) => {
+  ensurePublishedStore();
+  const tool = store.publishedTools.find((item) => item.slug === request.params.slug);
+  if (!tool || tool.userId !== request.user.id) {
+    return response.status(404).json({ error: "見つかりません。" });
+  }
+  return response.json({
+    slug: tool.slug,
+    runCount: tool.runCount || 0,
+    lastRunAt: tool.lastRunAt || "",
+    createdAt: tool.createdAt,
+    updatedAt: tool.updatedAt || tool.createdAt,
+    visibility: tool.visibility || "private",
   });
 });
 
@@ -818,18 +960,138 @@ function getPublicAppOrigin(request) {
   return String(process.env.PUBLIC_APP_URL || publicAppUrl || getPublicApiOrigin(request)).replace(/\/$/, "");
 }
 
-function makePublishSlug(title) {
-  const base = String(title || "tool")
-    .toLowerCase()
-    .replace(/[^a-z0-9\u3040-\u30ff\u4e00-\u9faf]+/gi, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24) || "tool";
-  const rand = crypto.randomBytes(3).toString("hex");
-  let slug = `${base}-${rand}`.replace(/^-|-$/g, "");
-  while (store.publishedTools.some((item) => item.slug === slug)) {
-    slug = `${base}-${crypto.randomBytes(3).toString("hex")}`;
-  }
+function makePublishSlug() {
+  // ランダムID（URLを知っている人向け）
+  let slug = "";
+  do {
+    slug = crypto.randomBytes(5).toString("hex"); // 10桁hex
+  } while (store.publishedTools.some((item) => item.slug === slug));
   return slug;
+}
+
+function getServerProviderKey(provider) {
+  if (provider === "openai") return String(process.env.OPENAI_API_KEY || "").trim();
+  return String(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+}
+
+function isPassingTestReport(report) {
+  const text = String(report || "");
+  if (!text) return false;
+  if (/失敗|NG\s/.test(text) && !/自動クリックテスト: 成功/.test(text)) return false;
+  return /自動クリックテスト: 成功/.test(text) && !/^NG /m.test(text);
+}
+
+function isToolOwner(request, tool) {
+  try {
+    const cookies = parseCookies(request);
+    const token = cookies[AUTH_COOKIE_NAME]
+      || request.headers.authorization?.replace(/^Bearer\s+/i, "");
+    if (!token) return false;
+    const payload = jwt.verify(token, jwtSecret);
+    return Number(payload.sub) === Number(tool.userId);
+  } catch {
+    return false;
+  }
+}
+
+function signToolUnlock(slug) {
+  return jwt.sign({ tool: slug, typ: "tool_unlock" }, jwtSecret, { expiresIn: "7d" });
+}
+
+function getToolUnlock(request, slug) {
+  try {
+    const cookies = parseCookies(request);
+    const raw = cookies[`nene_tool_${slug}`];
+    if (!raw) return false;
+    const payload = jwt.verify(raw, jwtSecret);
+    return payload?.typ === "tool_unlock" && payload?.tool === slug;
+  } catch {
+    return false;
+  }
+}
+
+function buildToolUnlockCookie(slug, token) {
+  const parts = [
+    `nene_tool_${slug}=${encodeURIComponent(token)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Lax",
+    `Max-Age=${7 * 24 * 60 * 60}`,
+  ];
+  if (isProduction) parts.push("Secure");
+  return parts.join("; ");
+}
+
+function canAccessPublishedTool(request, tool) {
+  const visibility = tool.visibility || "private";
+  if (visibility === "public" || visibility === "private") return true;
+  if (visibility === "password") {
+    return isToolOwner(request, tool) || getToolUnlock(request, tool.slug);
+  }
+  return false;
+}
+
+function buildNoIndexHtml(title, bodyHtml) {
+  return `<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>${escapeHtmlServer(title)}</title>
+<style>body{font-family:sans-serif;max-width:640px;margin:40px auto;padding:0 16px;line-height:1.7;color:#152033}</style>
+</head><body><h1>${escapeHtmlServer(title)}</h1>${bodyHtml}</body></html>`;
+}
+
+function buildToolsPortalHtml() {
+  return buildNoIndexHtml(
+    "NENE Tools",
+    "<p>ここは個別ツールの公開ドメインです。検索には載りません。発行されたURLだけをお使いください。</p>",
+  );
+}
+
+function buildPasswordGateHtml(slug, title) {
+  return `<!doctype html>
+<html lang="ja"><head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>パスワード保護 - ${escapeHtmlServer(title)}</title>
+<style>
+body{font-family:sans-serif;max-width:420px;margin:48px auto;padding:0 16px;color:#152033}
+input,button{width:100%;box-sizing:border-box;padding:12px;margin-top:8px;font:inherit;border-radius:10px;border:1px solid #c9d4e4}
+button{background:#0b6bcb;color:#fff;border:0;font-weight:700;min-height:48px}
+.err{color:#b42318;min-height:1.4em}
+</style></head><body>
+<h1>${escapeHtmlServer(title || "保護されたツール")}</h1>
+<p>パスワードを入力してください。</p>
+<input id="pw" type="password" autocomplete="current-password" placeholder="パスワード" />
+<button type="button" id="go">開く</button>
+<p class="err" id="err"></p>
+<script>
+const slug=${JSON.stringify(slug)};
+document.getElementById('go').onclick=async()=>{
+  const err=document.getElementById('err');
+  err.textContent='';
+  try{
+    const res=await fetch('/api/public/tools/'+encodeURIComponent(slug)+'/unlock',{
+      method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',
+      body:JSON.stringify({password:document.getElementById('pw').value})
+    });
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error||'認証に失敗しました');
+    location.reload();
+  }catch(e){err.textContent=e.message||e;}
+};
+</script>
+</body></html>`;
+}
+
+function escapeHtmlServer(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function encryptSecret(text) {
