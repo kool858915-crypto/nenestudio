@@ -1,6 +1,8 @@
 import "dotenv/config";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import http from "node:http";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
@@ -39,10 +41,35 @@ function isAllowedCorsOrigin(origin) {
     // 本番ドメインゆれ（www有無・pages.dev）で Failed to fetch にならないようにする
     if (host === "nenestudio.net" || host.endsWith(".nenestudio.net")) return true;
     if (host === "nenestudio.pages.dev" || host.endsWith(".nenestudio.pages.dev")) return true;
-    if (host === "localhost" || host === "127.0.0.1") return true;
+    if (host === "localhost" || host === "127.0.0.1" || host === "[::1]") return true;
+    if (isPrivateLanHost(host)) return true;
+    if (isTunnelHost(host)) return true;
   } catch {
     return false;
   }
+  return false;
+}
+
+function isTunnelHost(host) {
+  const name = String(host || "").toLowerCase();
+  return name.endsWith(".ngrok-free.app")
+    || name.endsWith(".ngrok.app")
+    || name.endsWith(".ngrok.io")
+    || name.endsWith(".ngrok-free.dev")
+    || name.endsWith(".trycloudflare.com")
+    || name.endsWith(".loca.lt");
+}
+
+function isPrivateLanHost(host) {
+  const name = String(host || "").toLowerCase();
+  if (name.endsWith(".local")) return true;
+  const parts = name.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) return false;
+  const a = Number(parts[0]);
+  const b = Number(parts[1]);
+  if (a === 10 || a === 127) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
   return false;
 }
 const jwtSecret = process.env.JWT_SECRET || "dev-only-change-me";
@@ -77,15 +104,23 @@ app.use((request, response, next) => {
   return next();
 });
 
+// 公開ツールの実行窓口だけは、ダウンロードしたHTML（file://）からも動かせるようにする。
+// この窓口はもともと「URLを知っている人なら実行できる」設計なので、アクセスできる範囲は変わらない。
+// Cookieを使わない通信に限るため、資格情報つきのアクセスは許可しない（パスワード保護ツールは同一オリジンのみ）。
+const PUBLIC_TOOL_RUN_PATH = /^\/api\/public\/tools\/[^/]+\/run\/?$/;
+
 app.use((request, response, next) => {
   const origin = request.headers.origin;
-  if (isAllowedCorsOrigin(origin)) {
+  if (PUBLIC_TOOL_RUN_PATH.test(request.path)) {
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Vary", "Origin");
+  } else if (isAllowedCorsOrigin(origin)) {
     response.setHeader("Access-Control-Allow-Origin", origin);
     response.setHeader("Vary", "Origin");
     response.setHeader("Access-Control-Allow-Credentials", "true");
   }
   response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Stripe-Signature");
+  response.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization,Stripe-Signature,ngrok-skip-browser-warning");
   if (request.method === "OPTIONS") {
     return response.sendStatus(204);
   }
@@ -147,6 +182,7 @@ app.post("/api/stripe/webhook", express.raw({ type: "application/json" }), (requ
 });
 
 app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: false }));
 
 const TOOLS_PUBLIC_BASE = String(process.env.TOOLS_PUBLIC_BASE_URL || "https://tools.nenestudio.net").replace(/\/$/, "");
 
@@ -176,6 +212,12 @@ app.use((request, response, next) => {
     return servePublishedToolPage(request, response, slug);
   }
   return response.status(404).type("html").send(buildNoIndexHtml("ページが見つかりません", "<p>このURLは無効です。</p>"));
+});
+
+app.post(["/", "/index.html"], (request, response, next) => {
+  const credential = String(request.body?.credential || request.body?.id_token || "").trim();
+  if (!credential) return next();
+  return finishGoogleBrowserLogin(request, response, credential);
 });
 
 app.use((request, response, next) => {
@@ -261,27 +303,36 @@ app.post("/api/public/tools/:slug/run", async (request, response) => {
   }
 
   const { input, systemPrompt, demo } = request.body || {};
-  if (demo) {
+  const owner = isToolOwner(request, tool);
+  // .env のキーは作成者の確認用だけ。他人・未ログイン・file:// では使わない。
+  if (demo || !owner) {
     return response.json({
-      text: buildDemoResult(tool.toolMode || "task_auto", tool.title),
+      text: buildOwnerConfirmDemo(tool),
       source: "demo",
       demo: true,
+      ownerOnly: true,
+      notice: owner
+        ? "お試し表示です。"
+        : "本番AIは作成者の確認用です。Geminiは呼び出していません（見本です）。",
     });
   }
 
-  const provider = tool.provider || "gemini";
-  const apiKey = getServerProviderKey(provider);
-  if (!apiKey) {
+  const requested = tool.provider || "gemini";
+  const resolved = resolveServerAi(requested);
+  if (!resolved.apiKey) {
+    const hint = isProduction
+      ? "サーバー側のAPIキー（環境変数）が未設定です。運営に連絡してください。"
+      : "本番AIを動かすには、nene-studio-wireframe の .env に GEMINI_API_KEY を入れて、サーバーを再起動してください。";
     return response.status(503).json({
-      error: "サーバー側のAPIキー（環境変数）が未設定です。運営に連絡してください。",
+      error: hint,
       code: "SERVER_API_KEY_MISSING",
     });
   }
 
   try {
     const text = await runExternalAi({
-      provider,
-      apiKey,
+      provider: resolved.provider,
+      apiKey: resolved.apiKey,
       systemPrompt: systemPrompt || tool.systemPrompt || "入力を整理してください。",
       input: String(input || ""),
       requireSearch: Boolean(tool.requireSearch),
@@ -399,6 +450,28 @@ app.post("/api/publish", requireAuth, async (request, response) => {
   });
 });
 
+app.get("/api/published", requireAuth, (request, response) => {
+  ensurePublishedStore();
+  const origin = getPublicApiOrigin(request);
+  const tools = store.publishedTools
+    .filter((item) => item.userId === request.user.id && item.status === "active")
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")))
+    .map((item) => ({
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      toolMode: item.toolMode || "task_auto",
+      visibility: item.visibility || "private",
+      url: `${TOOLS_PUBLIC_BASE}/${item.slug}`,
+      apiUrl: `${origin}/t/${item.slug}`,
+      runCount: item.runCount || 0,
+      lastRunAt: item.lastRunAt || "",
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt || item.createdAt,
+    }));
+  return response.json({ tools });
+});
+
 app.get("/api/published/:slug/stats", requireAuth, (request, response) => {
   ensurePublishedStore();
   const tool = store.publishedTools.find((item) => item.slug === request.params.slug);
@@ -474,7 +547,10 @@ app.get("/api/auth/providers", (request, response) => {
 });
 
 app.get("/api/server/status", (request, response) => {
+  const lan = preferredLanAddress();
   response.json({
+    shareUrl: getShareOrigin() || "",
+    lanUrl: lan ? `http://${lan}:${port}` : "",
     auth: {
       email: true,
       google: Boolean(process.env.GOOGLE_CLIENT_ID),
@@ -490,7 +566,113 @@ app.get("/api/server/status", (request, response) => {
         stripeConfigured: Boolean(STRIPE_PRICE_BY_PLAN[id]),
       })),
     },
+    ai: {
+      gemini: !isPlaceholderApiKey(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || ""),
+      openai: !isPlaceholderApiKey(process.env.OPENAI_API_KEY || ""),
+    },
   });
+});
+
+function getRequestOrigin(request) {
+  const host = String(request.headers["x-forwarded-host"] || request.headers.host || "").split(",")[0].trim();
+  if (!host) return `http://localhost:${port}`;
+  const hostname = host.split(":")[0].toLowerCase();
+  const forwarded = String(request.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const proto = isTunnelHost(hostname) ? "https" : (forwarded || request.protocol || "http");
+  return `${proto}://${host}`;
+}
+
+function googleCallbackUri(origin) {
+  return `${String(origin || "").replace(/\/$/, "")}/api/auth/google/callback`;
+}
+
+function buildGoogleAuthErrorPage(title, body, redirectUri = "") {
+  const extra = redirectUri
+    ? `<p>Google Cloud の「承認済みのリダイレクト URI」に、次の1行を追加してください。</p><pre>${escapeHtmlServer(redirectUri)}</pre>`
+    : "";
+  return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtmlServer(title)}</title>
+<style>body{font-family:sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem;line-height:1.6}pre{white-space:pre-wrap;word-break:break-all;background:#f4f4f4;padding:12px;border-radius:8px}</style>
+</head><body><h1>${escapeHtmlServer(title)}</h1><p>${escapeHtmlServer(body)}</p>${extra}<p><a href="/index.html">ログイン画面へ戻る</a></p></body></html>`;
+}
+
+if (!store.oauthExchange) store.oauthExchange = {};
+
+function finishGoogleBrowserLogin(request, response, idToken) {
+  const origin = getRequestOrigin(request);
+  if (!googleOAuthClient || !idToken) {
+    return response.status(400).type("html").send(buildGoogleAuthErrorPage(
+      "Googleログイン情報が不足しています",
+      "もう一度ログイン画面からやり直してください。",
+    ));
+  }
+  return googleOAuthClient.verifyIdToken({
+    idToken,
+    audience: process.env.GOOGLE_CLIENT_ID,
+  }).then((ticket) => {
+    const payload = ticket.getPayload();
+    if (!payload?.sub) throw new Error("Googleログインの確認に失敗しました。");
+    const user = findOrCreateOAuthUser({
+      provider: "google",
+      oauthId: payload.sub,
+      email: payload.email,
+    });
+    const token = jwt.sign({ sub: user.id }, jwtSecret, { expiresIn: "30d" });
+    response.setHeader("Set-Cookie", buildAuthCookie(token, true, { isProduction, cookieDomain }));
+    const code = crypto.randomBytes(16).toString("hex");
+    if (!store.oauthExchange) store.oauthExchange = {};
+    store.oauthExchange[code] = { token, userId: user.id, exp: Date.now() + 2 * 60 * 1000 };
+    return response.redirect(302, `${origin}/index.html?google=ok&code=${encodeURIComponent(code)}`);
+  }).catch((error) => response.status(401).type("html").send(buildGoogleAuthErrorPage(
+    "Googleログインの確認に失敗しました",
+    error.message || "もう一度お試しください。",
+  )));
+}
+
+app.get("/api/auth/google/start", (request, response) => {
+  return response.redirect(302, `${getRequestOrigin(request)}/index.html?screen=login`);
+});
+
+app.get("/api/auth/google/callback", (request, response) => {
+  const origin = getRequestOrigin(request);
+  const message = String(request.query.error_description || request.query.error || "Googleログインがキャンセルされました。");
+  return response.status(400).type("html").send(buildGoogleAuthErrorPage(
+    "Googleログインが完了しませんでした",
+    message,
+    googleCallbackUri(origin),
+  ));
+});
+
+app.post("/api/auth/google/callback", async (request, response) => {
+  const origin = getRequestOrigin(request);
+  const redirectUri = googleCallbackUri(origin);
+  if (request.body?.error) {
+    return response.status(400).type("html").send(buildGoogleAuthErrorPage(
+      "Googleログインが完了しませんでした",
+      String(request.body.error_description || request.body.error),
+      redirectUri,
+    ));
+  }
+  const idToken = String(request.body?.id_token || request.body?.credential || "").trim();
+  if (!idToken) {
+    return response.status(400).type("html").send(buildGoogleAuthErrorPage(
+      "Googleログイン情報が不足しています",
+      "もう一度ログイン画面からやり直してください。",
+      redirectUri,
+    ));
+  }
+  return finishGoogleBrowserLogin(request, response, idToken);
+});
+
+app.post("/api/auth/google/finish", (request, response) => {
+  const code = String(request.body?.code || "").trim();
+  const item = store.oauthExchange?.[code];
+  if (!item || item.exp < Date.now()) {
+    return response.status(401).json({ error: "Googleログインの続きが期限切れです。もう一度お試しください。" });
+  }
+  delete store.oauthExchange[code];
+  const user = store.users.find((entry) => entry.id === item.userId);
+  if (!user) return response.status(401).json({ error: "ユーザーが見つかりません。" });
+  return sendAuthResponse(request, response, user, true);
 });
 
 app.post("/api/auth/google", async (request, response) => {
@@ -678,10 +860,29 @@ app.post("/api/ai/generate", requireAuth, async (request, response) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`NENE Studio server running at ${appBaseUrl}`);
+app.listen(port, "0.0.0.0", () => {
+  console.log(`NENE Studio server running at http://localhost:${port}`);
+  const lans = listLanAddresses();
+  if (lans.length) {
+    console.log(`同じWi-Fiの番号: ${lans.map((ip) => `http://${ip}:${port}`).join("  ")}`);
+  }
+  refreshShareOriginFromNgrok();
+  setInterval(refreshShareOriginFromNgrok, 4000);
   logDatabasePersistenceWarning();
 });
+
+function listLanAddresses() {
+  const nets = os.networkInterfaces();
+  const found = [];
+  Object.values(nets).forEach((list) => {
+    (list || []).forEach((item) => {
+      if (item.family !== "IPv4" && item.family !== 4) return;
+      if (item.internal) return;
+      if (isPrivateLanHost(item.address)) found.push(item.address);
+    });
+  });
+  return [...new Set(found)];
+}
 
 function assertProductionSecurity() {
   if (!isProduction) return;
@@ -730,8 +931,10 @@ function sendAuthResponse(request, response, user, remember) {
 }
 
 function shouldReturnTokenInBody(request) {
+  // スマホではCookieが残らないことがあるので、本文にもログイン証を返す
+  if (!isProduction) return true;
   const origin = request.headers.origin;
-  if (!origin) return false;
+  if (!origin) return true;
   if (!cookieDomain) return true;
   try {
     const hostname = new URL(origin).hostname;
@@ -961,12 +1164,65 @@ function ensurePublishedStore() {
   if (!store.counters) store.counters = {};
 }
 
+function preferredLanAddress() {
+  const score = (ip) => {
+    if (String(ip).startsWith("192.168.")) return 3;
+    if (String(ip).startsWith("10.")) return 2;
+    return 1;
+  };
+  return listLanAddresses().slice().sort((a, b) => score(b) - score(a))[0] || "";
+}
+
+function isLoopbackHost(host) {
+  const hostname = String(host || "").split(":")[0].toLowerCase();
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+}
+
+let cachedShareOrigin = String(process.env.PUBLIC_SHARE_URL || "").replace(/\/$/, "");
+
+function refreshShareOriginFromNgrok() {
+  const req = http.get("http://127.0.0.1:4040/api/tunnels", (res) => {
+    let raw = "";
+    res.on("data", (chunk) => { raw += chunk; });
+    res.on("end", () => {
+      try {
+        const data = JSON.parse(raw);
+        const httpsTunnel = (data.tunnels || []).find((item) => String(item.public_url || "").startsWith("https://"));
+        if (httpsTunnel?.public_url) {
+          cachedShareOrigin = String(httpsTunnel.public_url).replace(/\/$/, "");
+        }
+      } catch {
+        // トンネル未起動なら無視
+      }
+    });
+  });
+  req.on("error", () => {});
+  req.setTimeout(800, () => req.destroy());
+}
+
+function getShareOrigin() {
+  return cachedShareOrigin;
+}
+
 function getPublicApiOrigin(request) {
+  // スマホから開いたときはその住所、パソコンから発行したときは公開トンネルを使う。
+  const host = String(request.headers["x-forwarded-host"] || request.headers.host || "").split(",")[0].trim();
+  const proto = String(request.headers["x-forwarded-proto"] || request.protocol || "http").split(",")[0].trim();
+  if (host && !isLoopbackHost(host)) {
+    const hostname = host.split(":")[0];
+    const useProto = isTunnelHost(hostname) ? "https" : proto;
+    return `${useProto}://${host}`;
+  }
+  const share = getShareOrigin();
+  if (share) return share;
+  const lan = preferredLanAddress();
+  if (lan) return `http://${lan}:${port}`;
+  if (host) return `${proto}://${host}`;
   const fromEnv = process.env.PUBLIC_API_URL || process.env.APP_BASE_URL;
-  if (fromEnv) return String(fromEnv).replace(/\/$/, "").replace(/\/api$/, "");
-  const host = request.headers["x-forwarded-host"] || request.headers.host;
-  const proto = request.headers["x-forwarded-proto"] || request.protocol || "https";
-  return `${proto}://${host}`;
+  if (fromEnv && !isLoopbackHost(fromEnv.replace(/^https?:\/\//, ""))) {
+    return String(fromEnv).replace(/\/$/, "").replace(/\/api$/, "");
+  }
+  return `http://localhost:${port}`;
 }
 
 function getPublicAppOrigin(request) {
@@ -985,6 +1241,23 @@ function makePublishSlug() {
 function getServerProviderKey(provider) {
   if (provider === "openai") return String(process.env.OPENAI_API_KEY || "").trim();
   return String(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+}
+
+function isPlaceholderApiKey(value) {
+  const key = String(value || "").trim();
+  if (!key) return true;
+  return /xxx|placeholder|your-|change-this/i.test(key) || key.length < 20;
+}
+
+function resolveServerAi(preferred) {
+  const gemini = String(process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || "").trim();
+  const openai = String(process.env.OPENAI_API_KEY || "").trim();
+  const geminiOk = !isPlaceholderApiKey(gemini);
+  const openaiOk = !isPlaceholderApiKey(openai);
+  if (preferred === "openai" && openaiOk) return { provider: "openai", apiKey: openai };
+  if (geminiOk) return { provider: "gemini", apiKey: gemini };
+  if (openaiOk) return { provider: "openai", apiKey: openai };
+  return { provider: preferred || "gemini", apiKey: "" };
 }
 
 function isPassingTestReport(report) {
@@ -1130,6 +1403,21 @@ function decryptSecret(payload) {
   } catch {
     return "";
   }
+}
+
+function buildOwnerConfirmDemo(tool) {
+  const now = new Date().toLocaleString("ja-JP");
+  return JSON.stringify({
+    summary: "本番AIは作成者の確認用です。こちらは見本で、運営のキーは使っていません。",
+    items: [
+      { title: "見本1", level: "中", fields: { 内容: "ダミーです。売買や投稿に使わないでください。" } },
+      { title: "見本2", level: "中", fields: { 内容: "作成者がログインした状態で公開URLを開くと、本番のAIが動きます。" } },
+    ],
+    checklist: ["これは見本です", "運営のAPIキーは使っていません", "内容は必ずご自身で確認してください"],
+    note: tool.title || "",
+    sources: [],
+    checkedAt: now,
+  });
 }
 
 function buildDemoResult(toolMode, title) {

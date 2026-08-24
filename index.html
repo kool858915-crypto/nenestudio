@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ja">
   <head>
     <meta charset="utf-8" />
@@ -7,7 +7,7 @@
     <title>NENE Studio</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=77" />
     <!-- AdSense: 広告再開時に戻す
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9344128846274010" crossorigin="anonymous"></script>
     -->
@@ -52,6 +52,11 @@
         </section>
 
         <p class="app-status-bar status-message" id="app-status" hidden aria-live="polite"></p>
+        <aside class="phone-access" id="phone-access" hidden>
+          <p class="phone-access-label">スマホでは、このアドレスを開いてください</p>
+          <a class="phone-access-url" id="phone-access-url" href="#"></a>
+          <p class="phone-access-note">最初の画面で「Visit Site」と出たら、それを押してください。</p>
+        </aside>
 
         <section class="create-progress" id="create-progress" aria-label="作る手順">
           <button class="step-item active" data-step-screen="create"><span>1</span>内容を決める</button>
@@ -95,10 +100,17 @@
               <div class="auth-guest-panel" id="auth-guest-panel">
                 <div class="oauth-login-panel" id="oauth-login-panel">
                   <p class="oauth-login-label">外部アカウントでログイン</p>
+                  <div class="notice google-browser-notice" id="google-browser-notice">
+                    Cursorの中のプレビューでは、Googleの画面が白くなって止まります。Chrome または Edge で <strong>http://localhost:8787</strong> を開いて、そこで Google ログインしてください。
+                    <div class="button-row" style="margin-top:10px">
+                      <button class="secondary" id="copy-studio-url" type="button">この住所をコピー</button>
+                    </div>
+                  </div>
                   <div class="oauth-button-row">
                     <div id="google-login-button"></div>
-                    <button class="secondary oauth-google-fallback" id="google-login-fallback" type="button">Googleでログイン</button>
+                    <button class="primary oauth-google-fallback" id="google-login-fallback" type="button">Googleでログイン</button>
                     <button class="secondary oauth-apple-button" id="apple-login-button" type="button" hidden>Appleでログイン</button>
+                    <button class="secondary" id="google-login-cancel" type="button" hidden>ログインをやめる</button>
                   </div>
                   <p class="oauth-login-note" id="google-login-note" data-no-translate>Google / Apple の認証は各社の画面で行い、パスワードは NENE Studio には保存されません。</p>
                   <p class="oauth-divider">またはメールアドレス</p>
@@ -352,6 +364,11 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           <div class="folder-panel export-complete-panel">
             <h2 id="export-heading">完成：公開URLを発行</h2>
             <p class="guide-note" id="export-mobile-tip">成果物はURLです。ログインして下の青いボタンを押すと、すぐに使えるリンクが出ます。</p>
+            <aside class="export-sponsor" id="export-sponsor" hidden>
+              <p class="ad-label" id="export-ad-label">スポンサー</p>
+              <div class="ad-slot" id="export-ad-slot" aria-label="スポンサー"></div>
+            </aside>
+            <div class="notice" id="api-key-notice" hidden></div>
             <div class="export-actions export-actions-simple" role="group" aria-label="成果物操作">
               <button class="primary" type="button" id="publish-tool">公開URLを発行する</button>
               <button class="secondary" type="button" id="preview-tool">先にプレビューする</button>
@@ -374,7 +391,15 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <div class="publish-share-actions" id="publish-share-actions" hidden>
                 <button type="button" class="secondary" id="copy-publish-url">コピー</button>
                 <button type="button" class="secondary" id="share-publish-url">共有</button>
-                <a class="secondary" id="open-publish-url" href="#" target="_blank" rel="noopener" hidden>URLを開く</a>
+                <a class="primary" id="open-publish-url" href="#" hidden>本番URLを開く</a>
+              </div>
+              <div class="publish-download-actions" id="publish-download-actions" hidden>
+                <h4>手元に保存する</h4>
+                <div class="publish-share-actions">
+                  <button type="button" class="secondary" id="download-html-tool">HTMLファイルで保存</button>
+                  <button type="button" class="secondary" id="download-zip-tool">ZIPで保存</button>
+                </div>
+                <p class="guide-note" id="download-note">保存したHTMLは、ダブルクリックで開けばそのまま使えます。</p>
               </div>
               <p class="guide-note" id="publish-meta"></p>
             </article>
@@ -382,18 +407,6 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <summary>詳細チェック（任意）</summary>
               <button class="secondary" type="button" id="test-tool">くわしく動作テストする</button>
               <pre class="code-block" id="export-test-report">公開に必須ではありません。気になるときだけ使います。</pre>
-            </details>
-            <details class="export-advanced">
-              <summary>上級者向け：設計図テキスト（ZIPは廃止）</summary>
-              <div class="export-grid">
-                <button class="export-card" data-export-format="folder" type="button"><strong>フォルダ形式</strong><span>設計図テキスト</span></button>
-                <button class="export-card" data-export-format="codex" type="button"><strong>Codex用</strong><span>外部AIへ渡す内容</span></button>
-                <button class="export-card" data-export-format="claude" type="button"><strong>Claude Code用</strong><span>外部AIへ渡す内容</span></button>
-              </div>
-              <pre class="code-block" id="export-preview" hidden></pre>
-              <button class="secondary" type="button" id="copy-export">設計図テキストを書き出す</button>
-              <button class="secondary" type="button" id="launch-created-tool" hidden>起動ボタン</button>
-              <button class="secondary" type="button" id="download-zip-tool" hidden>ZIP（廃止）</button>
             </details>
             <div class="save-options">
               <label><input id="save-created-choice" type="checkbox" /> <span id="save-created-label">作成したツールを保存する</span></label>
@@ -790,20 +803,33 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         <section class="screen" id="agent">
           <div class="section-heading">
             <p class="eyebrow">AIエージェント作成</p>
-            <h2>保存済みツールをつなぎ、ゴールに向かって自走するAIエージェントを作ります。</h2>
-            <p>AIエージェントは、計画→実行→自己チェック→改善を繰り返して、成果物を仕上げる仕組みです。</p>
+            <h2>公開したツールを部品としてつなぎ、ゴールへ自走させます。</h2>
+            <p>公開URLツールを棚から選び、順番に実行 → 自己チェック → 改善、まで進めます。</p>
           </div>
+
+          <div class="folder-panel">
+            <h2>1. 公開ツール棚（部品）</h2>
+            <p class="guide-note">発行済みの公開URLツールが並びます。チェックしたツールを上から順につなぎます。</p>
+            <div id="published-tools-shelf" class="published-tools-shelf" aria-live="polite"></div>
+            <div class="button-row">
+              <button class="secondary" type="button" id="refresh-published-shelf">棚を更新</button>
+              <button class="secondary" type="button" data-goto="export">新しく公開する</button>
+              <button class="secondary" type="button" id="select-all-published">すべて選ぶ</button>
+              <button class="secondary" type="button" id="clear-published-selection">選択をクリア</button>
+            </div>
+          </div>
+
           <div class="proposal-grid" id="agent-proposals"></div>
 
           <div class="folder-panel">
-            <h2>エージェント設定</h2>
-            <p class="guide-note" style="color: var(--muted); margin-top: 0;">ゴールを入れると、AIが自分で手順を立てて繰り返し改善します。ループ上限でAPIの使いすぎを防ぎます。</p>
+            <h2>2. エージェント設定</h2>
+            <p class="guide-note" style="color: var(--muted); margin-top: 0;">ゴールを入れると、選んだ公開ツールを順番に使い、自己改善します。</p>
             <div class="form-grid">
               <label>ゴール（達成したいこと）
-                <textarea id="agent-goal" rows="3" placeholder="例：今日のニュースから注目3銘柄のX投稿案を作る"></textarea>
+                <textarea id="agent-goal" rows="3" placeholder="例：今日のテーマで注目3銘柄の投稿案を作る"></textarea>
               </label>
               <label>材料・元情報（任意）
-                <textarea id="agent-material" rows="6" placeholder="ニュース本文やメモを貼り付けます。URLだけでは処理できません。"></textarea>
+                <textarea id="agent-material" rows="6" placeholder="メモや追加の条件があれば貼ります。"></textarea>
               </label>
               <label>ループ上限（何周まで自己改善するか）
                 <select id="agent-max-loops">
@@ -816,24 +842,24 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           </div>
 
           <div class="folder-panel">
-            <h2>実行パネル</h2>
-            <p>設定画面のAPIキー（または有料プランの運営API）で実行します。1回の実行で複数回AIを呼びます。</p>
+            <h2>3. 実行</h2>
+            <p>ログイン中なら公開ツールAPIを順に呼び出します。キーはサーバー側のみです。</p>
             <div class="button-row">
               <button class="primary" id="run-agent" type="button">エージェントを実行</button>
               <button class="secondary" id="stop-agent" type="button" disabled>停止</button>
               <button class="secondary" id="copy-agent-result" type="button">結果をコピー</button>
             </div>
             <h3 class="agent-log-title">進行ログ</h3>
-            <pre class="code-block agent-run-log" id="agent-run-log" aria-live="polite">まだ実行していません。ゴールを入れて「エージェントを実行」を押してください。</pre>
+            <pre class="code-block agent-run-log" id="agent-run-log" aria-live="polite">まだ実行していません。公開ツールを選び、ゴールを入れて実行してください。</pre>
             <h3 class="agent-log-title">最終成果物</h3>
             <pre class="code-block" id="agent-result">ここに完成した成果物が表示されます。</pre>
           </div>
 
           <div class="folder-panel">
-            <h2>AIエージェント作成内容</h2>
-            <pre class="code-block" id="agent-preview">保存済みツールを追加すると、作成できるAIエージェント案が表示されます。</pre>
+            <h2>エージェント設定メモ</h2>
+            <pre class="code-block" id="agent-preview">公開ツールを選ぶと、つなぎ方がここに表示されます。</pre>
             <div class="button-row">
-              <button class="primary" id="create-agent">HTMLで書き出す（自走対応）</button>
+              <button class="primary" id="create-agent">設定を確定する</button>
               <button class="secondary" id="save-agent">保存する</button>
             </div>
             <p class="status-message" id="agent-status" aria-live="polite"></p>
@@ -1001,17 +1027,18 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
           <span class="ad-countdown-unit">秒</span>
         </div>
         <p class="eyebrow">スポンサー</p>
-        <h2>出力前に、おすすめサービスをご紹介しています。</h2>
-        <p>有料プラン（480円/月〜）なら、広告なしですぐ出力できます。</p>
-        <p class="ad-label">スポンサー（ムームードメイン）</p>
+        <h2>公開URLを出す前に、おすすめサービスをご紹介しています。</h2>
+        <p>有料プラン（480円/月〜）なら、広告なしですぐツールを起動できます。</p>
+        <p class="ad-label" id="ad-label">スポンサー</p>
         <div class="ad-slot" id="ad-slot" aria-label="スポンサー"></div>
         <p class="ad-disclosure">気になるサービスがあれば、ぜひチェックしてみてください。</p>
         <button class="ad-continue-subtle" id="ad-continue" type="button" disabled>続ける</button>
+        <a class="primary ad-launch-button" id="ad-launch" hidden>ツールを起動する</a>
       </div>
     </div>
-    <script src="./ads.config.js?v=48"></script>
-    <script src="./ads.js?v=48"></script>
-    <script src="./config.js?v=48"></script>
-    <script src="./script.js?v=48"></script>
+    <script src="./ads.config.js?v=77"></script>
+    <script src="./ads.js?v=77"></script>
+    <script src="./config.js?v=77"></script>
+    <script src="./script.js?v=77"></script>
   </body>
 </html>

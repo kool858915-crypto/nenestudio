@@ -1,4 +1,7 @@
 (function initNeneAds() {
+  // 表示は毎回ランダムなので、実際に出した広告主名を覚えて画面のラベルに使う
+  let lastBannerName = "";
+
   function getConfig() {
     return window.NENE_ADS || {};
   }
@@ -73,6 +76,7 @@
     desc.textContent = banner.text || "詳細を見る";
     link.append(title, desc);
     slot.appendChild(link);
+    lastBannerName = banner.alt || "";
     trackA8Impression(banner);
     return true;
   }
@@ -107,7 +111,10 @@
         const height = Number(banner.height) || img.naturalHeight || 60;
         const wrap = document.createElement("div");
         wrap.className = "ad-banner-wrap";
+        const ratio = width / height;
+        wrap.classList.add(ratio >= 2.5 ? "is-wide" : "is-rect");
         wrap.style.setProperty("--ad-aspect-ratio", `${width} / ${height}`);
+        wrap.style.setProperty("--ad-ratio", String(ratio));
 
         const link = createAffiliateLink(banner);
         img.className = "ad-banner-image";
@@ -115,6 +122,7 @@
         link.appendChild(img);
         wrap.appendChild(link);
         slot.appendChild(wrap);
+        lastBannerName = banner.alt || "";
         trackA8Impression(banner);
         return true;
       }
@@ -228,6 +236,7 @@
 
   async function loadSlot(slot) {
     const config = getConfig();
+    lastBannerName = "";
     clearSlot(slot);
     if (config.enabled === false) {
       return "disabled";
@@ -249,9 +258,16 @@
 
   window.NeneAds = {
     loadSlot,
+    getLastBannerName() {
+      return lastBannerName;
+    },
     getWaitSeconds() {
-      const seconds = Number(getConfig().waitSeconds);
-      return Number.isFinite(seconds) && seconds >= 0 ? seconds : 5;
+      const raw = getConfig().waitSeconds;
+      const list = Array.isArray(raw)
+        ? raw.map((value) => Number(value)).filter((value) => Number.isFinite(value) && value >= 0)
+        : [Number(raw)];
+      const choices = list.length ? list : [5];
+      return choices[Math.floor(Math.random() * choices.length)];
     },
   };
 })();

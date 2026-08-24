@@ -8,3 +8,10 @@ JWT_SECRET*.txt
 server/*.json
 npm-debug.log*
 .DS_Store
+scripts/_all_cat/
+scripts/_shots/
+scripts/_zip_check/
+scripts/_generated_*.html
+scripts/_shot_*.html
+scripts/_debug_tool_click.mjs
+scripts/stripe-checkout-error.png

@@ -484,6 +484,42 @@ button {
   grid-template-columns: 1.4fr 1fr;
 }
 
+.export-sponsor {
+  margin: 16px 0 8px;
+  padding: 14px 14px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.export-sponsor .ad-slot {
+  min-height: 0;
+}
+
+.export-sponsor .ad-banner-wrap.is-wide {
+  max-width: 468px;
+}
+
+.export-sponsor .ad-banner-wrap.is-rect {
+  max-width: 300px;
+}
+
+#api-key-notice:not([hidden]) {
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border: 1px solid #38bdf8;
+  border-radius: 10px;
+  background: rgba(12, 74, 110, 0.35);
+  color: #e0f2fe;
+  line-height: 1.6;
+}
+
+#api-key-notice.is-warning:not([hidden]) {
+  border-color: #f87171;
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+}
+
 .export-url-hero {
   margin-top: 16px;
 }
@@ -505,10 +541,9 @@ button {
   align-items: center;
   justify-content: center;
   text-decoration: none;
-  min-height: 44px;
-  padding: 0 16px;
+  min-height: 48px;
+  padding: 0 18px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .export-actions .primary,
@@ -927,6 +962,65 @@ button {
 .agent-proposal-card:hover {
   border-color: rgba(84, 211, 154, 0.72);
   background: rgba(20, 38, 58, 0.94);
+}
+
+.published-tools-shelf {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+
+.published-tool-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.published-tool-row.is-selected {
+  border-color: rgba(84, 211, 154, 0.55);
+  background: rgba(84, 211, 154, 0.08);
+}
+
+.published-tool-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.published-tool-main strong {
+  font-size: 1rem;
+}
+
+.published-tool-main small,
+.published-tool-main a {
+  color: var(--muted);
+  word-break: break-all;
+  font-size: 0.85rem;
+}
+
+.published-tool-order {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.published-tool-order button {
+  min-height: 32px;
+  min-width: 36px;
+  padding: 0 8px;
+}
+
+.published-shelf-empty {
+  padding: 16px;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 12px;
+  color: var(--muted);
+  line-height: 1.6;
 }
 
 .tag {
@@ -1498,6 +1592,26 @@ button {
   opacity: 1;
 }
 
+.ad-launch-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(100%, 360px);
+  margin: 18px auto 0;
+  min-height: 52px;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.ad-launch-button[aria-disabled="true"] {
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.ad-launch-button[hidden] {
+  display: none;
+}
+
 .ad-visual {
   display: grid;
   min-height: 120px;
@@ -1519,11 +1633,11 @@ button {
 .ad-slot {
   display: block;
   width: 100%;
-  margin: 14px 0;
+  margin: 10px 0;
   border-radius: 10px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
-  min-height: 90px;
+  overflow: visible;
+  background: transparent;
+  min-height: 0;
 }
 
 .ad-slot-stack {
@@ -1533,33 +1647,48 @@ button {
 }
 
 .ad-banner-wrap {
-  display: grid;
-  place-items: center;
+  display: block;
   width: 100%;
-  min-height: 72px;
-  padding: 12px;
+  margin-inline: auto;
+  padding: 0;
   border-radius: 10px;
+  overflow: hidden;
   background: #fff;
-  aspect-ratio: var(--ad-aspect-ratio, 468 / 60);
-}
-
-.ad-banner-wrap .ad-affiliate {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
   line-height: 0;
 }
 
-.ad-banner-image {
+.ad-banner-wrap.is-wide {
+  max-width: 728px;
+}
+
+.ad-banner-wrap.is-rect {
+  width: fit-content;
+  max-width: min(336px, 100%);
+}
+
+.ad-banner-wrap .ad-affiliate {
   display: block;
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  line-height: 0;
+}
+
+.ad-banner-wrap.is-wide .ad-banner-image {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.ad-banner-wrap.is-rect .ad-banner-image {
+  display: block;
   width: auto;
   height: auto;
-  object-fit: contain;
-  object-position: center;
+  max-width: min(336px, 100%);
+  max-height: min(250px, 36vh);
+}
+
+/* 待ち画面では「続ける」が隠れるほど大きくしない */
+.ad-overlay .ad-banner-wrap.is-rect .ad-banner-image {
+  max-height: min(220px, 34vh);
 }
 
 .ad-slot .adsbygoogle,
@@ -1623,6 +1752,24 @@ button {
   line-height: 1.55;
 }
 
+.ad-publish-url {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(77, 163, 255, 0.14);
+  word-break: break-all;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.ad-publish-url[hidden] {
+  display: none;
+}
+
+.ad-publish-url a {
+  color: inherit;
+}
+
 .saved-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1682,6 +1829,33 @@ button {
 
 .app-status-bar {
   margin: 0 0 14px;
+}
+
+.phone-access {
+  margin: 0 0 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(77, 163, 255, 0.45);
+  background: rgba(77, 163, 255, 0.12);
+}
+
+.phone-access-label {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+}
+
+.phone-access-url {
+  display: block;
+  word-break: break-all;
+  font-weight: 700;
+  color: #7dd3fc;
+  font-size: 1.05rem;
+}
+
+.phone-access-note {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
 }
 
 .notice {

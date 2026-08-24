@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="ja" data-theme="a" data-result="card">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>【UI案 v3】配色・結果表示 比較</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2310457e'/><path d='M18 40l9-16 9 11 5-7 5 12z' fill='%23fff'/></svg>" />
+<style>
+/* ===== 配色A：ネイビー×シアン（信頼感） ===== */
+[data-theme="a"]{
+  --bg:#eef3f9; --bg-tint:rgba(16,69,126,.07); --bg-tint2:rgba(14,143,158,.08);
+  --surface:#fff; --surface-2:#f3f7fb; --surface-3:#e9eff7;
+  --ink:#0b1c33; --ink-2:#43586f; --ink-3:#6b7f96;
+  --line:#d6e0eb; --line-2:#e8eef5;
+  --brand:#10457e; --brand-ink:#fff; --brand-soft:rgba(16,69,126,.1);
+  --accent:#0e8f9e; --accent-soft:rgba(14,143,158,.12);
+  --warn:#a86a10; --warn-soft:rgba(168,106,16,.12);
+  --danger:#a52a1e; --danger-soft:#fdf3f2;
+  --shadow:0 1px 2px rgba(11,28,51,.05),0 10px 26px rgba(11,28,51,.07);
+}
+/* ===== 配色B：ダーク（プロ向け・目に優しい） ===== */
+[data-theme="b"]{
+  --bg:#0d1117; --bg-tint:rgba(76,154,255,.1); --bg-tint2:rgba(46,230,168,.07);
+  --surface:#161c26; --surface-2:#1d2532; --surface-3:#232d3d;
+  --ink:#e8eef7; --ink-2:#a4b3c6; --ink-3:#7d8da2;
+  --line:#2a3546; --line-2:#212b3a;
+  --brand:#4c9aff; --brand-ink:#08121f; --brand-soft:rgba(76,154,255,.16);
+  --accent:#2ee6a8; --accent-soft:rgba(46,230,168,.15);
+  --warn:#f0b93c; --warn-soft:rgba(240,185,60,.16);
+  --danger:#ff8a80; --danger-soft:rgba(255,138,128,.1);
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 26px rgba(0,0,0,.4);
+}
+/* ===== 配色C：ウォーム（やさしい・初心者向け） ===== */
+[data-theme="c"]{
+  --bg:#faf6f0; --bg-tint:rgba(194,105,31,.08); --bg-tint2:rgba(122,139,63,.08);
+  --surface:#fff; --surface-2:#f8f3ec; --surface-3:#f1e9dd;
+  --ink:#2c2118; --ink-2:#5f5145; --ink-3:#8b7c6d;
+  --line:#e6dbcb; --line-2:#f0e8dc;
+  --brand:#c2691f; --brand-ink:#fff; --brand-soft:rgba(194,105,31,.11);
+  --accent:#6e8235; --accent-soft:rgba(110,130,53,.13);
+  --warn:#a8720d; --warn-soft:rgba(168,114,13,.13);
+  --danger:#b03a26; --danger-soft:#fdf4f1;
+  --shadow:0 1px 2px rgba(44,33,24,.05),0 10px 26px rgba(44,33,24,.08);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic UI','Segoe UI',system-ui,sans-serif;
+  background:var(--bg);
+  background-image:radial-gradient(900px 300px at 6% -6%,var(--bg-tint),transparent 62%),radial-gradient(700px 260px at 100% 0%,var(--bg-tint2),transparent 58%);
+  background-repeat:no-repeat;
+  color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:760px;margin:0 auto;padding:14px 14px 120px}
+@media(min-width:860px){.wrap{padding:22px 18px 60px}}
+
+/* ===== 検討用スイッチャ（本番には入りません） ===== */
+.chooser{
+  position:sticky;top:0;z-index:60;margin:-14px -14px 14px;padding:10px 14px;
+  background:var(--surface);border-bottom:1px solid var(--line);
+  display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:.8rem;
+}
+.chooser strong{color:var(--ink-3);font-weight:800;letter-spacing:.02em}
+.swgroup{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.sw{
+  min-height:34px;padding:0 12px;border-radius:9px;border:1.5px solid var(--line);
+  background:var(--surface-2);color:var(--ink);font:inherit;font-size:.82rem;font-weight:700;cursor:pointer;
+}
+.sw[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+
+/* ===== ヘッダー（詰めた） ===== */
+.hero{margin:0 0 14px}
+.hero h1{margin:0 0 4px;font-size:clamp(1.25rem,4vw,1.6rem);line-height:1.35;font-weight:800;letter-spacing:-.02em}
+.hero p{margin:0;color:var(--ink-2);font-size:.9rem}
+
+/* ===== 選択エリア（カード枠を廃止して行に） ===== */
+.picker{
+  background:var(--surface);border:1px solid var(--line);border-radius:16px;
+  box-shadow:var(--shadow);overflow:hidden;
+}
+.row{padding:12px 14px;border-top:1px solid var(--line-2)}
+.row:first-child{border-top:0}
+.row-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.n{
+  display:grid;place-items:center;flex:0 0 auto;width:20px;height:20px;border-radius:6px;
+  background:var(--brand);color:var(--brand-ink);font-size:.7rem;font-weight:800;
+}
+.row-head h2{margin:0;font-size:.92rem;font-weight:800;letter-spacing:-.01em}
+.pencil{
+  margin-left:auto;min-height:30px;padding:0 10px;border-radius:8px;
+  border:1.5px dashed var(--line);background:transparent;color:var(--brand);
+  font:inherit;font-size:.78rem;font-weight:800;cursor:pointer;white-space:nowrap;
+}
+.pencil:hover{background:var(--brand-soft);border-color:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{
+  min-height:38px;padding:0 13px;border-radius:10px;
+  border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);
+  font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;
+  transition:background .12s,border-color .12s,transform .07s;
+  touch-action:manipulation;
+}
+.chip:hover{border-color:var(--brand);background:var(--brand-soft)}
+.chip:active{transform:scale(.97)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.free{margin-top:9px}
+.free[hidden]{display:none}
+.free input{
+  width:100%;min-height:42px;padding:8px 12px;border-radius:10px;
+  border:1.5px solid var(--brand);background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem;
+}
+.free p{margin:5px 0 0;font-size:.76rem;color:var(--ink-3)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+
+/* ===== 実行バー ===== */
+.runbar{
+  position:sticky;bottom:0;z-index:40;margin-top:12px;
+  padding:11px 13px calc(11px + env(safe-area-inset-bottom));border-radius:16px;
+  background:var(--surface);border:1px solid var(--line);box-shadow:0 -5px 24px rgba(0,0,0,.09);
+}
+.picked{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 9px;font-size:.78rem}
+.picked span{padding:2px 9px;border-radius:999px;background:var(--surface-3);color:var(--ink-2);font-weight:700}
+.btn{
+  width:100%;min-height:50px;border:0;border-radius:12px;
+  background:linear-gradient(135deg,var(--brand),var(--accent));
+  color:#fff;font:inherit;font-size:1rem;font-weight:800;cursor:pointer;
+  box-shadow:0 6px 16px var(--brand-soft);transition:filter .12s,transform .07s;
+}
+[data-theme="b"] .btn{color:#08121f}
+.btn:hover{filter:brightness(1.07)}
+.btn:active{transform:scale(.99)}
+.btn[disabled]{opacity:.6;cursor:progress}
+.btn.ghost{
+  width:auto;min-height:34px;padding:0 12px;font-size:.8rem;border:1.5px solid var(--line);
+  background:var(--surface-2);color:var(--ink);box-shadow:none;
+}
+.btn.ghost:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft);filter:none}
+.runbar .sub{margin:7px 0 0;text-align:center;font-size:.74rem;color:var(--ink-3)}
+
+/* ===== 結果 ===== */
+.result{
+  margin-top:12px;padding:14px;border-radius:16px;
+  background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);
+}
+.result-head{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding-bottom:11px;margin-bottom:12px;border-bottom:1px solid var(--line-2)}
+.result-head h2{margin:0;font-size:.98rem;font-weight:800}
+.result-actions{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.status{display:flex;align-items:center;gap:8px;margin:0 0 11px;font-size:.85rem;font-weight:700;color:var(--brand)}
+.status[hidden]{display:none}
+.spin{width:15px;height:15px;flex:0 0 auto;border-radius:50%;border:2.5px solid var(--brand-soft);border-top-color:var(--brand);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{padding:26px 16px;text-align:center;color:var(--ink-3);border:1.5px dashed var(--line);border-radius:12px;background:var(--surface-2);font-size:.88rem}
+.empty span{display:block;font-size:1.5rem;margin-bottom:6px}
+.skeleton{display:grid;gap:9px}
+.skeleton[hidden]{display:none}
+.sk{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:shine 1.3s ease-in-out infinite}
+.sk.t{height:17px;width:50%}.sk.w90{width:90%}.sk.w70{width:70%}
+.sk-card{padding:13px;border:1px solid var(--line-2);border-radius:11px;display:grid;gap:8px}
+@keyframes shine{to{background-position:-135% 0}}
+@media(prefers-reduced-motion:reduce){.sk,.spin{animation:none}}
+
+.out{display:grid;gap:11px}
+.out[hidden]{display:none}
+.summary{padding:11px 13px;border-radius:11px;background:var(--brand-soft);border:1px solid var(--brand);font-weight:700;font-size:.9rem;line-height:1.65}
+[data-theme="b"] .summary{border-color:var(--line)}
+
+/* 結果1：カード型 */
+.view-card{display:grid;gap:10px}
+.item{padding:13px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2)}
+.item-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.no{display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:7px;background:var(--brand);color:var(--brand-ink);font-size:.74rem;font-weight:800;flex:0 0 auto}
+.item-head h3{margin:0;font-size:.96rem;font-weight:800}
+.tag{margin-left:auto;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:800;background:var(--accent-soft);color:var(--accent)}
+.tag.mid{background:var(--warn-soft);color:var(--warn)}
+.kv{display:grid;gap:5px;margin:0;font-size:.87rem}
+.kv div{display:grid;grid-template-columns:80px 1fr;gap:9px}
+.kv dt{color:var(--ink-3);font-weight:700}
+.kv dd{margin:0}
+@media(max-width:520px){.kv div{grid-template-columns:1fr;gap:1px}.kv dt{font-size:.78rem}}
+
+/* 結果2：比較表 */
+.view-table{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:11px}
+table{border-collapse:collapse;width:100%;min-width:640px;font-size:.86rem}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line-2);vertical-align:top}
+thead th{background:var(--surface-3);font-weight:800;font-size:.8rem;color:var(--ink-2);white-space:nowrap;position:sticky;top:0}
+tbody tr:last-child td{border-bottom:0}
+td.name{font-weight:800;white-space:nowrap}
+.scroll-hint{margin:6px 0 0;font-size:.74rem;color:var(--ink-3);text-align:right}
+
+/* 結果3：折りたたみ */
+.view-fold{display:grid;gap:7px}
+details.fold{border:1px solid var(--line);border-radius:11px;background:var(--surface-2);overflow:hidden}
+details.fold>summary{
+  list-style:none;cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:8px;
+  font-weight:800;font-size:.92rem;
+}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:"＋";margin-left:auto;color:var(--brand);font-weight:800}
+details.fold[open]>summary::after{content:"−"}
+details.fold[open]>summary{border-bottom:1px solid var(--line-2)}
+.fold-body{padding:11px 13px}
+
+.check{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
+.check li{display:flex;gap:8px}
+.check li::before{content:"✓";color:var(--accent);font-weight:800;flex:0 0 auto}
+.sources{font-size:.78rem;color:var(--ink-3);margin:0}
+.disclaimer{margin:0;padding:9px 12px;border-radius:10px;background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);font-size:.79rem;font-weight:700}
+.note-dl{margin:12px 0 0;padding-top:11px;border-top:1px solid var(--line-2);font-size:.78rem;color:var(--ink-3)}
+.foot{margin:18px 0 0;text-align:center;font-size:.74rem;color:var(--ink-3)}
+
+[data-result="card"] .view-table,[data-result="card"] .view-fold,
+[data-result="table"] .view-card,[data-result="table"] .view-fold,
+[data-result="fold"] .view-card,[data-result="fold"] .view-table{display:none}
+
+@media print{.chooser,.runbar,.result-actions,.foot,.picker{display:none!important}body{background:#fff}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="chooser">
+    <strong>配色</strong>
+    <div class="swgroup" id="theme-sw">
+      <button class="sw" data-theme-set="a" aria-pressed="true">A ネイビー</button>
+      <button class="sw" data-theme-set="b" aria-pressed="false">B ダーク</button>
+      <button class="sw" data-theme-set="c" aria-pressed="false">C ウォーム</button>
+    </div>
+    <strong>結果の見せ方</strong>
+    <div class="swgroup" id="result-sw">
+      <button class="sw" data-result-set="card" aria-pressed="true">1 カード</button>
+      <button class="sw" data-result-set="table" aria-pressed="false">2 比較表</button>
+      <button class="sw" data-result-set="fold" aria-pressed="false">3 折りたたみ</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <h1>テーマを選ぶだけで注目株を半自動選定</h1>
+    <p>3つ選んで押すだけ。直近の公開情報から候補と理由をまとめます。</p>
+  </header>
+
+  <!-- 選択エリア（株投資ツール専用の軸） -->
+  <div class="picker">
+    <div class="row" data-group="theme">
+      <div class="row-head">
+        <span class="n">1</span><h2>どのテーマ？</h2>
+        <button type="button" class="pencil">✎ 自分で書く</button>
+      </div>
+      <div class="chips" role="group" aria-label="テーマ">
+        <button type="button" class="chip" aria-pressed="true"  data-value="AI・半導体">AI・半導体</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="防衛">防衛</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="電力・再エネ">電力・再エネ</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="高配当">高配当</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="インバウンド">インバウンド</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="円安メリット">円安メリット</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="医療・バイオ">医療・バイオ</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="銀行・金利">銀行・金利</button>
+      </div>
+      <div class="free" hidden>
+        <input type="text" placeholder="例：宇宙・衛星ビジネス" />
+        <p>ここに書いた内容が、上の選択より優先されます。</p>
+      </div>
+    </div>
+
+    <div class="row" data-group="stance">
+      <div class="row-head">
+        <span class="n">2</span><h2>どう持ちたい？</h2>
+        <button type="button" class="pencil">✎ 自分で書く</button>
+      </div>
+      <div class="chips" role="group" aria-label="投資スタンス">
+        <button type="button" class="chip" aria-pressed="false" data-value="数日〜数週間">数日〜数週間</button>
+        <button type="button" class="chip" aria-pressed="true"  data-value="数か月">数か月</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="1年以上">1年以上</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="配当をもらう">配当をもらう</button>
+      </div>
+      <div class="free" hidden>
+        <input type="text" placeholder="例：NISA枠で長期、値動きの小さいもの" />
+        <p>ここに書いた内容が、上の選択より優先されます。</p>
+      </div>
+    </div>
+
+    <div class="row" data-group="risk">
+      <div class="row-head">
+        <span class="n">3</span><h2>リスクはどこまで？</h2>
+      </div>
+      <div class="chips" role="group" aria-label="リスク許容度">
+        <button type="button" class="chip" aria-pressed="true"  data-value="安定重視">安定重視</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="バランス">バランス</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="値動き歓迎">値動き歓迎</button>
+      </div>
+    </div>
+
+    <div class="row" data-group="count">
+      <div class="row-head">
+        <span class="n">4</span><h2>何件ほしい？</h2>
+      </div>
+      <div class="chips" role="group" aria-label="件数">
+        <button type="button" class="chip" aria-pressed="false" data-value="3件">3件（速い）</button>
+        <button type="button" class="chip" aria-pressed="true"  data-value="5件">5件</button>
+        <button type="button" class="chip" aria-pressed="false" data-value="8件">8件（詳しい）</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="runbar">
+    <p class="picked" id="picked"></p>
+    <button type="button" class="btn" id="run">この内容で選定する</button>
+    <p class="sub" id="sub">押すと約10〜40秒で結果が出ます</p>
+  </div>
+
+  <section class="result">
+    <div class="result-head">
+      <h2>選定結果</h2>
+      <div class="result-actions">
+        <button type="button" class="btn ghost">コピー</button>
+        <button type="button" class="btn ghost">保存</button>
+        <button type="button" class="btn ghost" id="print">印刷</button>
+      </div>
+    </div>
+
+    <p class="status" id="status" hidden><span class="spin" aria-hidden="true"></span><span id="status-text">直近ニュースを確認しています…</span></p>
+
+    <div class="empty" id="empty"><span aria-hidden="true">📋</span>まだ結果はありません。上のボタンを押すと、ここに出ます。</div>
+
+    <div class="skeleton" id="skeleton" hidden aria-hidden="true">
+      <div class="sk t"></div><div class="sk w90"></div>
+      <div class="sk-card"><div class="sk t"></div><div class="sk w90"></div><div class="sk w70"></div></div>
+      <div class="sk-card"><div class="sk t"></div><div class="sk w90"></div><div class="sk w70"></div></div>
+    </div>
+
+    <div class="out" id="out" hidden>
+      <p class="summary">AI・半導体テーマは、生成AI向けサーバー投資の増額発表が相次ぎ、装置・素材まで物色が広がっています。参照ニュース 7 件。</p>
+
+      <!-- 1: カード型 -->
+      <div class="view-card">
+        <article class="item">
+          <div class="item-head"><span class="no">1</span><h3>サンプル電機（0000）</h3><span class="tag">注目度 高</span></div>
+          <dl class="kv">
+            <div><dt>選定理由</dt><dd>データセンター向け電源需要の増加を受け、通期計画を上方修正しました。</dd></div>
+            <div><dt>ニュース</dt><dd>通期業績予想の上方修正を発表</dd></div>
+            <div><dt>発表日</dt><dd>2026-08-20</dd></div>
+            <div><dt>情報源</dt><dd>会社適時開示</dd></div>
+            <div><dt>リスク</dt><dd>すでに株価へ織り込み済みの可能性があります。</dd></div>
+          </dl>
+        </article>
+        <article class="item">
+          <div class="item-head"><span class="no">2</span><h3>サンプル素材（0000）</h3><span class="tag mid">注目度 中</span></div>
+          <dl class="kv">
+            <div><dt>選定理由</dt><dd>先端パッケージ向け材料の増産計画を公表し、供給制約の緩和が進みます。</dd></div>
+            <div><dt>ニュース</dt><dd>新工場の稼働時期を前倒し</dd></div>
+            <div><dt>発表日</dt><dd>2026-08-19</dd></div>
+            <div><dt>情報源</dt><dd>会社公式リリース</dd></div>
+            <div><dt>リスク</dt><dd>設備投資の負担が利益率を押し下げる可能性があります。</dd></div>
+          </dl>
+        </article>
+      </div>
+
+      <!-- 2: 比較表 -->
+      <div class="view-table-outer">
+        <div class="view-table">
+          <table>
+            <thead><tr><th>銘柄</th><th>注目度</th><th>選定理由</th><th>発表日</th><th>情報源</th><th>リスク</th></tr></thead>
+            <tbody>
+              <tr><td class="name">サンプル電機<br>(0000)</td><td>高</td><td>データセンター向け電源需要の増加で通期計画を上方修正</td><td>2026-08-20</td><td>会社適時開示</td><td>株価へ織り込み済みの可能性</td></tr>
+              <tr><td class="name">サンプル素材<br>(0000)</td><td>中</td><td>先端パッケージ材料の増産計画を公表</td><td>2026-08-19</td><td>会社公式</td><td>設備投資が利益率を圧迫</td></tr>
+              <tr><td class="name">サンプル精機<br>(0000)</td><td>中</td><td>検査装置の受注残が過去最高を更新</td><td>2026-08-18</td><td>決算資料</td><td>受注の期ずれリスク</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="scroll-hint">← 横にスクロールできます →</p>
+      </div>
+
+      <!-- 3: 折りたたみ -->
+      <div class="view-fold">
+        <details class="fold" open>
+          <summary><span class="no">1</span>サンプル電機（0000）<span class="tag">高</span></summary>
+          <div class="fold-body"><dl class="kv">
+            <div><dt>選定理由</dt><dd>データセンター向け電源需要の増加を受け、通期計画を上方修正しました。</dd></div>
+            <div><dt>発表日</dt><dd>2026-08-20 ／ 会社適時開示</dd></div>
+            <div><dt>リスク</dt><dd>すでに株価へ織り込み済みの可能性があります。</dd></div>
+          </dl></div>
+        </details>
+        <details class="fold">
+          <summary><span class="no">2</span>サンプル素材（0000）<span class="tag mid">中</span></summary>
+          <div class="fold-body"><dl class="kv">
+            <div><dt>選定理由</dt><dd>先端パッケージ向け材料の増産計画を公表しました。</dd></div>
+            <div><dt>発表日</dt><dd>2026-08-19 ／ 会社公式リリース</dd></div>
+            <div><dt>リスク</dt><dd>設備投資の負担が利益率を押し下げる可能性があります。</dd></div>
+          </dl></div>
+        </details>
+        <details class="fold">
+          <summary><span class="no">3</span>サンプル精機（0000）<span class="tag mid">中</span></summary>
+          <div class="fold-body"><dl class="kv">
+            <div><dt>選定理由</dt><dd>検査装置の受注残が過去最高を更新しました。</dd></div>
+            <div><dt>発表日</dt><dd>2026-08-18 ／ 決算資料</dd></div>
+            <div><dt>リスク</dt><dd>受注が翌期にずれる可能性があります。</dd></div>
+          </dl></div>
+        </details>
+      </div>
+
+      <article class="item">
+        <div class="item-head"><span class="no">✓</span><h3>買う前チェック</h3></div>
+        <ul class="check">
+          <li>最新の株価と出来高を証券会社の画面で確認する</li>
+          <li>発表日から日が経ちすぎていないか確認する</li>
+          <li>1銘柄に資金を集中させない</li>
+          <li>決算発表日をまたぐかどうかを確認する</li>
+        </ul>
+      </article>
+
+      <p class="sources">情報源：1. 会社適時開示 ／ 2. 会社公式リリース ／ 3. 決算資料　（確認 2026-08-21 13:40）</p>
+      <p class="disclaimer">投資助言ではありません。売買の判断はご自身で行ってください。このツールは注文を出しません。</p>
+
+      <p class="note-dl">保存の想定：この結果を <b>テキスト / HTML</b> で保存、または <b>ZIP</b>（結果＋このツール本体一式）でまとめて保存できるようにします。</p>
+    </div>
+  </section>
+
+  <p class="foot">見た目確認用のたたき台です。結果はサンプル文章です。</p>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  document.getElementById("theme-sw").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-theme-set]"); if (!b) return;
+    root.setAttribute("data-theme", b.dataset.themeSet);
+    this.querySelectorAll(".sw").forEach(function (s) { s.setAttribute("aria-pressed", String(s === b)); });
+  });
+  document.getElementById("result-sw").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-result-set]"); if (!b) return;
+    root.setAttribute("data-result", b.dataset.resultSet);
+    this.querySelectorAll(".sw").forEach(function (s) { s.setAttribute("aria-pressed", String(s === b)); });
+  });
+
+  var picked = {}, free = {};
+  var order = ["theme", "stance", "risk", "count"];
+  function refresh() {
+    var el = document.getElementById("picked"); el.innerHTML = "";
+    order.forEach(function (g) {
+      var v = free[g] || picked[g]; if (!v) return;
+      var s = document.createElement("span"); s.textContent = v; el.appendChild(s);
+    });
+  }
+  document.querySelectorAll(".row[data-group]").forEach(function (row) {
+    var g = row.dataset.group;
+    var on = row.querySelector('.chip[aria-pressed="true"]');
+    if (on) picked[g] = on.dataset.value;
+    row.querySelector(".chips").addEventListener("click", function (e) {
+      var c = e.target.closest(".chip"); if (!c) return;
+      row.querySelectorAll(".chip").forEach(function (x) { x.setAttribute("aria-pressed", String(x === c)); });
+      picked[g] = c.dataset.value; refresh();
+    });
+    var pen = row.querySelector(".pencil");
+    if (pen) pen.addEventListener("click", function () {
+      var box = row.querySelector(".free");
+      box.hidden = !box.hidden;
+      if (!box.hidden) box.querySelector("input").focus();
+    });
+    var inp = row.querySelector(".free input");
+    if (inp) inp.addEventListener("input", function () { free[g] = inp.value.trim(); refresh(); });
+  });
+  refresh();
+
+  var steps = ["直近ニュースを確認しています…", "候補をしぼり込んでいます…", "選定理由をまとめています…"];
+  document.getElementById("run").addEventListener("click", function () {
+    var btn = this, st = document.getElementById("status"), stt = document.getElementById("status-text");
+    var sk = document.getElementById("skeleton"), out = document.getElementById("out"), em = document.getElementById("empty");
+    btn.disabled = true; btn.textContent = "選定中…";
+    em.hidden = true; out.hidden = true; sk.hidden = false; st.hidden = false;
+    document.querySelector(".result").scrollIntoView({ behavior: "smooth", block: "start" });
+    var i = 0; stt.textContent = steps[0];
+    var t = setInterval(function () { i = (i + 1) % steps.length; stt.textContent = steps[i]; }, 1500);
+    setTimeout(function () {
+      clearInterval(t); st.hidden = true; sk.hidden = true; out.hidden = false;
+      btn.disabled = false; btn.textContent = "もう一度、この内容で選定する";
+    }, 4000);
+  });
+  document.getElementById("print").addEventListener("click", function () { window.print(); });
+})();
+</script>
+</body>
+</html>

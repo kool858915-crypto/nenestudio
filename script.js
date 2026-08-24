@@ -1,4 +1,4 @@
-const categories = [
+﻿const categories = [
   { name: "株投資ツール", description: "テーマを選ぶだけで注目株を半自動選定", money: "★★★★★", easy: "★★★★☆", use: "銘柄候補、選定理由、買う前チェック", isInvestment: true },
   { name: "FXツール", description: "自動売買向けのシグナル・ルールを半自動生成", money: "★★★★☆", easy: "★★★★☆", use: "売買シグナル、EA用ルール、リスクリミット", isInvestment: true },
   { name: "ニュース分析ツール", description: "分野を選ぶだけで今の注目ニュースを自動整理", money: "★★★★★", easy: "★★★★★", use: "注目トピック、要点、次の行動", isInvestment: false },
@@ -477,10 +477,14 @@ const textTranslations = {
   "広告表示プラン": "Ad Display Plan",
   "無料プラン：出力前にスポンサーをご紹介": "Free plan: partner picks before output",
   "出力前に、おすすめサービスをご紹介しています。": "Before output, here are recommended services from our partners.",
+  "公開URLを出す前に、おすすめサービスをご紹介しています。": "Before we issue your public URL, here are recommended services from our partners.",
   "有料プラン（480円/月〜）なら、広告なしですぐ出力できます。": "Paid plans (from ¥480/month) let you output instantly without ads.",
   "気になるサービスがあれば、ぜひチェックしてみてください。": "Feel free to check out anything that catches your eye.",
   "スポンサー": "Sponsor",
-  "スポンサー（ムームードメイン / ロリポップ！）": "Sponsors (Muuumu Domain / Lolipop)",
+  "スポンサー（ココナラ）": "Sponsored (coconala)",
+  "スポンサー（3D Phantom）": "Sponsored (3D Phantom)",
+  "スポンサー（CLOUD PHONE）": "Sponsored (CLOUD PHONE)",
+  "スポンサー（ホームページDX）": "Sponsored (Homepage DX)",
   "続ける": "continue",
   "480円プラン：広告カットのみ": "¥480/month plan: ad-free output only",
   "980円プラン：広告なし＋運営API月50回": "¥980/month plan: ad-free + 50 operator AI runs/month",
@@ -1078,6 +1082,8 @@ const state = {
   agentAbortRequested: false,
   agentLogs: [],
   agentResult: "",
+  publishedToolsShelf: [],
+  agentSelectedSlugs: [],
   status: "",
 };
 
@@ -1097,12 +1103,12 @@ function shouldRememberLogin() {
 }
 
 function migrateLegacyClientSecrets() {
-  const legacyToken = localStorage.getItem(AUTH_TOKEN_KEY) || sessionStorage.getItem(AUTH_TOKEN_KEY);
-  if (legacyToken) {
-    state.auth.token = legacyToken;
+  const storedToken = sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY);
+  if (storedToken) {
+    state.auth.token = storedToken;
+    sessionStorage.setItem(AUTH_TOKEN_KEY, storedToken);
   }
   localStorage.removeItem(AUTH_TOKEN_KEY);
-  sessionStorage.removeItem(AUTH_TOKEN_KEY);
 
   const legacyApiKey = localStorage.getItem(USER_API_KEY);
   const legacyProvider = localStorage.getItem(USER_API_PROVIDER_KEY);
@@ -1126,10 +1132,15 @@ function readSessionApiProvider() {
 
 function persistAuthToken(token) {
   state.auth.token = token || "";
+  // スマホではCookieが届かないことがあるので、同じ画面のあいだは控えを持つ
+  if (token) sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+  else sessionStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
 function clearAuthToken() {
   state.auth.token = "";
+  sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  localStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
 function hydrateSavedAuthEmail() {
@@ -1211,6 +1222,7 @@ loadServerAuthStatus();
 hydrateUserApiKey();
 hydrateStripePaymentState();
 handleStripeReturn();
+handleGoogleReturn();
 renderCategories();
 syncHearingFromActiveButtons();
 prepareNodes();
@@ -1312,23 +1324,20 @@ function bindEvents() {
     activateScreen("create");
   });
   $("#apple-login-button")?.addEventListener("click", signInWithApple);
-  $("#google-login-fallback")?.addEventListener("click", () => {
-    if (state.auth.providers.google.enabled && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt((notification) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          state.status = "Googleログイン画面を表示できませんでした。ポップアップブロックを解除するか、ページを再読み込みしてください。";
-          renderAll();
-        }
-      });
-      return;
+  $("#google-login-fallback")?.addEventListener("click", startGoogleRedirectLogin);
+  $("#copy-studio-url")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText("http://localhost:8787/");
+      setAuthFeedback("http://localhost:8787/ をコピーしました。Chrome または Edge の住所欄に貼って開いてください。", "info");
+    } catch {
+      setAuthFeedback("コピーできませんでした。Chrome または Edge の住所欄に http://localhost:8787 と入力してください。", "error");
     }
-    if (state.auth.providers.google.enabled) {
-      state.status = "Googleログインボタンの読み込み中です。少し待ってから再度お試しください。";
-    } else {
-      state.status = "Googleログインは GOOGLE_CLIENT_ID 未設定です。サーバーの .env に Client ID を入れて再起動してください。";
-    }
-    renderAll();
-    activateScreen("login");
+    renderAuthUi();
+  });
+  $("#google-login-cancel")?.addEventListener("click", () => {
+    cancelGoogleSignIn();
+    setAuthFeedback("Googleログインをやめました。メールとパスワードでも入れます。", "info");
+    renderAuthUi();
   });
 
   $$("#main-action").forEach((button) => {
@@ -1457,8 +1466,9 @@ function bindEvents() {
   $("#launch-created-tool")?.addEventListener("click", () => previewCreatedTool());
   $("#preview-tool")?.addEventListener("click", () => previewCreatedTool());
   $("#test-tool")?.addEventListener("click", () => runCreatedToolActionTest());
+  $("#download-html-tool")?.addEventListener("click", () => downloadCreatedToolHtml());
   $("#download-zip-tool")?.addEventListener("click", () => downloadCreatedToolZip());
-  $("#publish-tool")?.addEventListener("click", () => publishCreatedTool({ openAfter: true, autoTest: true }));
+  $("#publish-tool")?.addEventListener("click", () => startPublishFromUi());
   $("#copy-publish-url")?.addEventListener("click", () => copyPublishUrl());
   $("#share-publish-url")?.addEventListener("click", () => sharePublishUrl());
   $$("input[name='publish-visibility']").forEach((input) => {
@@ -1471,6 +1481,22 @@ function bindEvents() {
   $("#run-agent")?.addEventListener("click", runAgentLoop);
   $("#stop-agent")?.addEventListener("click", stopAgentLoop);
   $("#copy-agent-result")?.addEventListener("click", copyAgentResult);
+  $("#refresh-published-shelf")?.addEventListener("click", () => {
+    loadPublishedToolsShelf({ force: true }).then(() => {
+      agentStatus.textContent = "公開ツール棚を更新しました。";
+      renderAgentBuilder();
+    });
+  });
+  $("#select-all-published")?.addEventListener("click", () => {
+    state.agentSelectedSlugs = state.publishedToolsShelf.map((tool) => tool.slug);
+    renderAgentBuilder();
+  });
+  $("#clear-published-selection")?.addEventListener("click", () => {
+    state.agentSelectedSlugs = [];
+    renderAgentBuilder();
+  });
+  $("#published-tools-shelf")?.addEventListener("click", handlePublishedShelfClick);
+  $("#published-tools-shelf")?.addEventListener("change", handlePublishedShelfChange);
   $("#agent-goal")?.addEventListener("input", (event) => {
     state.agentGoal = event.target.value;
   });
@@ -1547,6 +1573,13 @@ function activateScreen(screenId) {
   if (screenId === "login") {
     ensureAuthProvidersUi();
   }
+  if (screenId === "agent") {
+    loadPublishedToolsShelf().then(() => renderAgentBuilder());
+  }
+  if (screenId === "export") {
+    loadExportSponsor();
+    renderApiKeyNotice();
+  }
 }
 
 function runMainAction() {
@@ -1561,7 +1594,7 @@ function runMainAction() {
   };
 
   if (state.currentScreen === "export") {
-    publishCreatedTool({ openAfter: true, autoTest: true });
+    startPublishFromUi();
     return;
   }
   if (state.currentScreen === "settings") {
@@ -1792,6 +1825,9 @@ async function apiRequest(path, options = {}) {
   if (state.auth.token) {
     headers.Authorization = `Bearer ${state.auth.token}`;
   }
+  if (/\.ngrok(-free)?\.(app|io|dev)$/i.test(location.hostname) || /ngrok/i.test(location.hostname)) {
+    headers["ngrok-skip-browser-warning"] = "1";
+  }
   const bases = getApiBaseCandidates();
   let lastError = null;
 
@@ -1846,10 +1882,94 @@ const oauthUiState = {
   googleClientId: "",
   googleLocale: "",
   googleInitialized: false,
+  googleBusy: false,
   appleClientId: "",
   appleInitialized: false,
   ensurePromise: null,
+  googleWatchdog: 0,
 };
+
+function isAuthorizedGoogleOrigin() {
+  const host = String(location.hostname || "").toLowerCase();
+  return host === "localhost"
+    || host === "127.0.0.1"
+    || host === "nenestudio.net"
+    || host === "www.nenestudio.net"
+    || host === "nenestudio.pages.dev"
+    || host.endsWith(".nenestudio.pages.dev");
+}
+
+function isPreviewBrowser() {
+  const ua = String(navigator.userAgent || "");
+  return /Electron|VSCode|VS Code|Cursor/i.test(ua)
+    || (window.parent !== window && !window.opener);
+}
+
+function googleCallbackHelpText() {
+  if (isPreviewBrowser()) {
+    return state.language === "en"
+      ? "Google sign-in does not work in the Cursor preview. Open http://localhost:8787 in Chrome or Edge."
+      : "Cursorのプレビューでは Google ログインできません。Chrome または Edge で http://localhost:8787 を開いてください。";
+  }
+  return state.language === "en"
+    ? "Use the Google button at http://localhost:8787. If the screen freezes, tap Cancel Google sign-in."
+    : "パソコンの http://localhost:8787 で、上の Google ボタンを押してください。画面が止まったら「ログインをやめる」を押します。";
+}
+
+function startGoogleRedirectLogin() {
+  if (!state.auth.providers.google.enabled) {
+    setAuthFeedback("Googleログインはサーバー設定が未完了です。", "error");
+    renderAuthUi();
+    return;
+  }
+  setAuthFeedback("上の Google ボタンを押してください。", "info");
+  renderAuthUi();
+  ensureAuthProvidersUi();
+}
+
+async function handleGoogleReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("screen") === "login") {
+    activateScreen("login");
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return;
+  }
+  if (params.get("google") !== "ok") return;
+  const code = String(params.get("code") || "").trim();
+  window.history.replaceState({}, document.title, window.location.pathname);
+  if (!code) return;
+  try {
+    const data = await apiRequest("/auth/google/finish", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    await completeOAuthLogin(data, "Google");
+  } catch (error) {
+    setAuthFeedback(error.message || "Googleログインの続きに失敗しました。", "error");
+    renderAll();
+    activateScreen("login");
+  }
+}
+
+function cancelGoogleSignIn() {
+  oauthUiState.googleBusy = false;
+  if (oauthUiState.googleWatchdog) {
+    window.clearTimeout(oauthUiState.googleWatchdog);
+    oauthUiState.googleWatchdog = 0;
+  }
+  try {
+    window.google?.accounts?.id?.cancel();
+  } catch {
+    // 止めるだけなので失敗しても続行
+  }
+  document.getElementById("credential_picker_container")?.remove();
+  document.querySelectorAll("iframe").forEach((frame) => {
+    const src = String(frame.getAttribute("src") || frame.src || "");
+    if (!src.includes("accounts.google.com")) return;
+    if (frame.closest("#google-login-button")) return;
+    frame.remove();
+  });
+}
 
 function loadScriptOnce(id, src) {
   const existing = document.getElementById(id);
@@ -1904,7 +2024,7 @@ async function ensureAuthProvidersUi() {
   oauthUiState.ensurePromise = (async () => {
     const { google, apple } = state.auth.providers;
     const loaders = [];
-    if (google.enabled) loaders.push(loadGoogleScriptOnce());
+    if (google.enabled && !isPreviewBrowser()) loaders.push(loadGoogleScriptOnce());
     if (apple.enabled) loaders.push(loadAppleScriptOnce());
     if (loaders.length > 0) {
       await Promise.allSettled(loaders);
@@ -1935,10 +2055,28 @@ async function loadServerAuthStatus() {
   try {
     state.serverStatus = await apiRequest("/server/status");
     renderServerAuthStatus();
+    renderPhoneAccess();
+    renderApiKeyNotice();
   } catch {
     state.serverStatus = null;
     renderServerAuthStatus();
+    renderPhoneAccess();
   }
+}
+
+function renderPhoneAccess() {
+  const box = $("#phone-access");
+  const link = $("#phone-access-url");
+  if (!box || !link) return;
+  const share = String(state.serverStatus?.shareUrl || "").replace(/\/$/, "");
+  const onTunnel = /ngrok|trycloudflare|loca\.lt/i.test(location.hostname);
+  if (!share || onTunnel) {
+    box.hidden = true;
+    return;
+  }
+  box.hidden = false;
+  link.href = share;
+  link.textContent = share;
 }
 
 function renderServerAuthStatus() {
@@ -1978,7 +2116,10 @@ function renderAuthProviders(options = {}) {
   appleButton.hidden = !apple.enabled;
 
   const locale = state.language === "en" ? "en" : "ja";
-  const googleReady = google.enabled && window.google?.accounts?.id;
+  const googleAllowed = google.enabled && !isPreviewBrowser();
+  const googleReady = googleAllowed && window.google?.accounts?.id;
+  const cancelBtn = $("#google-login-cancel");
+  if (cancelBtn) cancelBtn.hidden = !googleReady;
   const googleUnchanged = googleReady
     && oauthUiState.googleInitialized
     && oauthUiState.googleClientId === google.clientId
@@ -1986,7 +2127,10 @@ function renderAuthProviders(options = {}) {
     && googleMount.firstElementChild
     && !options.forceLocale;
 
-  if (googleUnchanged) {
+  if (oauthUiState.googleBusy && googleMount.firstElementChild) {
+    googleMount.hidden = false;
+    googleFallback.hidden = true;
+  } else if (googleUnchanged) {
     googleMount.hidden = false;
     googleFallback.hidden = true;
   } else if (googleReady) {
@@ -1995,6 +2139,10 @@ function renderAuthProviders(options = {}) {
         client_id: google.clientId,
         callback: handleGoogleCredential,
         auto_select: false,
+        cancel_on_tap_outside: true,
+        itp_support: true,
+        use_fedcm_for_prompt: false,
+        ux_mode: "popup",
       });
       oauthUiState.googleInitialized = true;
       oauthUiState.googleClientId = google.clientId;
@@ -2024,9 +2172,7 @@ function renderAuthProviders(options = {}) {
   }
 
   if (googleNote && google.enabled) {
-    googleNote.textContent = state.language === "en"
-      ? "Sign in with Google. Your Google password is not stored on NENE Studio."
-      : "Google の画面で認証します。Google のパスワードは NENE Studio には保存されません。";
+    googleNote.textContent = googleCallbackHelpText();
   }
 
   if (apple.enabled && window.AppleID?.auth) {
@@ -2044,14 +2190,26 @@ function renderAuthProviders(options = {}) {
 }
 
 async function handleGoogleCredential(response) {
+  oauthUiState.googleBusy = true;
+  if (oauthUiState.googleWatchdog) window.clearTimeout(oauthUiState.googleWatchdog);
+  oauthUiState.googleWatchdog = window.setTimeout(() => {
+    cancelGoogleSignIn();
+    setAuthFeedback("Googleログインが応答しませんでした。メールとパスワードで入るか、もう一度お試しください。", "error");
+    renderAuthUi();
+  }, 20000);
+  setAuthFeedback("Googleで確認しています…", "info");
+  renderAuthUi();
   try {
     const data = await apiRequest("/auth/google", {
       method: "POST",
       body: JSON.stringify({ credential: response.credential }),
     });
+    cancelGoogleSignIn();
     await completeOAuthLogin(data, "Google");
   } catch (error) {
+    cancelGoogleSignIn();
     state.status = error.message;
+    setAuthFeedback(error.message || "Googleログインに失敗しました。", "error");
     renderAll();
     activateScreen("login");
   }
@@ -3016,13 +3174,1367 @@ function getStudioApiBase() {
   return String(window.NENE_CONFIG?.apiBase || "/api").replace(/\/$/, "");
 }
 
+function isPhoneViewport() {
+  return window.matchMedia("(max-width: 720px)").matches
+    || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || "");
+}
+
+function isLoopbackHostName(host) {
+  const name = String(host || "").toLowerCase();
+  return name === "localhost" || name === "127.0.0.1" || name === "[::1]";
+}
+
+function isPrivateLanHostName(host) {
+  const name = String(host || "").toLowerCase();
+  if (name.endsWith(".local")) return true;
+  const parts = name.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\d{1,3}$/.test(part))) return false;
+  const a = Number(parts[0]);
+  const b = Number(parts[1]);
+  if (a === 10 || a === 127) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  return false;
+}
+
+/** localhost / LAN の公開URLはスマホでは開けないことが多いので、今開いている住所に直す */
+function toPhoneReachableUrl(url) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url, location.href);
+    const host = parsed.hostname.toLowerCase();
+    const pageHost = String(location.hostname || "").toLowerCase();
+    const urlIsLocal = isLoopbackHostName(host) || isPrivateLanHostName(host);
+    const pageIsPublic = pageHost && !isLoopbackHostName(pageHost) && !isPrivateLanHostName(pageHost);
+    if (urlIsLocal && (pageIsPublic || isPrivateLanHostName(pageHost))) {
+      parsed.protocol = location.protocol;
+      parsed.hostname = location.hostname;
+      parsed.port = location.port;
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
+function openPublishedTool(url) {
+  const reachable = toPhoneReachableUrl(url);
+  if (!reachable) return false;
+  if (isPhoneViewport()) {
+    window.location.assign(reachable);
+    return true;
+  }
+  const opened = window.open(reachable, "_blank", "noopener");
+  if (!opened) window.location.assign(reachable);
+  return true;
+}
+
+/* =========================================================================
+ * ツールレシピ
+ * 1ツール種 = 1定義。新しい種類を増やすときは TOOL_RECIPES に1件足すだけ。
+ * 画面・CSS・実行時の処理は全ツール共通のものを使うため、コードは触らない。
+ * ======================================================================= */
+
+const TOOL_RECIPES = [
+  {
+    id: "stock_picker",
+    categories: ["株投資ツール"],
+    runLabel: "この内容で選定する",
+    rerunLabel: "もう一度、この内容で選定する",
+    busyLabel: "選定中…",
+    resultTitle: "選定結果",
+    leadText: "選んで押すだけ。直近の公開情報から候補と理由をまとめます。",
+    requireSearch: true,
+    progress: [
+      "直近ニュースを確認しています…",
+      "候補をしぼり込んでいます…",
+      "選定理由をまとめています…",
+    ],
+    fields: ["選定理由", "関連ニュース", "発表日", "情報源", "リスク"],
+    checklistTitle: "買う前チェック",
+    disclaimer: "投資助言ではありません。売買の判断はご自身で行ってください。このツールは注文を出しません。",
+    rules: [
+      "Google検索で直近ニュースを確認してから選ぶ。検索で根拠が取れない候補は出さない。",
+      "情報源の優先順位は 1)適時開示・決算 2)官公庁 3)企業公式 4)取引所 5)大手報道。掲示板・SNSだけを根拠にしない。",
+      "正確な株価・時価総額が不明なら断定しない。",
+      "候補が無ければ items を空配列にして、summary に「本日の条件では有力候補なし」と書く。",
+      "投資助言・利益保証・実際の注文はしない。最終判断はユーザーに委ねる。",
+    ],
+    axes: [
+      {
+        id: "theme",
+        label: "どのテーマ？",
+        promptLabel: "テーマ",
+        free: true,
+        freePlaceholder: "例：宇宙・衛星ビジネス",
+        options: ["AI・半導体", "防衛", "電力・再エネ", "高配当", "インバウンド", "円安メリット", "医療・バイオ", "銀行・金利"],
+      },
+      {
+        id: "stance",
+        label: "どう持ちたい？",
+        promptLabel: "保有スタンス",
+        free: true,
+        freePlaceholder: "例：NISA枠で長期、値動きの小さいもの",
+        defaultIndex: 1,
+        options: ["数日〜数週間", "数か月", "1年以上", "配当をもらう"],
+      },
+      {
+        id: "risk",
+        label: "リスクはどこまで？",
+        promptLabel: "リスク許容度",
+        options: ["安定重視", "バランス", "値動き歓迎"],
+      },
+      {
+        id: "count",
+        label: "何件ほしい？",
+        promptLabel: "件数",
+        defaultIndex: 1,
+        options: ["3件", "5件", "8件"],
+        optionLabels: ["3件（速い）", "5件", "8件（詳しい）"],
+      },
+    ],
+  },
+
+  {
+    id: "crypto_picker",
+    categories: ["仮想通貨ツール"],
+    runLabel: "この内容で選定する",
+    rerunLabel: "もう一度、この内容で選定する",
+    busyLabel: "選定中…",
+    resultTitle: "選定結果",
+    leadText: "選んで押すだけ。直近の公開情報から候補と理由をまとめます。",
+    requireSearch: true,
+    progress: ["直近ニュースを確認しています…", "候補をしぼり込んでいます…", "選定理由をまとめています…"],
+    fields: ["選定理由", "関連ニュース", "発表日", "情報源", "リスク"],
+    checklistTitle: "買う前チェック",
+    disclaimer: "投資助言ではありません。価格変動が大きい資産です。判断はご自身で行ってください。",
+    rules: [
+      "Google検索で直近ニュースを確認してから選ぶ。根拠が取れない候補は出さない。",
+      "情報源は公式発表・取引所・大手報道を優先する。SNSの噂だけを根拠にしない。",
+      "正確な価格・時価総額が不明なら断定しない。",
+      "候補が無ければ items を空配列にして、summary に「本日の条件では有力候補なし」と書く。",
+    ],
+    axes: [
+      { id: "theme", label: "どのテーマ？", promptLabel: "テーマ", free: true, freePlaceholder: "例：分散型ストレージ", options: ["BTC", "ETH", "AI関連", "Solana圏", "DeFi", "ステーブル関連", "ゲーム系", "ミーム"] },
+      { id: "stance", label: "どう持ちたい？", promptLabel: "保有スタンス", defaultIndex: 1, options: ["数日〜数週間", "数か月", "1年以上"] },
+      { id: "risk", label: "リスクはどこまで？", promptLabel: "リスク許容度", options: ["安定重視", "バランス", "値動き歓迎"] },
+      { id: "count", label: "何件ほしい？", promptLabel: "件数", defaultIndex: 1, options: ["3件", "5件", "8件"] },
+    ],
+  },
+
+  {
+    id: "fx_auto",
+    categories: ["FXツール"],
+    runLabel: "この内容でルールを作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "売買ルール",
+    leadText: "選んで押すだけ。エントリーから損切りまでの条件を整理します。",
+    requireSearch: false,
+    progress: ["相場の前提を整理しています…", "条件を組み立てています…", "リスク管理を付けています…"],
+    fields: ["エントリー条件", "損切り", "利確", "見送り条件", "この条件の根拠"],
+    checklistTitle: "取引前チェック",
+    disclaimer: "投資助言ではありません。このツールは注文を出しません。必ずご自身で検証してください。",
+    rules: [
+      "証券会社・取引所への接続や実際の注文は行わない。ルールの提示だけにとどめる。",
+      "エントリー・損切り・利確・見送りの4点を必ずそろえる。片方だけにしない。",
+      "「必ず勝てる」等の断定表現は使わない。想定が外れる条件も書く。",
+      "検証していない数値を断定しない。目安であることを明記する。",
+    ],
+    axes: [
+      { id: "pair", label: "どの通貨ペア？", promptLabel: "通貨ペア", free: true, freePlaceholder: "例：豪ドル円", options: ["ドル円", "ユーロドル", "ユーロ円", "ポンド円", "ゴールド", "主要通貨全体"] },
+      { id: "style", label: "どんな取引スタイル？", promptLabel: "取引スタイル", defaultIndex: 1, options: ["スキャルピング", "デイトレード", "スイング", "自動売買（EA）向け"] },
+      { id: "risk", label: "リスクはどこまで？", promptLabel: "リスク許容度", options: ["低め", "ふつう", "高め"] },
+    ],
+  },
+
+  {
+    id: "news_digest",
+    categories: ["ニュース分析ツール"],
+    runLabel: "この内容でまとめる",
+    rerunLabel: "もう一度、この内容でまとめる",
+    busyLabel: "整理中…",
+    resultTitle: "今日の注目",
+    leadText: "選んで押すだけ。今おさえるべき話題を理由つきで整理します。",
+    requireSearch: true,
+    progress: ["最新のニュースを集めています…", "重要度で並べ替えています…", "要点をまとめています…"],
+    fields: ["要点", "なぜ重要か", "発表日", "情報源", "次にすること"],
+    checklistTitle: "読むときの注意",
+    disclaimer: "内容は自動生成です。重要な判断の前は必ず一次情報を確認してください。",
+    rules: [
+      "Google検索で直近の公開情報を確認してからまとめる。裏付けのない話題は出さない。",
+      "情報源は一次情報（公式発表・官公庁）を優先し、媒体名を必ず書く。",
+      "推測と事実を混ぜない。分からないことは「不明」と書く。",
+    ],
+    axes: [
+      { id: "field", label: "どの分野？", promptLabel: "分野", free: true, freePlaceholder: "例：物流・運送業界", options: ["テック", "経済", "金融", "国内", "海外", "AI", "エネルギー", "医療"] },
+      { id: "want", label: "何が知りたい？", promptLabel: "知りたいこと", options: ["今日の要点", "背景と経緯", "自分への影響", "次に来そうなこと"] },
+      { id: "count", label: "何件ほしい？", promptLabel: "件数", defaultIndex: 1, options: ["3件", "5件", "8件"] },
+    ],
+  },
+
+  {
+    id: "sns_post",
+    categories: ["SNS運用ツール"],
+    runLabel: "この内容で投稿文を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "投稿案",
+    leadText: "選んで押すだけ。そのまま貼れる投稿文ができます。",
+    requireSearch: false,
+    progress: ["切り口を考えています…", "投稿文を書いています…", "読みやすさを整えています…"],
+    fields: ["投稿文", "この投稿の狙い", "ハッシュタグ", "投稿するタイミング"],
+    checklistTitle: "投稿前チェック",
+    disclaimer: "内容は自動生成です。投稿前に事実と表現を必ず確認してください。",
+    rules: [
+      "投稿文はコピーしてそのまま貼れる完成形で書く。書き方の説明で終えない。",
+      "SNSごとの文字数・作法に合わせる（Xは短く、Instagramは改行を多めに）。",
+      "誇大表現・断定的な効果保証は使わない。",
+    ],
+    axes: [
+      { id: "sns", label: "どのSNS？", promptLabel: "SNS", options: ["X（旧Twitter）", "Instagram", "TikTok", "YouTube Shorts", "Facebook"] },
+      { id: "purpose", label: "何のための投稿？", promptLabel: "投稿の目的", free: true, freePlaceholder: "例：新商品の予約開始を知らせる", options: ["告知", "教育・お役立ち", "共感・体験談", "セールス", "日常・裏側"] },
+      { id: "tone", label: "どんな雰囲気で？", promptLabel: "トーン", defaultIndex: 1, options: ["ていねい", "フレンドリー", "プロっぽく", "おもしろく"] },
+      { id: "count", label: "何本ほしい？", promptLabel: "本数", defaultIndex: 1, options: ["3本", "5本", "10本"] },
+    ],
+  },
+
+  {
+    id: "youtube_plan",
+    categories: ["YouTube動画制作ツール"],
+    runLabel: "この内容で構成を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "動画の構成案",
+    leadText: "選んで押すだけ。タイトルから台本の流れまで出します。",
+    requireSearch: false,
+    progress: ["切り口を考えています…", "構成を組み立てています…", "見出しを整えています…"],
+    fields: ["タイトル案", "最初の10秒", "本編の流れ", "サムネイル文言", "注意点"],
+    checklistTitle: "撮る前チェック",
+    disclaimer: "内容は自動生成です。事実確認と権利関係の確認は必ず行ってください。",
+    rules: [
+      "最初の10秒は視聴者が離脱しない具体的なフックにする。あいさつだけにしない。",
+      "本編の流れは、そのまま話せる順番と内容で書く。",
+      "サムネイル文言は13文字以内を目安にする。",
+    ],
+    axes: [
+      { id: "theme", label: "どのテーマ？", promptLabel: "テーマ", free: true, freePlaceholder: "例：はじめての家庭菜園", options: ["初心者解説", "ランキング", "比較・検証", "ハウツー", "体験談", "ニュース解説"] },
+      { id: "length", label: "どれくらいの長さ？", promptLabel: "動画の長さ", defaultIndex: 1, options: ["ショート（60秒）", "5分前後", "10分以上"] },
+      { id: "tone", label: "どんな雰囲気で？", promptLabel: "トーン", defaultIndex: 1, options: ["落ち着いて", "テンポよく", "ゆるく親しみやすく"] },
+    ],
+  },
+
+  {
+    id: "sales_outreach",
+    categories: ["営業集客ツール"],
+    runLabel: "この内容で文章を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "営業文の案",
+    leadText: "選んで押すだけ。そのまま送れる文面ができます。",
+    requireSearch: false,
+    progress: ["相手の状況を想定しています…", "文面を書いています…", "言い回しを整えています…"],
+    fields: ["件名", "本文", "この文の狙い", "返信が来たら次にすること"],
+    checklistTitle: "送る前チェック",
+    disclaimer: "内容は自動生成です。会社名・数値・条件は送る前に必ず確認してください。",
+    rules: [
+      "本文はコピーしてそのまま送れる完成形で書く。差し替える箇所は【 】で示す。",
+      "誇大表現や根拠のない実績は書かない。",
+      "長すぎない分量にする（メールは400字前後、DMは200字前後を目安）。",
+    ],
+    axes: [
+      { id: "scene", label: "どんな場面？", promptLabel: "場面", free: true, freePlaceholder: "例：展示会で名刺交換した相手へのお礼", options: ["新規開拓", "追客・フォロー", "問い合わせ返信", "提案", "断られた後の再アプローチ"] },
+      { id: "channel", label: "どの手段で送る？", promptLabel: "送る手段", options: ["メール", "SNSのDM", "電話の台本", "問い合わせフォーム"] },
+      { id: "target", label: "相手はどんな人？", promptLabel: "相手", free: true, freePlaceholder: "例：地方の小規模な工務店の社長", options: ["法人の担当者", "法人の決裁者", "個人のお客様", "既存のお客様"] },
+      { id: "tone", label: "どんな雰囲気で？", promptLabel: "トーン", options: ["ていねい", "簡潔に", "親しみやすく"] },
+    ],
+  },
+
+  {
+    id: "doc_builder",
+    categories: ["資料作成ツール"],
+    runLabel: "この内容で資料の骨組みを作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "資料の構成案",
+    leadText: "選んで押すだけ。ページごとの見出しと話す内容が出ます。",
+    requireSearch: false,
+    progress: ["伝える順番を考えています…", "各ページの中身を作っています…", "整えています…"],
+    fields: ["ページの見出し", "話す内容", "入れると良い図表", "注意点"],
+    checklistTitle: "出す前チェック",
+    disclaimer: "内容は自動生成です。数値・固有名詞は必ず原典と照合してください。",
+    rules: [
+      "1ページ1メッセージで構成する。",
+      "「話す内容」は、そのまま読めば説明できる具体的な文で書く。",
+      "数値は勝手に作らない。入れるべき箇所は【要確認】と書く。",
+    ],
+    axes: [
+      { id: "kind", label: "どんな資料？", promptLabel: "資料の種類", free: true, freePlaceholder: "例：補助金申請用の事業計画", options: ["提案書", "企画書", "報告書", "社内共有", "説明資料"] },
+      { id: "audience", label: "誰に見せる？", promptLabel: "相手", options: ["社内メンバー", "取引先", "経営層", "その分野に詳しくない人"] },
+      { id: "pages", label: "何ページくらい？", promptLabel: "分量", defaultIndex: 1, options: ["5ページ", "10ページ", "20ページ"] },
+    ],
+  },
+
+  {
+    id: "flyer_menu",
+    categories: ["メニュー表チラシ制作ツール"],
+    runLabel: "この内容で文面を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "チラシ・メニューの文面",
+    leadText: "選んで押すだけ。そのまま使えるキャッチと説明文が出ます。",
+    requireSearch: false,
+    progress: ["訴求点を考えています…", "文面を書いています…", "見せ方を整えています…"],
+    fields: ["キャッチコピー", "説明文", "価格の見せ方", "配置の提案"],
+    checklistTitle: "印刷前チェック",
+    disclaimer: "内容は自動生成です。価格・期間・法令表示は必ず確認してください。",
+    rules: [
+      "キャッチコピーは20文字以内を目安に、具体的な利点を入れる。",
+      "説明文はそのまま印刷できる完成形で書く。",
+      "価格や期間は勝手に作らず、【要記入】と書く。",
+      "景品表示法に触れる断定的な表現（日本一・完全無欠など）は使わない。",
+    ],
+    axes: [
+      { id: "business", label: "どんなお店？", promptLabel: "業種", free: true, freePlaceholder: "例：住宅街の小さなパン屋", options: ["飲食店", "美容室・サロン", "小売店", "教室・スクール", "整体・治療院"] },
+      { id: "purpose", label: "何を伝えたい？", promptLabel: "目的", options: ["新メニュー", "期間限定", "割引・特典", "季節のおすすめ", "リニューアル"] },
+      { id: "mood", label: "どんな雰囲気で？", promptLabel: "雰囲気", defaultIndex: 1, options: ["高級感", "親しみやすい", "にぎやか", "シンプル"] },
+    ],
+  },
+
+  {
+    id: "office_auto",
+    categories: ["事務作業自動化ツール"],
+    runLabel: "この内容で文章を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "作成した文章",
+    leadText: "選んで押すだけ。そのまま使える文面ができます。",
+    requireSearch: false,
+    progress: ["必要な項目を整理しています…", "文章を書いています…", "体裁を整えています…"],
+    fields: ["そのまま使える文", "使いどころ", "差し替える箇所", "注意点"],
+    checklistTitle: "使う前チェック",
+    disclaimer: "内容は自動生成です。日付・宛名・金額は必ず確認してください。",
+    rules: [
+      "文章はコピーしてそのまま使える完成形で書く。差し替える箇所は【 】で示す。",
+      "日付・金額・固有名詞を勝手に作らない。",
+      "社外向けは敬語、社内向けは簡潔に、と使い分ける。",
+    ],
+    axes: [
+      { id: "kind", label: "何を作る？", promptLabel: "作るもの", free: true, freePlaceholder: "例：取引先への値上げのお願い", options: ["案内文", "議事録の型", "依頼メール", "チェックリスト", "報告書", "お詫び文"] },
+      { id: "audience", label: "誰に出す？", promptLabel: "相手", options: ["社内", "取引先", "お客様", "行政・公的機関"] },
+      { id: "tone", label: "どんな雰囲気で？", promptLabel: "トーン", options: ["ていねい", "簡潔に", "かたく正式に"] },
+    ],
+  },
+
+  {
+    id: "recruit",
+    categories: ["求人採用ツール"],
+    runLabel: "この内容で文章を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "採用文の案",
+    leadText: "選んで押すだけ。そのまま使える採用文ができます。",
+    requireSearch: false,
+    progress: ["求める人物像を整理しています…", "文章を書いています…", "表現を整えています…"],
+    fields: ["そのまま使える文", "訴求ポイント", "差し替える箇所", "注意点"],
+    checklistTitle: "掲載前チェック",
+    disclaimer: "内容は自動生成です。労働条件の表示は法令に沿っているか必ず確認してください。",
+    rules: [
+      "性別・年齢・国籍などで差別的にならない表現にする（法令順守）。",
+      "給与・勤務時間・休日を勝手に作らない。【要記入】と書く。",
+      "「アットホームな職場」など中身のない決まり文句だけで終わらせない。",
+    ],
+    axes: [
+      { id: "kind", label: "何を作る？", promptLabel: "作るもの", options: ["求人票", "スカウト文", "面接の質問", "募集要項", "内定通知"] },
+      { id: "job", label: "どんな職種？", promptLabel: "職種", free: true, freePlaceholder: "例：現場管理の施工管理技士", options: ["事務", "営業", "技術・エンジニア", "販売・接客", "製造・現場", "管理職"] },
+      { id: "level", label: "どんな経験の人？", promptLabel: "求める経験", options: ["未経験歓迎", "経験者", "管理職クラス"] },
+    ],
+  },
+
+  {
+    id: "blog_article",
+    categories: ["ブログ記事作成ツール"],
+    runLabel: "この内容で記事の骨組みを作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "記事の構成案",
+    leadText: "選んで押すだけ。見出しと書く内容がそろいます。",
+    requireSearch: false,
+    progress: ["読者の知りたいことを整理しています…", "見出しを組み立てています…", "整えています…"],
+    fields: ["見出し", "書く内容", "読者が知りたいこと", "注意点"],
+    checklistTitle: "公開前チェック",
+    disclaimer: "内容は自動生成です。事実確認と一次情報の確認を必ず行ってください。",
+    rules: [
+      "見出しは検索する人の言葉で書く。社内用語を使わない。",
+      "「書く内容」は、そのまま書き出せる具体的な要点で書く。",
+      "根拠のない数値や順位を作らない。",
+    ],
+    axes: [
+      { id: "theme", label: "どのテーマ？", promptLabel: "テーマ", free: true, freePlaceholder: "例：中古マンションの内見で見るところ", options: ["ハウツー", "比較", "まとめ", "体験談", "初心者向け", "用語解説"] },
+      { id: "reader", label: "誰に読ませる？", promptLabel: "読者", options: ["まったくの初心者", "少し知っている人", "詳しい人"] },
+      { id: "length", label: "どれくらいの長さ？", promptLabel: "文字数の目安", defaultIndex: 1, options: ["1500字", "3000字", "5000字"] },
+    ],
+  },
+
+  {
+    id: "education",
+    categories: ["教育学習ツール"],
+    runLabel: "この内容で作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "学習の内容",
+    leadText: "選んで押すだけ。すぐ使える教材や計画ができます。",
+    requireSearch: false,
+    progress: ["理解の順番を整理しています…", "内容を作っています…", "整えています…"],
+    fields: ["内容", "ねらい", "つまずきやすい点", "次にやること"],
+    checklistTitle: "使う前チェック",
+    disclaimer: "内容は自動生成です。教科書や公式資料と照らし合わせて使ってください。",
+    rules: [
+      "対象レベルに合わせ、知らない用語には必ず説明を添える。",
+      "問題を作る場合は、答えと解説も必ず付ける。",
+      "事実が不確かな内容は出さない。",
+    ],
+    axes: [
+      { id: "kind", label: "何を作る？", promptLabel: "作るもの", options: ["学習計画", "練習問題", "用語解説", "復習リスト"] },
+      { id: "subject", label: "どの分野？", promptLabel: "分野", free: true, freePlaceholder: "例：第二種電気工事士の筆記", options: ["算数・数学", "英語", "国語", "理科", "社会", "資格試験", "プログラミング"] },
+      { id: "level", label: "どのレベル？", promptLabel: "レベル", defaultIndex: 1, options: ["入門", "基礎", "応用"] },
+    ],
+  },
+
+  {
+    id: "shop_ops",
+    categories: ["店舗運営ツール"],
+    runLabel: "この内容で文章を作る",
+    rerunLabel: "もう一度、この内容で作る",
+    busyLabel: "作成中…",
+    resultTitle: "作成した文章",
+    leadText: "選んで押すだけ。そのまま使える文面ができます。",
+    requireSearch: false,
+    progress: ["状況を整理しています…", "文章を書いています…", "表現を整えています…"],
+    fields: ["そのまま使える文", "この文の狙い", "差し替える箇所", "注意点"],
+    checklistTitle: "使う前チェック",
+    disclaimer: "内容は自動生成です。お客様に出す前に必ず内容を確認してください。",
+    rules: [
+      "文章はコピーしてそのまま使える完成形で書く。差し替える箇所は【 】で示す。",
+      "クレーム対応では、まず受け止める姿勢を示し、事実確認前に非を認めきらない。",
+      "根拠のない効果や割引条件を勝手に作らない。",
+    ],
+    axes: [
+      { id: "scene", label: "どんな場面？", promptLabel: "場面", free: true, freePlaceholder: "例：予約の無断キャンセルへの案内", options: ["口コミ返信", "販促の告知", "季節キャンペーン", "接客マニュアル", "クレーム対応"] },
+      { id: "business", label: "どんなお店？", promptLabel: "業種", free: true, freePlaceholder: "例：郊外のカフェ", options: ["飲食店", "美容室・サロン", "小売店", "宿泊", "整体・治療院"] },
+      { id: "tone", label: "どんな雰囲気で？", promptLabel: "トーン", defaultIndex: 1, options: ["ていねい", "親しみやすく", "かたく正式に"] },
+    ],
+  },
+];
+
+/** カテゴリに専用レシピが無いときの汎用レシピ（使う人が自由に作った場合もここに来る） */
+function buildGenericRecipe(category, theme, presets) {
+  const itemLabel = theme?.itemLabel || "項目";
+  return {
+    id: "generic",
+    categories: [],
+    runLabel: "この内容で作成する",
+    rerunLabel: "もう一度、この内容で作成する",
+    busyLabel: "作成中…",
+    resultTitle: "作成結果",
+    leadText: "選んで押すだけ。必要な調べものはツール側で行います。",
+    requireSearch: requiresNewsGrounding(getToolMode()),
+    progress: ["内容を組み立てています…", "情報を整理しています…", "仕上げています…"],
+    fields: ["ポイント", "そのまま使える文", "注意点"],
+    checklistTitle: "使う前チェック",
+    disclaimer: "内容は自動生成です。公開・提出の前に必ず内容を確認してください。",
+    rules: [
+      "ユーザーにURLや長文のコピペを要求しない。選択内容だけで完結させる。",
+      "そのまま使える具体的な文面・手順を出す。一般論だけで終えない。",
+      "事実が確認できない部分は断定せず、確認が必要な点として書く。",
+    ],
+    axes: [
+      {
+        id: "theme",
+        label: "どのテーマ？",
+        promptLabel: "テーマ",
+        free: true,
+        freePlaceholder: `例：${presets[0] || itemLabel}`,
+        options: presets,
+      },
+      {
+        id: "tone",
+        label: "どんな雰囲気で？",
+        promptLabel: "トーン",
+        free: true,
+        freePlaceholder: "例：親しみやすく、専門用語なしで",
+        options: ["ていねい", "カジュアル", "かたい", "短く強く"],
+      },
+      {
+        id: "amount",
+        label: "どれくらいの量？",
+        promptLabel: "分量",
+        defaultIndex: 1,
+        options: ["短め", "ふつう", "しっかり"],
+      },
+    ],
+  };
+}
+
+/** 現在の状態に対応するレシピを返す。専用が無ければ汎用を自動生成する。 */
+function resolveToolRecipe() {
+  const category = getSelectedCategory();
+  const found = TOOL_RECIPES.find((recipe) => recipe.categories.includes(category?.name));
+  const recipe = found || buildGenericRecipe(category, getTheme(), getTopicPresets());
+  return normalizeRecipe(recipe);
+}
+
+/** 定義の書き忘れがあっても画面が壊れないように既定値で埋める */
+function normalizeRecipe(recipe) {
+  const axes = (recipe.axes || [])
+    .map((axis) => ({
+      id: String(axis.id || ""),
+      label: axis.label || "選んでください",
+      promptLabel: axis.promptLabel || axis.label || "指定",
+      free: Boolean(axis.free),
+      freePlaceholder: axis.freePlaceholder || "自由に入力できます",
+      options: (axis.options || []).filter(Boolean).slice(0, 10),
+      optionLabels: axis.optionLabels || null,
+      defaultIndex: Number.isInteger(axis.defaultIndex) ? axis.defaultIndex : 0,
+    }))
+    .filter((axis) => axis.id && axis.options.length);
+  return {
+    id: recipe.id || "generic",
+    runLabel: recipe.runLabel || "この内容で作成する",
+    rerunLabel: recipe.rerunLabel || "もう一度、この内容で作成する",
+    busyLabel: recipe.busyLabel || "作成中…",
+    resultTitle: recipe.resultTitle || "結果",
+    leadText: recipe.leadText || "選んで押すだけで結果が出ます。",
+    requireSearch: Boolean(recipe.requireSearch),
+    progress: recipe.progress && recipe.progress.length ? recipe.progress : ["処理しています…"],
+    fields: recipe.fields && recipe.fields.length ? recipe.fields : ["ポイント", "注意点"],
+    checklistTitle: recipe.checklistTitle || "使う前チェック",
+    disclaimer: recipe.disclaimer || "内容は自動生成です。使う前に確認してください。",
+    rules: recipe.rules || [],
+    axes,
+  };
+}
+
+/** レシピからAIへの指示文を組み立てる。出力は必ずJSONに固定する。 */
+function buildRecipeSystemPrompt(recipe, ctx) {
+  const shape = {
+    summary: "全体の要約を1〜2文で",
+    items: [
+      {
+        title: "項目の見出し",
+        level: "高 / 中 / 低 のいずれか",
+        fields: Object.fromEntries(recipe.fields.map((field) => [field, "内容"])),
+      },
+    ],
+    checklist: ["使う前に確認することを3〜5個"],
+    note: "補足があれば。無ければ空文字",
+  };
+  return [
+    `あなたは「${ctx.title}」専用のアシスタントです。`,
+    `目的: ${ctx.purpose}`,
+    ctx.market ? `対象: ${ctx.market}` : "",
+    `想定ユーザー: ${ctx.targetUser}。自分で調べるのが苦手で、選ぶだけで結果がほしい人。`,
+    "",
+    "【守ること】",
+    "ユーザーにURLや長文のコピペを絶対に要求しない。渡された選択内容だけで完結させる。",
+    ...recipe.rules,
+    "",
+    "【出力形式】",
+    "次のJSONだけを返す。前後に説明文やコードブロック記号（```）を付けない。",
+    JSON.stringify(shape, null, 2),
+    "",
+    `items の各要素の fields には、必ず ${recipe.fields.map((f) => `「${f}」`).join("・")} をすべて入れる。`,
+    "分からない項目は推測で埋めず「不明」と書く。",
+    "日本語で書く。",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** 成果物HTMLの本文（選択エリア＋実行バー＋結果）を組み立てる */
+function buildToolBodyHtml(recipe, ctx) {
+  const rows = recipe.axes
+    .map((axis, index) => {
+      const chips = axis.options
+        .map((option, optionIndex) => {
+          const label = (axis.optionLabels && axis.optionLabels[optionIndex]) || option;
+          const pressed = optionIndex === axis.defaultIndex ? "true" : "false";
+          return `        <button type="button" class="chip" aria-pressed="${pressed}" data-topic="${escapeAttribute(option)}" data-value="${escapeAttribute(option)}">${escapeHtml(label)}</button>`;
+        })
+        .join("\n");
+      const free = axis.free
+        ? [
+            '      <div class="free" hidden>',
+            `        <input type="text" data-free="${escapeAttribute(axis.id)}" placeholder="${escapeAttribute(axis.freePlaceholder)}" />`,
+            "        <p>ここに書いた内容が、上の選択より優先されます。</p>",
+            "      </div>",
+          ].join("\n")
+        : "";
+      const pencil = axis.free
+        ? '        <button type="button" class="pencil">✎ 自分で書く</button>'
+        : "";
+      return [
+        `    <div class="row" data-axis="${escapeAttribute(axis.id)}">`,
+        '      <div class="row-head">',
+        `        <span class="n">${index + 1}</span><h2>${escapeHtml(axis.label)}</h2>`,
+        pencil,
+        "      </div>",
+        `      <div class="chips" role="group" aria-label="${escapeAttribute(axis.label)}">`,
+        chips,
+        "      </div>",
+        free,
+        "    </div>",
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n");
+
+  // 既定の選択内容は、JSが動く前から実行バーに表示しておく（起動を速く見せる）
+  const initialPicked = recipe.axes
+    .map((axis) => `<span>${escapeHtml(axis.options[axis.defaultIndex] || axis.options[0] || "")}</span>`)
+    .join("");
+
+  return [
+    '  <div class="wrap">',
+    '    <header class="hero">',
+    `      <h1>${escapeHtml(ctx.title)}</h1>`,
+    `      <p>${escapeHtml(recipe.leadText)}</p>`,
+    "    </header>",
+    "    <noscript><div class=\"ns\">このツールを動かすには JavaScript が必要です。Chrome や Safari で開き直してください。</div></noscript>",
+    '    <div class="picker">',
+    rows,
+    "    </div>",
+    '    <div class="runbar">',
+    `      <p class="picked" id="picked">${initialPicked}</p>`,
+      `      <button type="button" class="btn" id="generate-button">${escapeHtml(recipe.runLabel)}</button>`,
+    '      <p class="sub" id="sub">押すと約10〜40秒で結果が出ます</p>',
+    "    </div>",
+    '    <section class="result">',
+    '      <div class="result-head">',
+    `        <h2>${escapeHtml(recipe.resultTitle)}</h2>`,
+    '        <div class="views" id="views" role="group" aria-label="結果の見せ方">',
+    '          <button type="button" class="vw" data-view="card" aria-pressed="true">カード</button>',
+    '          <button type="button" class="vw" data-view="table" aria-pressed="false">表</button>',
+    '          <button type="button" class="vw" data-view="fold" aria-pressed="false">折りたたみ</button>',
+    "        </div>",
+    "      </div>",
+    '      <div class="result-actions" id="actions" hidden>',
+    '        <button type="button" class="btn ghost" data-do="copy">コピー</button>',
+    '        <button type="button" class="btn ghost" data-do="txt">テキスト保存</button>',
+    '        <button type="button" class="btn ghost" data-do="html">HTML保存</button>',
+    '        <button type="button" class="btn ghost" data-do="zip">ZIP保存</button>',
+    '        <button type="button" class="btn ghost" data-do="print">印刷</button>',
+    "      </div>",
+    '      <p class="status" id="status" hidden><span class="spin" aria-hidden="true"></span><span id="status-text"></span></p>',
+    '      <div class="empty" id="empty"><span aria-hidden="true">📋</span>まだ結果はありません。上のボタンを押すと、ここに出ます。</div>',
+    '      <div class="skeleton" id="skeleton" hidden aria-hidden="true">',
+    '        <div class="sk t"></div><div class="sk w90"></div>',
+    '        <div class="sk-card"><div class="sk t"></div><div class="sk w90"></div><div class="sk w70"></div></div>',
+    '        <div class="sk-card"><div class="sk t"></div><div class="sk w90"></div><div class="sk w70"></div></div>',
+    "      </div>",
+    '      <div class="out" id="result" hidden></div>',
+    "    </section>",
+    `    <p class="foot">${escapeHtml(recipe.disclaimer)}</p>`,
+    "  </div>",
+  ].join("\n");
+}
+
+/** 成果物HTML共通のCSS（配色A：ネイビー×シアン） */
+const NENE_TOOL_CSS = `:root{
+  --bg:#eef3f9; --tint:rgba(16,69,126,.07); --tint2:rgba(14,143,158,.08);
+  --surface:#fff; --surface-2:#f3f7fb; --surface-3:#e9eff7;
+  --ink:#0b1c33; --ink-2:#43586f; --ink-3:#6b7f96;
+  --line:#d6e0eb; --line-2:#e8eef5;
+  --brand:#10457e; --brand-soft:rgba(16,69,126,.1);
+  --accent:#0e8f9e; --accent-soft:rgba(14,143,158,.12);
+  --warn:#a86a10; --warn-soft:rgba(168,106,16,.12);
+  --danger:#a52a1e; --danger-soft:#fdf3f2;
+  --shadow:0 1px 2px rgba(11,28,51,.05),0 10px 26px rgba(11,28,51,.07);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP','Yu Gothic UI','Segoe UI',system-ui,sans-serif;
+  background:var(--bg);
+  background-image:radial-gradient(900px 300px at 6% -6%,var(--tint),transparent 62%),radial-gradient(700px 260px at 100% 0%,var(--tint2),transparent 58%);
+  background-repeat:no-repeat;color:var(--ink);line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:760px;margin:0 auto;padding:16px 14px 120px}
+@media(min-width:860px){.wrap{padding:26px 18px 60px}}
+.hero{margin:0 0 14px}
+.hero h1{margin:0 0 4px;font-size:clamp(1.25rem,4vw,1.6rem);line-height:1.35;font-weight:800;letter-spacing:-.02em}
+.hero p{margin:0;color:var(--ink-2);font-size:.9rem}
+.ns{margin:0 0 14px;padding:12px;border:1px solid #f0b429;background:#fff8e6;color:#5c4800;border-radius:12px;font-size:.88rem}
+.picker{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+.row{padding:12px 14px;border-top:1px solid var(--line-2)}
+.row:first-child{border-top:0}
+.row-head{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.n{display:grid;place-items:center;flex:0 0 auto;width:20px;height:20px;border-radius:6px;background:var(--brand);color:#fff;font-size:.7rem;font-weight:800}
+.row-head h2{margin:0;font-size:.92rem;font-weight:800;letter-spacing:-.01em}
+.pencil{margin-left:auto;min-height:30px;padding:0 10px;border-radius:8px;border:1.5px dashed var(--line);background:transparent;color:var(--brand);font:inherit;font-size:.78rem;font-weight:800;cursor:pointer;white-space:nowrap}
+.pencil:hover{background:var(--brand-soft);border-color:var(--brand)}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{min-height:40px;padding:0 13px;border-radius:10px;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);font:inherit;font-size:.88rem;font-weight:700;cursor:pointer;transition:background .12s,border-color .12s,transform .07s;touch-action:manipulation;-webkit-tap-highlight-color:rgba(16,69,126,.18)}
+.chip:hover{border-color:var(--brand);background:var(--brand-soft)}
+.chip:active{transform:scale(.97)}
+.chip[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.free{margin-top:9px}
+.free[hidden]{display:none}
+.free input{width:100%;min-height:44px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--brand);background:var(--surface);color:var(--ink);font:inherit;font-size:.9rem}
+.free p{margin:5px 0 0;font-size:.76rem;color:var(--ink-3)}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.runbar{position:sticky;bottom:0;z-index:40;margin-top:12px;padding:11px 13px calc(11px + env(safe-area-inset-bottom));border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:0 -5px 24px rgba(11,28,51,.1)}
+.picked{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 9px;font-size:.78rem}
+.picked span{padding:2px 9px;border-radius:999px;background:var(--surface-3);color:var(--ink-2);font-weight:700}
+.btn{width:100%;min-height:50px;border:0;border-radius:12px;background:linear-gradient(135deg,var(--brand),var(--accent));color:#fff;font:inherit;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 6px 16px var(--brand-soft);transition:filter .12s,transform .07s;touch-action:manipulation}
+.btn:hover{filter:brightness(1.08)}
+.btn:active{transform:scale(.99)}
+.btn[disabled]{opacity:.6;cursor:progress;filter:none}
+.btn.ghost{width:auto;min-height:34px;padding:0 12px;font-size:.8rem;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink);box-shadow:none}
+.btn.ghost:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-soft);filter:none}
+.runbar .sub{margin:7px 0 0;text-align:center;font-size:.74rem;color:var(--ink-3)}
+.result{margin-top:12px;padding:14px;border-radius:16px;background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow)}
+.result-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-bottom:11px;border-bottom:1px solid var(--line-2)}
+.result-head h2{margin:0;font-size:.98rem;font-weight:800}
+.views{display:flex;gap:4px;margin-left:auto}
+.vw{min-height:30px;padding:0 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--surface-2);color:var(--ink-2);font:inherit;font-size:.76rem;font-weight:800;cursor:pointer}
+.vw[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.result-actions{display:flex;gap:6px;flex-wrap:wrap;padding:11px 0 0}
+.result-actions[hidden]{display:none}
+.status{display:flex;align-items:center;gap:8px;margin:11px 0 0;font-size:.85rem;font-weight:700;color:var(--brand)}
+.status[hidden]{display:none}
+.status.is-error{color:var(--danger)}
+.spin{width:15px;height:15px;flex:0 0 auto;border-radius:50%;border:2.5px solid var(--brand-soft);border-top-color:var(--brand);animation:spin .7s linear infinite}
+.status.is-error .spin{border-color:var(--danger-soft);border-top-color:var(--danger);animation:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{margin-top:12px;padding:26px 16px;text-align:center;color:var(--ink-3);border:1.5px dashed var(--line);border-radius:12px;background:var(--surface-2);font-size:.88rem}
+.empty[hidden]{display:none}
+.empty span{display:block;font-size:1.5rem;margin-bottom:6px}
+.skeleton{display:grid;gap:9px;margin-top:12px}
+.skeleton[hidden]{display:none}
+.sk{height:12px;border-radius:6px;background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:shine 1.3s ease-in-out infinite}
+.sk.t{height:17px;width:50%}.sk.w90{width:90%}.sk.w70{width:70%}
+.sk-card{padding:13px;border:1px solid var(--line-2);border-radius:11px;display:grid;gap:8px}
+@keyframes shine{to{background-position:-135% 0}}
+@media(prefers-reduced-motion:reduce){.sk,.spin{animation:none}}
+.out{display:grid;gap:11px;margin-top:12px}
+.out[hidden]{display:none}
+.summary{padding:11px 13px;border-radius:11px;background:var(--brand-soft);border:1px solid var(--brand);font-weight:700;font-size:.9rem;line-height:1.65}
+.item{padding:13px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2)}
+.item-head{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.no{display:grid;place-items:center;min-width:22px;height:22px;padding:0 6px;border-radius:7px;background:var(--brand);color:#fff;font-size:.74rem;font-weight:800;flex:0 0 auto}
+.item-head h3{margin:0;font-size:.96rem;font-weight:800}
+.tag{margin-left:auto;padding:2px 9px;border-radius:999px;font-size:.72rem;font-weight:800;background:var(--accent-soft);color:var(--accent)}
+.tag.mid{background:var(--warn-soft);color:var(--warn)}
+.tag.low{background:var(--surface-3);color:var(--ink-3)}
+.kv{display:grid;gap:5px;margin:0;font-size:.87rem}
+.kv>div{display:grid;grid-template-columns:92px 1fr;gap:9px}
+.kv dt{color:var(--ink-3);font-weight:700}
+.kv dd{margin:0}
+@media(max-width:520px){.kv>div{grid-template-columns:1fr;gap:1px}.kv dt{font-size:.78rem}}
+.tablebox{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:11px}
+table{border-collapse:collapse;width:100%;min-width:600px;font-size:.86rem}
+th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line-2);vertical-align:top}
+thead th{background:var(--surface-3);font-weight:800;font-size:.8rem;color:var(--ink-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.name{font-weight:800}
+.hint{margin:6px 0 0;font-size:.74rem;color:var(--ink-3);text-align:right}
+details.fold{border:1px solid var(--line);border-radius:11px;background:var(--surface-2);overflow:hidden}
+details.fold+details.fold{margin-top:7px}
+details.fold>summary{list-style:none;cursor:pointer;padding:11px 13px;display:flex;align-items:center;gap:8px;font-weight:800;font-size:.92rem}
+details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary::after{content:"＋";margin-left:auto;color:var(--brand);font-weight:800}
+details.fold[open]>summary::after{content:"−"}
+details.fold[open]>summary{border-bottom:1px solid var(--line-2)}
+.fold-body{padding:11px 13px}
+.check{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:.88rem}
+.check li{display:flex;gap:8px}
+.check li::before{content:"✓";color:var(--accent);font-weight:800;flex:0 0 auto}
+.sources{font-size:.78rem;color:var(--ink-3);margin:0}
+.sources a{color:var(--brand)}
+.raw{white-space:pre-wrap;font-size:.88rem;margin:0;padding:13px;border:1px solid var(--line);border-radius:11px;background:var(--surface-2);line-height:1.75}
+.errbox{padding:12px 14px;border-radius:11px;background:var(--danger-soft);border:1px solid var(--danger);color:var(--danger);font-size:.88rem;font-weight:700}
+.foot{margin:16px 0 0;text-align:center;font-size:.76rem;color:var(--ink-3);line-height:1.6}
+@media print{.runbar,.views,.result-actions,.picker,.foot,.empty,.skeleton{display:none!important}body{background:#fff}.result{box-shadow:none;border-color:#ccc}}`;
+
+/**
+ * 成果物ツール共通のランタイム。
+ * この関数のソースをそのまま成果物HTMLへ埋め込むため、
+ * 外側の変数を参照してはいけない（設定は window.TOOL_CONFIG から受け取る）。
+ */
+function neneToolRuntime() {
+  var CFG = window.TOOL_CONFIG || {};
+  var RECIPE = CFG.recipe || { axes: [], fields: [], progress: ["処理しています…"] };
+  var AXES = RECIPE.axes || [];
+  var FIELDS = RECIPE.fields || [];
+  var ORIGINAL_HTML = "<!doctype html>\n" + document.documentElement.outerHTML;
+
+  var selection = {};
+  var freeText = {};
+  var view = "card";
+  var lastData = null;
+  var progressTimer = null;
+  var busy = false;
+
+  function qs(sel) { return document.querySelector(sel); }
+  function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+  function esc(value) {
+    return String(value == null ? "" : value)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+  function stamp() {
+    try { return new Date().toLocaleString("ja-JP"); } catch (e) { return new Date().toISOString(); }
+  }
+  function currentValue(axisId) {
+    return (freeText[axisId] || selection[axisId] || "").trim();
+  }
+
+  /* ---------- 選択エリア ---------- */
+
+  function refreshPicked() {
+    var box = qs("#picked");
+    if (!box) return;
+    box.innerHTML = "";
+    AXES.forEach(function (axis) {
+      var value = currentValue(axis.id);
+      if (!value) return;
+      var chip = document.createElement("span");
+      chip.textContent = value;
+      box.appendChild(chip);
+    });
+  }
+
+  function wirePicker() {
+    qsa(".row[data-axis]").forEach(function (row) {
+      var axisId = row.getAttribute("data-axis");
+      var active = row.querySelector('.chip[aria-pressed="true"]');
+      selection[axisId] = active ? active.getAttribute("data-value") : "";
+
+      var chips = row.querySelector(".chips");
+      if (chips) {
+        chips.addEventListener("click", function (event) {
+          var chip = event.target.closest(".chip");
+          if (!chip) return;
+          event.preventDefault();
+          qsa(".chip", row).forEach(function (other) {
+            other.setAttribute("aria-pressed", String(other === chip));
+          });
+          selection[axisId] = chip.getAttribute("data-value") || "";
+          refreshPicked();
+        });
+      }
+
+      var pencil = row.querySelector(".pencil");
+      var free = row.querySelector(".free");
+      if (pencil && free) {
+        pencil.addEventListener("click", function (event) {
+          event.preventDefault();
+          free.hidden = !free.hidden;
+          pencil.textContent = free.hidden ? "✎ 自分で書く" : "✕ 選択に戻す";
+          if (free.hidden) {
+            freeText[axisId] = "";
+            var input = free.querySelector("input");
+            if (input) input.value = "";
+          } else {
+            var focusTarget = free.querySelector("input");
+            if (focusTarget) focusTarget.focus();
+          }
+          refreshPicked();
+        });
+      }
+      var input = row.querySelector(".free input");
+      if (input) {
+        input.addEventListener("input", function () {
+          freeText[axisId] = input.value.trim();
+          refreshPicked();
+        });
+      }
+    });
+    refreshPicked();
+  }
+
+  /* ---------- 結果の描画 ---------- */
+
+  function levelClass(level) {
+    var text = String(level || "");
+    if (text.indexOf("高") >= 0) return "";
+    if (text.indexOf("低") >= 0) return " low";
+    return " mid";
+  }
+
+  function renderCard(data) {
+    return (data.items || []).map(function (item, index) {
+      var rows = FIELDS.map(function (field) {
+        var value = (item.fields || {})[field];
+        if (!value) return "";
+        return "<div><dt>" + esc(field) + "</dt><dd>" + esc(value) + "</dd></div>";
+      }).join("");
+      return '<article class="item"><div class="item-head"><span class="no">' + (index + 1) + "</span>"
+        + "<h3>" + esc(item.title) + "</h3>"
+        + (item.level ? '<span class="tag' + levelClass(item.level) + '">' + esc(item.level) + "</span>" : "")
+        + '</div><dl class="kv">' + rows + "</dl></article>";
+    }).join("");
+  }
+
+  function renderTable(data) {
+    var head = "<tr><th>項目</th>" + FIELDS.map(function (field) {
+      return "<th>" + esc(field) + "</th>";
+    }).join("") + "</tr>";
+    var body = (data.items || []).map(function (item) {
+      var cells = FIELDS.map(function (field) {
+        return "<td>" + esc((item.fields || {})[field] || "-") + "</td>";
+      }).join("");
+      var name = esc(item.title) + (item.level ? "<br><small>" + esc(item.level) + "</small>" : "");
+      return '<tr><td class="name">' + name + "</td>" + cells + "</tr>";
+    }).join("");
+    return '<div class="tablebox"><table><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>"
+      + '<p class="hint">← 横にスクロールできます →</p>';
+  }
+
+  function renderFold(data) {
+    return (data.items || []).map(function (item, index) {
+      var rows = FIELDS.map(function (field) {
+        var value = (item.fields || {})[field];
+        if (!value) return "";
+        return "<div><dt>" + esc(field) + "</dt><dd>" + esc(value) + "</dd></div>";
+      }).join("");
+      return '<details class="fold"' + (index === 0 ? " open" : "") + "><summary>"
+        + '<span class="no">' + (index + 1) + "</span>" + esc(item.title)
+        + (item.level ? '<span class="tag' + levelClass(item.level) + '">' + esc(item.level) + "</span>" : "")
+        + '</summary><div class="fold-body"><dl class="kv">' + rows + "</dl></div></details>";
+    }).join("");
+  }
+
+  function render() {
+    var box = qs("#result");
+    if (!box) return;
+    var empty = qs("#empty");
+    if (empty) empty.hidden = Boolean(lastData);
+    if (!lastData) { box.hidden = true; return; }
+
+    if (lastData.raw) {
+      box.innerHTML = '<pre class="raw">' + esc(lastData.raw) + "</pre>";
+      box.hidden = false;
+      return;
+    }
+
+    var parts = [];
+    if (lastData.summary) parts.push('<p class="summary">' + esc(lastData.summary) + "</p>");
+
+    if (!(lastData.items || []).length) {
+      parts.push('<div class="empty" style="margin:0">該当する候補は見つかりませんでした。条件を変えてもう一度お試しください。</div>');
+    } else if (view === "table") {
+      parts.push(renderTable(lastData));
+    } else if (view === "fold") {
+      parts.push(renderFold(lastData));
+    } else {
+      parts.push(renderCard(lastData));
+    }
+
+    if ((lastData.checklist || []).length) {
+      parts.push('<article class="item"><div class="item-head"><span class="no">✓</span><h3>'
+        + esc(RECIPE.checklistTitle) + '</h3></div><ul class="check">'
+        + lastData.checklist.map(function (line) { return "<li>" + esc(line) + "</li>"; }).join("")
+        + "</ul></article>");
+    }
+    if (lastData.note) parts.push('<p class="sources">' + esc(lastData.note) + "</p>");
+    if ((lastData.sources || []).length) {
+      parts.push('<p class="sources">情報源：' + lastData.sources.map(function (source, index) {
+        var label = esc(source.title || source.uri || "");
+        return (index + 1) + ". " + (source.uri ? '<a href="' + esc(source.uri) + '" target="_blank" rel="noopener">' + label + "</a>" : label);
+      }).join(" ／ ") + "　（確認 " + esc(lastData.checkedAt || stamp()) + "）</p>");
+    }
+
+    box.innerHTML = parts.join("");
+    box.hidden = false;
+  }
+
+  /* ---------- AIの応答を読み取る ---------- */
+
+  function parseResult(text) {
+    var body = String(text || "").trim();
+    var fence = body.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fence) body = fence[1].trim();
+    var start = body.indexOf("{");
+    var end = body.lastIndexOf("}");
+    if (start >= 0 && end > start) {
+      try {
+        var parsed = JSON.parse(body.slice(start, end + 1));
+        if (parsed && (parsed.summary || parsed.items)) {
+          return {
+            summary: parsed.summary || "",
+            items: Array.isArray(parsed.items) ? parsed.items : [],
+            checklist: Array.isArray(parsed.checklist) ? parsed.checklist : [],
+            note: parsed.note || "",
+            sources: [],
+            checkedAt: stamp(),
+          };
+        }
+      } catch (error) { /* JSONで読めなければ下の生テキスト表示へ */ }
+    }
+    return { raw: String(text || "").trim(), items: [], checkedAt: stamp() };
+  }
+
+  /* ---------- 実行 ---------- */
+
+  function setStatus(message, isError) {
+    var box = qs("#status");
+    var text = qs("#status-text");
+    if (!box || !text) return;
+    if (!message) { box.hidden = true; return; }
+    text.textContent = message;
+    box.hidden = false;
+    box.classList.toggle("is-error", Boolean(isError));
+  }
+
+  function startProgress() {
+    var messages = RECIPE.progress || ["処理しています…"];
+    var index = 0;
+    var startedAt = Date.now();
+    setStatus(messages[0], false);
+    progressTimer = setInterval(function () {
+      index = (index + 1) % messages.length;
+      var seconds = Math.floor((Date.now() - startedAt) / 1000);
+      setStatus(messages[index] + "（" + seconds + "秒）", false);
+    }, 1500);
+  }
+
+  function stopProgress() {
+    if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+  }
+
+  function buildUserInput() {
+    var lines = AXES.map(function (axis) {
+      var value = currentValue(axis.id);
+      return value ? axis.promptLabel + ": " + value : "";
+    }).filter(Boolean);
+    lines.push("実行日時: " + stamp());
+    lines.push("出力はJSONのみ。説明文やコードブロック記号は付けない。");
+    return lines.join("\n");
+  }
+
+  function buildDemoData() {
+    var theme = currentValue(AXES[0] ? AXES[0].id : "") || "サンプル";
+    var items = [1, 2, 3].map(function (index) {
+      var fields = {};
+      FIELDS.forEach(function (field) {
+        fields[field] = "（お試し表示）" + theme + "に関する" + field + "がここに入ります。";
+      });
+      return { title: "サンプル項目" + index, level: index === 1 ? "高" : "中", fields: fields };
+    });
+    return {
+      summary: "【お試しモード】" + theme + "の結果サンプルです。公開URLで実行すると本物の結果が出ます。",
+      items: items,
+      checklist: ["これはお試し表示です", "公開URLを発行すると本番のAIが動きます", "内容は必ずご自身で確認してください"],
+      note: "",
+      sources: [],
+      checkedAt: stamp(),
+    };
+  }
+
+  function isDemoMode() {
+    var slug = String(CFG.publishSlug || "");
+    return Boolean(CFG.demoMode) || !slug || slug.indexOf("__NENE_") === 0;
+  }
+
+  async function runViaPublishedProxy(userInput) {
+    var slug = String(CFG.publishSlug || "").trim();
+    var apiBase = String(CFG.apiBase || "").replace(/\/$/, "");
+    if (!slug || slug.indexOf("__NENE_") === 0 || !apiBase || apiBase.indexOf("__NENE_") === 0) {
+      throw new Error("本番実行には公開URLが必要です。NENE Studio で公開URLを発行してください。");
+    }
+    // パソコンに保存したファイルから開いた場合、Cookieは送れないので付けない
+    var isLocalFile = window.location.protocol === "file:";
+    var response;
+    try {
+      response = await fetch(apiBase + "/public/tools/" + encodeURIComponent(slug) + "/run", {
+        method: "POST",
+        headers: (function () {
+          var headers = { "Content-Type": "application/json" };
+          if (/ngrok/i.test(String(window.location.hostname || ""))) {
+            headers["ngrok-skip-browser-warning"] = "1";
+          }
+          return headers;
+        }()),
+        credentials: isLocalFile ? "omit" : "include",
+        body: JSON.stringify({ systemPrompt: CFG.systemPrompt || "", input: userInput, demo: false }),
+      });
+    } catch (error) {
+      throw new Error(isLocalFile
+        ? "サーバーにつながりませんでした。インターネット接続を確認するか、公開URLから開いてください。"
+        : "通信に失敗しました。ネットワークを確認して、もう一度お試しください。");
+    }
+    var data = await response.json().catch(function () { return {}; });
+    if (response.status === 403 && isLocalFile) {
+      throw new Error("このツールはパスワード保護されているため、保存したファイルからは実行できません。公開URLから開いてください。");
+    }
+    if (!response.ok) {
+      throw new Error(data.error || "実行に失敗しました。しばらくしてから、もう一度お試しください。");
+    }
+    return data;
+  }
+
+  async function run() {
+    if (busy) return;
+    var button = qs("#generate-button");
+    busy = true;
+    if (button) { button.disabled = true; button.textContent = RECIPE.busyLabel; }
+    var empty = qs("#empty");
+    var skeleton = qs("#skeleton");
+    var actions = qs("#actions");
+    var box = qs("#result");
+    if (empty) empty.hidden = true;
+    if (box) box.hidden = true;
+    if (actions) actions.hidden = true;
+    if (skeleton) skeleton.hidden = false;
+    startProgress();
+
+    try {
+      var demo = isDemoMode();
+      // お試しは即答なので、本番と同じ見え方になるよう待機表示だけ挟む。
+      // 本番（公開URL）には遅延を入れない。
+      if (demo) await new Promise(function (resolve) { setTimeout(resolve, 300); });
+      var payload = demo ? null : await runViaPublishedProxy(buildUserInput());
+      lastData = demo ? buildDemoData() : parseResult(String(payload.text || ""));
+      if (payload && payload.notice && lastData) lastData.summary = payload.notice;
+      render();
+      if (actions) actions.hidden = false;
+      setStatus(payload && payload.notice ? payload.notice : "", Boolean(payload && payload.demo));
+      var sub = qs("#sub");
+      if (sub) {
+        sub.textContent = (demo || (payload && payload.demo))
+          ? "見本を表示しています（" + stamp() + "）"
+          : "できました（" + stamp() + "）";
+      }
+    } catch (error) {
+      lastData = null;
+      if (box) {
+        box.innerHTML = '<div class="errbox">' + esc(error && error.message ? error.message : String(error)) + "</div>";
+        box.hidden = false;
+      }
+      setStatus("うまくいきませんでした", true);
+    } finally {
+      stopProgress();
+      if (skeleton) skeleton.hidden = true;
+      busy = false;
+      if (button) { button.disabled = false; button.textContent = RECIPE.rerunLabel; }
+    }
+  }
+
+  /* ---------- 書き出し ---------- */
+
+  function toPlainText() {
+    if (!lastData) return "";
+    if (lastData.raw) return lastData.raw;
+    var lines = [CFG.title || "", "", lastData.summary || "", ""];
+    (lastData.items || []).forEach(function (item, index) {
+      lines.push("【" + (index + 1) + "】" + (item.title || "") + (item.level ? "（" + item.level + "）" : ""));
+      FIELDS.forEach(function (field) {
+        var value = (item.fields || {})[field];
+        if (value) lines.push("  " + field + ": " + value);
+      });
+      lines.push("");
+    });
+    if ((lastData.checklist || []).length) {
+      lines.push(RECIPE.checklistTitle);
+      lastData.checklist.forEach(function (line) { lines.push("  ・" + line); });
+      lines.push("");
+    }
+    if (lastData.note) lines.push(lastData.note, "");
+    lines.push(RECIPE.disclaimer);
+    lines.push("作成日時: " + (lastData.checkedAt || stamp()));
+    return lines.join("\n");
+  }
+
+  function toResultHtml() {
+    var box = qs("#result");
+    var inner = box ? box.innerHTML : "";
+    return "<!doctype html>\n<html lang=\"ja\"><head><meta charset=\"utf-8\" />"
+      + '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+      + "<title>" + esc(CFG.title || "結果") + "</title><style>"
+      + "body{margin:0;padding:24px;font-family:'Hiragino Sans','Noto Sans JP','Segoe UI',system-ui,sans-serif;line-height:1.75;color:#0b1c33;background:#f7fafd}"
+      + "main{max-width:760px;margin:0 auto;background:#fff;padding:24px;border-radius:16px;border:1px solid #d6e0eb}"
+      + "h1{font-size:1.3rem;margin:0 0 16px}.summary{padding:12px;border-radius:10px;background:rgba(16,69,126,.08);font-weight:700}"
+      + ".item{margin-top:12px;padding:13px;border:1px solid #d6e0eb;border-radius:11px;background:#f3f7fb}"
+      + ".item-head{display:flex;gap:8px;align-items:baseline;margin-bottom:8px}.item-head h3{margin:0;font-size:1rem}"
+      + ".no{background:#10457e;color:#fff;border-radius:7px;padding:1px 7px;font-size:.78rem;font-weight:800}"
+      + ".tag{margin-left:auto;background:rgba(14,143,158,.14);color:#0e8f9e;border-radius:999px;padding:2px 9px;font-size:.75rem;font-weight:800}"
+      + ".kv>div{display:grid;grid-template-columns:96px 1fr;gap:8px;font-size:.9rem}.kv dt{color:#6b7f96;font-weight:700}.kv dd{margin:0}"
+      + "table{border-collapse:collapse;width:100%;font-size:.88rem}th,td{border:1px solid #d6e0eb;padding:8px;text-align:left}"
+      + ".check{padding-left:1.1em}.raw{white-space:pre-wrap}.hint{display:none}"
+      + "</style></head><body><main><h1>" + esc(CFG.title || "結果") + "</h1>" + inner
+      + '<p style="margin-top:20px;font-size:.8rem;color:#6b7f96">' + esc(RECIPE.disclaimer) + "</p></main></body></html>";
+  }
+
+  function download(filename, blob) {
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+  }
+
+  var crcTable = null;
+  function crc32(bytes) {
+    if (!crcTable) {
+      crcTable = new Int32Array(256);
+      for (var i = 0; i < 256; i++) {
+        var value = i;
+        for (var bit = 0; bit < 8; bit++) value = value & 1 ? (value >>> 1) ^ 0xedb88320 : value >>> 1;
+        crcTable[i] = value;
+      }
+    }
+    var crc = -1;
+    for (var index = 0; index < bytes.length; index++) {
+      crc = (crc >>> 8) ^ crcTable[(crc ^ bytes[index]) & 0xff];
+    }
+    return (crc ^ -1) >>> 0;
+  }
+
+  /** 無圧縮(store)ZIPを作る。日本語ファイル名のためUTF-8フラグを立てる。 */
+  function makeZip(files) {
+    var encoder = new TextEncoder();
+    var chunks = [];
+    var central = [];
+    var offset = 0;
+
+    function u16(value) { return [value & 0xff, (value >>> 8) & 0xff]; }
+    function u32(value) { return [value & 0xff, (value >>> 8) & 0xff, (value >>> 16) & 0xff, (value >>> 24) & 0xff]; }
+
+    files.forEach(function (file) {
+      var nameBytes = encoder.encode(file.name);
+      var dataBytes = encoder.encode(file.text);
+      var crc = crc32(dataBytes);
+      var local = [].concat(
+        u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+        u32(crc), u32(dataBytes.length), u32(dataBytes.length),
+        u16(nameBytes.length), u16(0)
+      );
+      chunks.push(new Uint8Array(local), nameBytes, dataBytes);
+      central.push({ nameBytes: nameBytes, crc: crc, size: dataBytes.length, offset: offset });
+      offset += local.length + nameBytes.length + dataBytes.length;
+    });
+
+    var centralStart = offset;
+    var centralSize = 0;
+    central.forEach(function (entry) {
+      var header = [].concat(
+        u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+        u32(entry.crc), u32(entry.size), u32(entry.size),
+        u16(entry.nameBytes.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(entry.offset)
+      );
+      chunks.push(new Uint8Array(header), entry.nameBytes);
+      centralSize += header.length + entry.nameBytes.length;
+    });
+
+    chunks.push(new Uint8Array([].concat(
+      u32(0x06054b50), u16(0), u16(0), u16(central.length), u16(central.length),
+      u32(centralSize), u32(centralStart), u16(0)
+    )));
+    return new Blob(chunks, { type: "application/zip" });
+  }
+
+  function safeName() {
+    return String(CFG.title || "結果").replace(/[\\/:*?"<>|]/g, "_").slice(0, 40);
+  }
+
+  async function handleAction(action) {
+    var sub = qs("#sub");
+    function say(message) { if (sub) sub.textContent = message; }
+    if (action === "print") { window.print(); return; }
+    if (!lastData) { say("先に実行してください"); return; }
+
+    if (action === "copy") {
+      try {
+        await navigator.clipboard.writeText(toPlainText());
+        say("結果をコピーしました");
+      } catch (error) {
+        say("コピーできませんでした。長押しで選択してコピーしてください");
+      }
+      return;
+    }
+    if (action === "txt") {
+      download(safeName() + ".txt", new Blob([toPlainText()], { type: "text/plain;charset=utf-8" }));
+      say("テキストで保存しました");
+      return;
+    }
+    if (action === "html") {
+      download(safeName() + ".html", new Blob([toResultHtml()], { type: "text/html;charset=utf-8" }));
+      say("HTMLで保存しました");
+      return;
+    }
+    if (action === "zip") {
+      download(safeName() + ".zip", makeZip([
+        { name: "結果.txt", text: toPlainText() },
+        { name: "結果.html", text: toResultHtml() },
+        { name: "ツール.html", text: ORIGINAL_HTML },
+        { name: "README.txt", text: [CFG.title || "", "", "結果.html … 結果を見る", "ツール.html … このツール本体（ダブルクリックで開けます）", "", "作成日時: " + stamp()].join("\n") },
+      ]));
+      say("ZIPで保存しました（結果＋ツール本体）");
+      return;
+    }
+  }
+
+  /* ---------- 起動 ---------- */
+
+  function init() {
+    wirePicker();
+
+    var views = qs("#views");
+    if (views) {
+      views.addEventListener("click", function (event) {
+        var button = event.target.closest(".vw");
+        if (!button) return;
+        view = button.getAttribute("data-view") || "card";
+        qsa(".vw", views).forEach(function (other) {
+          other.setAttribute("aria-pressed", String(other === button));
+        });
+        render();
+      });
+    }
+
+    var runButton = qs("#generate-button");
+    if (runButton) {
+      runButton.addEventListener("click", function (event) {
+        event.preventDefault();
+        run();
+      });
+    }
+
+    var actions = qs("#actions");
+    if (actions) {
+      actions.addEventListener("click", function (event) {
+        var button = event.target.closest("[data-do]");
+        if (!button) return;
+        event.preventDefault();
+        handleAction(button.getAttribute("data-do"));
+      });
+    }
+
+    window.__neneGenerate = run;
+    window.__neneSelectTopic = function (button) {
+      if (button && button.click) button.click();
+    };
+    // NENE Studio の自動テストから中身を確認するための入口
+    window.__neneTool = {
+      run: run,
+      parse: parseResult,
+      showText: function (text) { lastData = parseResult(text); render(); },
+      getData: function () { return lastData; },
+    };
+  }
+
+  init();
+}
+
 function buildRunnableToolFiles(options = {}) {
   const forPublish = Boolean(options.forPublish);
   const forceDemo = options.forceDemo !== false; // 既定はお試し（ダミー）で安全に動かす
   const proposal = getSelectedProposal();
   const summary = getSummary();
   const category = getSelectedCategory();
-  const prompt = buildRunnablePrompt();
   const isEnglish = state.language === "en";
   const provider = state.settings.userApiProvider || "gemini";
   // セキュリティ: 成果物ファイルに APIキーを絶対に埋め込まない
@@ -3326,14 +4838,23 @@ function buildRunnableToolFiles(options = {}) {
     "OPENAI_API_KEY=",
   ].join("\n");
 
+  const recipe = resolveToolRecipe();
+  const promptCtx = {
+    title: proposal.title,
+    purpose: summary.purpose,
+    market: state.answers.market || "",
+    targetUser: state.custom.targetUser || "初心者",
+  };
+  const recipePrompt = buildRecipeSystemPrompt(recipe, promptCtx);
+
   const configJs = [
     "// ブラウザ用設定。セキュリティのため apiKey は常に空。本番はサーバー代理のみ。",
     "window.TOOL_CONFIG = {",
     `  provider: ${JSON.stringify(provider)},`,
-    "  apiKey: \"\",",
+    '  apiKey: "",',
     `  geminiModel: ${JSON.stringify(geminiModel)},`,
-    `  requireNewsSearch: ${JSON.stringify(requiresNewsGrounding(toolMode))},`,
-    `  requireProxy: true,`,
+    `  requireNewsSearch: ${JSON.stringify(recipe.requireSearch)},`,
+    "  requireProxy: true,",
     `  demoMode: ${JSON.stringify(forPublish ? false : forceDemo)},`,
     `  publishSlug: ${JSON.stringify(forPublish ? "__NENE_SLUG__" : "")},`,
     `  apiBase: ${JSON.stringify(forPublish ? "__NENE_API_BASE__" : getStudioApiBase())},`,
@@ -3341,33 +4862,14 @@ function buildRunnableToolFiles(options = {}) {
     `  category: ${JSON.stringify(category.name)},`,
     `  purpose: ${JSON.stringify(state.answers.purpose || "")},`,
     `  market: ${JSON.stringify(state.answers.market || "")},`,
-    `  topicPresets: ${JSON.stringify(topicPresets)},`,
-    `  topicExpandMap: ${JSON.stringify(Object.fromEntries(topicPresets.map((chip) => [chip, expandTopicFromChip(chip)])))},`,
-    `  defaultGenre: ${JSON.stringify(defaultGenre)},`,
-    `  defaultTopic: ${JSON.stringify(defaultTopic)},`,
-    `  isInvestment: ${JSON.stringify(Boolean(category.isInvestment))},`,
     `  toolMode: ${JSON.stringify(toolMode)},`,
+    `  isInvestment: ${JSON.stringify(Boolean(category.isInvestment))},`,
+    `  systemPrompt: ${JSON.stringify(recipePrompt)},`,
+    `  recipe: ${JSON.stringify(recipe)},`,
     "};",
   ].join("\n");
 
-  const chipButtons = topicPresets
-    .map((topic) => `      <button type="button" class="chip" data-topic="${escapeAttribute(topic)}" onclick="window.__neneSelectTopic&&window.__neneSelectTopic(this)">${escapeHtml(topic)}</button>`)
-    .join("\n");
-
-  const apiPanelInner = [
-    `      <label>${toolLabels.apiKey || "実行モード"}`,
-    '        <select id="run-mode">',
-    `          <option value="demo" selected>${toolLabels.demoMode || "お試し（ダミー）"}</option>`,
-    `          <option value="live">${toolLabels.liveMode || "本番（公開URL）"}</option>`,
-    "        </select>",
-    "      </label>",
-    '      <input id="provider" type="hidden" value="gemini" />',
-    '      <input id="api-key" type="hidden" value="" />',
-    `      <p class="note">${escapeHtml(toolLabels.api)}</p>`,
-    `      <button id="probe-button" type="button" class="secondary" onclick="window.__neneProbe&&window.__neneProbe()">${toolLabels.probe}</button>`,
-    '      <pre id="probe-result" class="workflow" hidden></pre>',
-  ].join("\n");
-
+  // 見た目はJSが動く前に完成させる（起動を待たせないため）
   const indexHtml = [
     "<!doctype html>",
     `<html lang="${isEnglish ? "en" : "ja"}">`,
@@ -3379,766 +4881,17 @@ function buildRunnableToolFiles(options = {}) {
     '  <link rel="stylesheet" href="./style.css" />',
     "</head>",
     "<body>",
-    '  <main class="tool-shell">',
-    `    <h1>${escapeHtml(proposal.title)}</h1>`,
-    `    <p class="lead">${escapeHtml(summary.purpose)}</p>`,
-    `    <p class="note">${escapeHtml(toolLabels.note)}</p>`,
-    '    <noscript>このツールはJavaScriptが必要です。公開URLをブラウザで開いてください。</noscript>',
-    `    <p class="note" id="boot-tip">読み込み中です…</p>`,
-    `    <section class="panel">\n      <h2>${toolLabels.apiTitle}</h2>\n${apiPanelInner}\n    </section>`,
-    '    <section class="panel">',
-    `      <h2>${toolLabels.inputTitle}</h2>`,
-    `      <p class="field-label">${toolLabels.genre}</p>`,
-    '      <div class="chip-row" id="topic-chips">',
-    chipButtons,
-    "      </div>",
-    `      <p class="selected-theme" id="selected-theme">${escapeHtml(toolLabels.selectedTheme)}${escapeHtml(defaultGenre)}</p>`,
-    `      <label class="sr-only">${toolLabels.topic}<input id="tool-topic" type="text" readonly value="${escapeAttribute(defaultTopic)}" /></label>`,
-    `      <details class="optional"><summary>${toolLabels.moreOptions}</summary>`,
-    `      <label>${toolLabels.angle}<input id="tool-angle" type="text" placeholder="${escapeAttribute(toolLabels.anglePlaceholder)}" /></label>`,
-    `      <label>${toolLabels.length}`,
-    '        <select id="tool-length">',
-    `          <option value="1500">${toolLabels.length1500}</option>`,
-    `          <option value="3000" selected>${toolLabels.length3000}</option>`,
-    `          <option value="5000">${toolLabels.length5000}</option>`,
-    "        </select>",
-    "      </label>",
-    "      </details>",
-    '      <div class="actions">',
-    `        <button id="generate-button" type="button" onclick="window.__neneGenerate&&window.__neneGenerate()">${toolLabels.generate}</button>`,
-    `        <button id="copy-button" type="button" class="secondary" onclick="window.__neneCopy&&window.__neneCopy()">${toolLabels.copy}</button>`,
-    "      </div>",
-    '      <p id="status" class="status" aria-live="polite"></p>',
-    '      <div id="loading-box" class="loading-box" hidden>',
-    '        <div class="spinner" aria-hidden="true"></div>',
-    `        <div><strong id="loading-title">${escapeHtml(toolLabels.generating || "作成中...")}</strong><p id="loading-detail" class="loading-detail"></p></div>`,
-    "      </div>",
-    `      <p class="note">${escapeHtml(toolLabels.disclaimer)}</p>`,
-    "    </section>",
-    '    <section class="panel">',
-    `      <h2>${toolLabels.outputTitle}</h2>`,
-    '      <pre id="result"></pre>',
-    "    </section>",
-    "  </main>",
+    buildToolBodyHtml(recipe, promptCtx),
     '  <script src="./config.js"></script>',
     '  <script src="./script.js"></script>',
     "</body>",
     "</html>",
   ].join("\n");
 
-  const styleCss = [
-    ":root {",
-    "  --bg: #f4f7fb;",
-    "  --ink: #152033;",
-    "  --muted: #5b6b80;",
-    "  --line: #d7e0ec;",
-    "  --panel: rgba(255,255,255,.92);",
-    "  --accent: #0b6bcb;",
-    "  --accent-2: #128a6a;",
-    "}",
-    "body {",
-    "  margin: 0;",
-    "  font-family: 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif;",
-    "  background:",
-    "    radial-gradient(circle at 12% 8%, rgba(18,138,106,.14), transparent 28%),",
-    "    radial-gradient(circle at 88% 0%, rgba(11,107,203,.16), transparent 32%),",
-    "    linear-gradient(180deg, #eef4fb, var(--bg) 45%, #e8eef6);",
-    "  color: var(--ink);",
-    "  min-height: 100vh;",
-    "}",
-    ".tool-shell {",
-    "  max-width: 880px;",
-    "  margin: 0 auto;",
-    "  padding: 32px 16px 48px;",
-    "}",
-    "h1 { margin: 0 0 8px; font-size: clamp(1.6rem, 3vw, 2.1rem); letter-spacing: -.02em; }",
-    ".lead, .note, .status { color: var(--muted); line-height: 1.7; }",
-    ".panel {",
-    "  margin-top: 16px;",
-    "  padding: 18px;",
-    "  border: 1px solid var(--line);",
-    "  border-radius: 16px;",
-    "  background: var(--panel);",
-    "  box-shadow: 0 12px 28px rgba(21,32,51,.06);",
-    "}",
-    ".panel.soft { background: rgba(255,255,255,.72); }",
-    "h2 { margin: 0 0 8px; font-size: 1.05rem; }",
-    "label { display: grid; gap: 8px; margin-top: 12px; color: var(--ink); }",
-    "label.check { grid-template-columns: auto 1fr; align-items: center; gap: 10px; }",
-    "input, textarea, select {",
-    "  width: 100%;",
-    "  box-sizing: border-box;",
-    "  border: 1px solid var(--line);",
-    "  border-radius: 10px;",
-    "  background: #fff;",
-    "  color: var(--ink);",
-    "  padding: 12px;",
-    "  font: inherit;",
-    "}",
-    ".field-label { margin: 0 0 8px; font-weight: 700; color: var(--ink); }",
-    ".selected-theme {",
-    "  margin: 12px 0 0;",
-    "  padding: 12px 14px;",
-    "  border: 1px solid rgba(11,107,203,.28);",
-    "  border-radius: 10px;",
-    "  background: rgba(11,107,203,.08);",
-    "  font-weight: 700;",
-    "  color: var(--ink);",
-    "}",
-    ".sr-only {",
-    "  position: absolute;",
-    "  width: 1px;",
-    "  height: 1px;",
-    "  padding: 0;",
-    "  margin: -1px;",
-    "  overflow: hidden;",
-    "  clip: rect(0,0,0,0);",
-    "  white-space: nowrap;",
-    "  border: 0;",
-    "}",
-    ".chip-row { display: flex; flex-wrap: wrap; gap: 8px; }",
-    ".chip {",
-    "  position: relative;",
-    "  z-index: 2;",
-    "  min-height: 44px;",
-    "  border: 1px solid var(--line);",
-    "  border-radius: 999px;",
-    "  background: #fff;",
-    "  color: var(--ink);",
-    "  padding: 0 14px;",
-    "  font-weight: 700;",
-    "  cursor: pointer;",
-    "  touch-action: manipulation;",
-    "  -webkit-tap-highlight-color: rgba(11,107,203,.2);",
-    "  pointer-events: auto;",
-    "}",
-    ".chip.active, .chip:hover { border-color: rgba(11,107,203,.55); background: rgba(11,107,203,.08); }",
-    "details.panel, details.optional { margin-top: 12px; position: relative; z-index: 1; }",
-    "details.panel > summary, details.optional > summary { cursor: pointer; font-weight: 700; color: var(--ink); }",
-    "details.optional { border-top: 1px dashed var(--line); padding-top: 10px; }",
-    ".actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; position: relative; z-index: 2; }",
-    "button {",
-    "  position: relative;",
-    "  z-index: 2;",
-    "  min-height: 48px;",
-    "  border: 0;",
-    "  border-radius: 10px;",
-    "  background: linear-gradient(135deg, var(--accent), var(--accent-2));",
-    "  color: white;",
-    "  font-weight: 700;",
-    "  padding: 0 20px;",
-    "  cursor: pointer;",
-    "  touch-action: manipulation;",
-    "  -webkit-tap-highlight-color: rgba(11,107,203,.25);",
-    "  pointer-events: auto;",
-    "}",
-    "button.secondary {",
-    "  background: #fff;",
-    "  color: var(--ink);",
-    "  border: 1px solid var(--line);",
-    "}",
-    "button:disabled { opacity: .6; cursor: wait; }",
-    "button.is-loading { cursor: wait; }",
-    "noscript { display:block; margin:12px 0; padding:12px; border:1px solid #f0b429; background:#fff8e6; color:#5c4800; border-radius:10px; }",
-    ".status { min-height: 1.5em; font-weight: 700; }",
-    ".status.is-busy { color: var(--accent); }",
-    ".status.is-done { color: var(--accent-2); }",
-    ".status.is-error { color: #b42318; font-size: 1.02rem; }",
-    "input.needs-key, select.needs-key {",
-    "  border-color: #b42318 !important;",
-    "  box-shadow: 0 0 0 3px rgba(180,35,24,.18);",
-    "  background: #fff5f5;",
-    "}",
-    ".loading-box {",
-    "  display: flex;",
-    "  align-items: flex-start;",
-    "  gap: 12px;",
-    "  margin-top: 12px;",
-    "  padding: 14px;",
-    "  border: 1px solid rgba(11,107,203,.28);",
-    "  border-radius: 12px;",
-    "  background: rgba(11,107,203,.08);",
-    "}",
-    ".loading-box.is-error {",
-    "  border-color: rgba(180,35,24,.45);",
-    "  background: #fff5f5;",
-    "}",
-    ".loading-box.is-error .spinner {",
-    "  border-color: rgba(180,35,24,.2);",
-    "  border-top-color: #b42318;",
-    "  animation: none;",
-    "  background: #b42318;",
-    "  border-radius: 4px;",
-    "  width: 14px;",
-    "  height: 14px;",
-    "  border-width: 0;",
-    "  margin-top: 6px;",
-    "}",
-    ".loading-box[hidden] { display: none !important; }",
-    ".loading-detail { margin: 6px 0 0; color: var(--muted); line-height: 1.6; }",
-    ".loading-box.is-error .loading-detail { color: #7a271a; }",
-    ".spinner {",
-    "  width: 22px;",
-    "  height: 22px;",
-    "  border: 3px solid rgba(11,107,203,.2);",
-    "  border-top-color: var(--accent);",
-    "  border-radius: 50%;",
-    "  animation: nene-spin .8s linear infinite;",
-    "  flex: 0 0 auto;",
-    "  margin-top: 2px;",
-    "}",
-    "@keyframes nene-spin { to { transform: rotate(360deg); } }",
-    "pre.is-loading {",
-    "  color: var(--muted);",
-    "  border-style: dashed;",
-    "}",
-    "pre.is-error {",
-    "  color: #7a271a;",
-    "  border-color: rgba(180,35,24,.35);",
-    "  background: #fff8f7;",
-    "}",
-    "pre {",
-    "  white-space: pre-wrap;",
-    "  background: #f7fafc;",
-    "  border: 1px solid var(--line);",
-    "  border-radius: 10px;",
-    "  padding: 14px;",
-    "  min-height: 220px;",
-    "  line-height: 1.7;",
-    "}",
-    "pre.workflow { min-height: 0; margin: 0; background: transparent; border: 0; padding: 0; color: var(--muted); }",
-    "@media (max-width: 720px) {",
-    "  .tool-shell { padding: 18px 12px 36px; }",
-    "  h1 { font-size: 1.45rem; }",
-    "  .panel { padding: 14px; }",
-    "  .actions { flex-direction: column; }",
-    "  .actions button { width: 100%; }",
-    "  .chip { min-height: 48px; }",
-    "}",
-    "@media (min-width: 1024px) {",
-    "  .tool-shell { padding: 36px 20px 56px; }",
-    "}",
-  ].join("\n");
+  const styleCss = NENE_TOOL_CSS;
 
-  const scriptJs = [
-    `const SYSTEM_PROMPT = ${JSON.stringify(prompt)};`,
-    `const LABELS = ${JSON.stringify(toolLabels)};`,
-    "const LEGACY_STORAGE_KEY = 'neneStandaloneToolKey';",
-    "const LEGACY_STORAGE_PROVIDER = 'neneStandaloneToolProvider';",
-    "",
-    "const config = window.TOOL_CONFIG || {};",
-    "let memoryApiKey = '';",
-    "let memoryProvider = '';",
-    "let selectedGenre = config.defaultGenre || '';",
-    "let providerSelect, apiKeyInput, runModeSelect, topicInput, angleInput, lengthSelect, generateButton, statusText, resultBox, chipRow, bootTip, loadingBox, loadingTitle, loadingDetail, selectedThemeEl, probeButton, probeResult;",
-    "let loadingTimer = null;",
-    "let loadingStartedAt = 0;",
-    "let defaultGenerateLabel = '';",
-    "",
-    "function qs(sel) { return document.querySelector(sel); }",
-    "",
-    "function clearLegacyKeyStorage() {",
-    "  try {",
-    "    localStorage.removeItem(LEGACY_STORAGE_KEY);",
-    "    localStorage.removeItem(LEGACY_STORAGE_PROVIDER);",
-    "    sessionStorage.removeItem(LEGACY_STORAGE_KEY);",
-    "    sessionStorage.removeItem(LEGACY_STORAGE_PROVIDER);",
-    "  } catch (e) {}",
-    "}",
-    "",
-    "function bindElements() {",
-    "  providerSelect = qs('#provider');",
-    "  apiKeyInput = qs('#api-key');",
-    "  runModeSelect = qs('#run-mode');",
-    "  topicInput = qs('#tool-topic');",
-    "  angleInput = qs('#tool-angle');",
-    "  lengthSelect = qs('#tool-length');",
-    "  generateButton = qs('#generate-button');",
-    "  statusText = qs('#status');",
-    "  resultBox = qs('#result');",
-    "  chipRow = qs('#topic-chips');",
-    "  bootTip = qs('#boot-tip');",
-    "  loadingBox = qs('#loading-box');",
-    "  loadingTitle = qs('#loading-title');",
-    "  loadingDetail = qs('#loading-detail');",
-    "  selectedThemeEl = qs('#selected-theme');",
-    "  probeButton = qs('#probe-button');",
-    "  probeResult = qs('#probe-result');",
-    "  defaultGenerateLabel = (generateButton && generateButton.textContent) || (LABELS.generate || '');",
-    "  if (runModeSelect) {",
-    "    const wantDemo = config.demoMode !== false && !config.publishSlug;",
-    "    runModeSelect.value = wantDemo ? 'demo' : 'live';",
-    "  }",
-    "}",
-    "",
-    "function setStatus(message, kind) {",
-    "  if (!statusText) return;",
-    "  statusText.textContent = message || '';",
-    "  statusText.classList.remove('is-busy', 'is-done', 'is-error');",
-    "  if (kind) statusText.classList.add(kind);",
-    "}",
-    "",
-    "function setBusy(isBusy) {",
-    "  if (generateButton) {",
-    "    generateButton.disabled = !!isBusy;",
-    "    generateButton.classList.toggle('is-loading', !!isBusy);",
-    "    generateButton.textContent = isBusy",
-    "      ? (LABELS.generatingButton || LABELS.generating || '処理中...')",
-    "      : defaultGenerateLabel;",
-    "  }",
-    "  if (probeButton) probeButton.disabled = !!isBusy;",
-    "  if (loadingBox) {",
-    "    if (isBusy) {",
-    "      loadingBox.classList.remove('is-error');",
-    "      loadingBox.hidden = false;",
-    "    } else if (!loadingBox.classList.contains('is-error')) {",
-    "      loadingBox.hidden = true;",
-    "    }",
-    "  }",
-    "  if (resultBox) {",
-    "    resultBox.classList.toggle('is-loading', !!isBusy);",
-    "    if (isBusy) resultBox.classList.remove('is-error');",
-    "  }",
-    "  if (loadingTimer) {",
-    "    clearInterval(loadingTimer);",
-    "    loadingTimer = null;",
-    "  }",
-    "  if (!isBusy) return;",
-    "  loadingStartedAt = Date.now();",
-    "  if (loadingTitle) loadingTitle.textContent = LABELS.accepted || '処理を受け付けました。';",
-    "  if (loadingDetail) loadingDetail.textContent = LABELS.analyzing || LABELS.generating || 'AIが分析しています…';",
-    "  setStatus(LABELS.accepted || '処理を受け付けました。', 'is-busy');",
-    "  const updateDetail = function () {",
-    "    const sec = Math.max(1, Math.floor((Date.now() - loadingStartedAt) / 1000));",
-    "    if (sec >= 5) {",
-    "      if (loadingTitle) loadingTitle.textContent = LABELS.slowHint || '通常より時間が掛かっています。';",
-    "      if (loadingDetail) loadingDetail.textContent = (LABELS.analyzing || 'AIが分析しています…') + '（経過 ' + sec + ' 秒）';",
-    "      setStatus((LABELS.slowHint || '通常より時間が掛かっています。') + '（' + sec + '秒）', 'is-busy');",
-    "    } else {",
-    "      if (loadingTitle) loadingTitle.textContent = LABELS.analyzing || LABELS.generating || 'AIが分析しています…';",
-    "      if (loadingDetail) loadingDetail.textContent = (LABELS.waitHint || LABELS.analyzing || 'AIが分析しています…') + '（経過 ' + sec + ' 秒）';",
-    "      setStatus((LABELS.analyzing || 'AIが分析しています…') + '（' + sec + '秒）', 'is-busy');",
-    "    }",
-    "  };",
-    "  loadingTimer = setInterval(updateDetail, 1000);",
-    "}",
-    "",
-    "function focusApiKeyPanel() {",
-    "  if (apiKeyInput) {",
-    "    apiKeyInput.classList.add('needs-key');",
-    "    try { apiKeyInput.focus({ preventScroll: true }); } catch (e) { apiKeyInput.focus(); }",
-    "    apiKeyInput.scrollIntoView({ behavior: 'smooth', block: 'center' });",
-    "  }",
-    "}",
-    "",
-    "function showGateError(message) {",
-    "  if (loadingTimer) { clearInterval(loadingTimer); loadingTimer = null; }",
-    "  if (generateButton) {",
-    "    generateButton.disabled = false;",
-    "    generateButton.classList.remove('is-loading');",
-    "    generateButton.textContent = LABELS.needKeyButton || 'APIキーを入れて再実行';",
-    "  }",
-    "  if (probeButton) probeButton.disabled = false;",
-    "  setStatus(message, 'is-error');",
-    "  if (loadingBox) {",
-    "    loadingBox.hidden = false;",
-    "    loadingBox.classList.add('is-error');",
-    "    if (loadingTitle) loadingTitle.textContent = LABELS.needKeyTitle || 'APIキーが必要です';",
-    "    if (loadingDetail) loadingDetail.textContent = message;",
-    "  }",
-    "  if (resultBox) {",
-    "    resultBox.classList.remove('is-loading');",
-    "    resultBox.classList.add('is-error');",
-    "    resultBox.textContent = message + '\\n\\n' + (LABELS.needKeyHelp || '');",
-    "  }",
-    "  focusApiKeyPanel();",
-    "}",
-    "",
-    "function initTool() {",
-    "  try {",
-    "    clearLegacyKeyStorage();",
-    "    bindElements();",
-    "    hydrateConfig();",
-    "    wireChips();",
-    "    wireActions();",
-    "    wireCredentialBridge();",
-    "    const first = selectedGenre || (config.topicPresets || [])[0] || '';",
-    "    selectGenre(first, { fillTopic: true });",
-    "    if (bootTip) bootTip.hidden = true;",
-    "    setStatus('準備完了。テーマを選んでボタンを押してください（既定はお試し）。', '');",
-    "  } catch (error) {",
-    "    const message = '初期化エラー: ' + (error && error.message ? error.message : error);",
-    "    if (statusText) setStatus(message, 'is-error');",
-    "    else if (bootTip) bootTip.textContent = message;",
-    "    console.error(error);",
-    "  }",
-    "}",
-    "",
-    "function hydrateConfig() {",
-    "  if (providerSelect) providerSelect.value = memoryProvider || config.provider || 'gemini';",
-    "  if (apiKeyInput && !apiKeyInput.value && memoryApiKey) apiKeyInput.value = memoryApiKey;",
-    "  if (topicInput) {",
-    "    topicInput.value = expandTopic(selectedGenre || config.defaultGenre || '') || config.defaultTopic || '';",
-    "    topicInput.dataset.filledByChip = '1';",
-    "  }",
-    "}",
-    "",
-    "function expandTopic(chip) {",
-    "  const map = config.topicExpandMap || {};",
-    "  const key = String(chip || '').trim();",
-    "  if (!key) return '';",
-    "  if (map[key]) return map[key];",
-    "  if (config.toolMode === 'stock_picker') return key + 'テーマの注目株を半自動選定';",
-    "  if (config.toolMode === 'fx_auto') return key + 'の自動売買向けシグナル・ルール';",
-    "  if (config.toolMode === 'crypto_picker') return key + 'テーマの注目コインを半自動選定';",
-    "  return key + 'を半自動で進める';",
-    "}",
-    "",
-    "function selectGenre(genre, options) {",
-    "  options = options || {};",
-    "  const key = String(genre || '').trim();",
-    "  if (!key || !chipRow) return;",
-    "  selectedGenre = key;",
-    "  chipRow.querySelectorAll('.chip').forEach((chip) => {",
-    "    chip.classList.toggle('active', chip.getAttribute('data-topic') === key);",
-    "  });",
-    "  if (selectedThemeEl) selectedThemeEl.textContent = (LABELS.selectedTheme || '選択テーマ：') + key;",
-    "  if (options.fillTopic !== false && topicInput) {",
-    "    topicInput.value = expandTopic(key);",
-    "    topicInput.dataset.filledByChip = '1';",
-    "  }",
-    "}",
-    "",
-    "function wireChips() {",
-    "  if (!chipRow) return;",
-    "  chipRow.onclick = function (event) {",
-    "    const button = event.target.closest('[data-topic]');",
-    "    if (!button) return;",
-    "    event.preventDefault();",
-    "    selectGenre(button.getAttribute('data-topic') || '', { fillTopic: true });",
-    "    setStatus((LABELS.selectedTheme || '選択テーマ：') + selectedGenre, '');",
-    "  };",
-    "}",
-    "",
-    "function wireCredentialBridge() {",
-    "  window.addEventListener('message', function (event) {",
-    "    const data = event.data || {};",
-    "    if (data.type !== 'nene-tool-credentials') return;",
-    "    if (window.opener && event.source !== window.opener) return;",
-    "    memoryApiKey = String(data.apiKey || '').trim();",
-    "    memoryProvider = String(data.provider || '').trim();",
-    "    if (memoryProvider && providerSelect) providerSelect.value = memoryProvider;",
-    "    if (memoryApiKey && apiKeyInput) apiKeyInput.value = memoryApiKey;",
-    "    if (memoryApiKey) {",
-    "      setStatus(LABELS.keyReady || 'APIキーを受け取りました。', 'is-done');",
-    "      if (loadingBox && loadingBox.classList.contains('is-error')) {",
-    "        loadingBox.hidden = true;",
-    "        loadingBox.classList.remove('is-error');",
-    "      }",
-    "    }",
-    "  });",
-    "}",
-    "",
-    "function wireActions() {",
-    "  if (generateButton) {",
-    "    generateButton.onclick = function (event) {",
-    "      event.preventDefault();",
-    "      generateResult();",
-    "    };",
-    "  }",
-    "  const copyButton = qs('#copy-button');",
-    "  if (copyButton) {",
-    "    copyButton.onclick = function (event) {",
-    "      event.preventDefault();",
-    "      copyResult();",
-    "    };",
-    "  }",
-    "  if (probeButton) {",
-    "    probeButton.onclick = function (event) {",
-    "      event.preventDefault();",
-    "      runConnectionProbe();",
-    "    };",
-    "  }",
-    "  if (apiKeyInput) {",
-    "    apiKeyInput.addEventListener('input', function () {",
-    "      memoryApiKey = apiKeyInput.value.trim();",
-    "      apiKeyInput.classList.remove('needs-key');",
-    "      if (generateButton && !generateButton.disabled) generateButton.textContent = defaultGenerateLabel;",
-    "      if (memoryApiKey && loadingBox && loadingBox.classList.contains('is-error')) {",
-    "        loadingBox.hidden = true;",
-    "        loadingBox.classList.remove('is-error');",
-    "        setStatus('APIキーを確認しました。テーマを選んでボタンを押してください。', 'is-done');",
-    "      }",
-    "    });",
-    "  }",
-    "}",
-    "",
-    "function currentProvider() { return (providerSelect && providerSelect.value) || memoryProvider || config.provider || 'gemini'; }",
-    "function currentApiKey() { return ''; }",
-    `function currentGeminiModel() { return config.geminiModel || ${JSON.stringify(geminiModel)}; }`,
-    "function isDemoMode() {",
-    "  if (runModeSelect && runModeSelect.value === 'live') return false;",
-    "  if (runModeSelect && runModeSelect.value === 'demo') return true;",
-    "  if (config.publishSlug && String(config.publishSlug).indexOf('__NENE_') === -1) return false;",
-    "  return config.demoMode !== false;",
-    "}",
-    "",
-    "function persistKeyIfNeeded() { /* intentionally no-op: never persist API keys */ }",
-    "",
-    "function nowStamp() {",
-    "  try { return new Date().toLocaleString('ja-JP'); } catch (e) { return new Date().toISOString(); }",
-    "}",
-    "",
-    "function buildLocalDemoResult(topic) {",
-    "  const mode = config.toolMode || 'task_auto';",
-    "  const title = config.title || 'デモ';",
-    "  const theme = topic || selectedGenre || 'テーマ';",
-    "  if (mode === 'stock_picker' || mode === 'crypto_picker') {",
-    "    const unit = mode === 'stock_picker' ? '銘柄' : 'コイン';",
-    "    return [",
-    "      (LABELS.demoBadge || '【お試しモード】') + title,",
-    "      '※ダミーデータです。APIは呼び出していません。',",
-    "      '',",
-    "      '選択テーマ: ' + theme,",
-    "      '',",
-    "      '1. 今日のテーマ要約',",
-    "      'デモ用の注目テーマを表示しています。',",
-    "      '',",
-    "      '2. 注目' + unit + 'リスト',",
-    "      '【1】サンプル株式会社（9999）',",
-    "      '選定理由: お試し表示用のダミーです。',",
-    "      '関連ニュース: デモ発表（実在しません）',",
-    "      '発表日: 2026-07-01',",
-    "      '情報源: デモデータ',",
-    "      '注目度: 中',",
-    "      '主なリスク: 実データではないため投資判断に使わない',",
-    "      '',",
-    "      '3. 買う前チェック',",
-    "      '- 本番公開後に実データで再確認する',",
-    "      '',",
-    "      '4. 見送り条件',",
-    "      '- お試し結果だけで売買しない',",
-    "      '',",
-    "      '確認日時: ' + nowStamp(),",
-    "    ].join('\\n');",
-    "  }",
-    "  return [",
-    "    (LABELS.demoBadge || '【お試しモード】') + title,",
-    "    '※ダミー結果です。APIは呼び出していません。',",
-    "    'テーマ: ' + theme,",
-    "    '',",
-    "    '結論: プレビュー用のサンプル出力',",
-    "    '次の行動: NENE Studioで公開URLを発行して本番確認',",
-    "    '確認日時: ' + nowStamp(),",
-    "  ].join('\\n');",
-    "}",
-    "",
-    "async function runViaPublishedProxy(userInput) {",
-    "  const slug = String(config.publishSlug || '').trim();",
-    "  const apiBase = String(config.apiBase || '').replace(/\\/$/, '');",
-    "  if (!slug || slug.indexOf('__NENE_') === 0 || !apiBase || apiBase.indexOf('__NENE_') === 0) {",
-    "    const err = new Error(LABELS.needKeyHelp || '本番実行には公開URLが必要です。');",
-    "    err.code = 'NOT_PUBLISHED';",
-    "    throw err;",
-    "  }",
-    "  let response;",
-    "  try {",
-    "    response = await fetch(apiBase + '/public/tools/' + encodeURIComponent(slug) + '/run', {",
-    "      method: 'POST',",
-    "      headers: { 'Content-Type': 'application/json' },",
-    "      credentials: 'include',",
-    "      body: JSON.stringify({",
-    "        systemPrompt: SYSTEM_PROMPT,",
-    "        input: userInput,",
-    "        demo: false,",
-    "      }),",
-    "    });",
-    "  } catch (networkError) {",
-    "    const err = new Error(LABELS.errNetwork || 'ネットワークエラー');",
-    "    err.code = 'NETWORK_ERROR';",
-    "    throw err;",
-    "  }",
-    "  const data = await response.json().catch(function () { return {}; });",
-    "  if (!response.ok) {",
-    "    const code = (data && data.code) || 'AI_ERROR';",
-    "    let message = (data && data.error) || LABELS.errGeneric || '通信失敗';",
-    "    if (code === 'SERVER_API_KEY_MISSING' || code === 'API_KEY_ERROR') message = LABELS.errApiKey || message;",
-    "    else if (code === 'NETWORK_ERROR') message = LABELS.errNetwork || message;",
-    "    else if (code === 'EMPTY_RESPONSE') message = LABELS.errEmpty || message;",
-    "    else if (code === 'AI_ERROR') message = LABELS.errAi || message;",
-    "    const err = new Error(message);",
-    "    err.code = code;",
-    "    throw err;",
-    "  }",
-    "  if (!String(data.text || '').trim()) {",
-    "    const err = new Error(LABELS.errEmpty || '空レスポンス');",
-    "    err.code = 'EMPTY_RESPONSE';",
-    "    throw err;",
-    "  }",
-    "  return { text: data.text || '', sources: [], usage: data.usage || null };",
-    "}",
-    "",
-    "async function copyResult() {",
-    "  if (!resultBox || !resultBox.textContent) return;",
-    "  try {",
-    "    await navigator.clipboard.writeText(resultBox.textContent);",
-    "    setStatus(LABELS.copied, 'is-done');",
-    "  } catch (error) {",
-    "    setStatus(LABELS.error + (error.message || error), 'is-error');",
-    "  }",
-    "}",
-    "",
-    "async function generateResult() {",
-    "  if (generateButton && generateButton.disabled) return;",
-    "  if (generateButton) {",
-    "    generateButton.disabled = true;",
-    "    generateButton.textContent = LABELS.accepted || '処理を受け付けました。';",
-    "  }",
-    "  const topic = ((topicInput && topicInput.value) || expandTopic(selectedGenre) || selectedGenre || '').trim();",
-    "  const angle = ((angleInput && angleInput.value) || '').trim();",
-    "  const length = (lengthSelect && lengthSelect.value) || '3000';",
-    "  if (!topic && !selectedGenre) {",
-    "    if (generateButton) {",
-    "      generateButton.disabled = false;",
-    "      generateButton.textContent = defaultGenerateLabel;",
-    "    }",
-    "    setStatus(LABELS.statusNoInput, 'is-error');",
-    "    return;",
-    "  }",
-    "  if (!isDemoMode() && !(config.publishSlug && String(config.publishSlug).indexOf('__NENE_') === -1)) {",
-    "    showGateError(LABELS.statusNoKey || '本番には公開URLが必要です。');",
-    "    return;",
-    "  }",
-    "  setBusy(true);",
-    "  if (resultBox) {",
-    "    resultBox.classList.remove('is-error');",
-    "    resultBox.textContent = LABELS.accepted || '処理を受け付けました。';",
-    "  }",
-    "  // お試しでもローディングが一瞬で消えないよう、描画用の短い待ちを入れる",
-    "  await new Promise(function (resolve) { setTimeout(resolve, 450); });",
-    "  const modeHints = [];",
-    "  if (config.toolMode === 'stock_picker' || config.toolMode === 'crypto_picker') {",
-    "    modeHints.push('必須: 注目リストの各項目に「選定理由」「関連ニュース」「発表日」「情報源」を必ず付ける');",
-    "    modeHints.push('形式例: 【1】銘柄名 / 選定理由: ... / 関連ニュース: ... / 発表日: YYYY-MM-DD / 情報源: ... / 注目度: 高 / 主なリスク: ...');",
-    "    modeHints.push('銘柄名だけの箇条書きは禁止');",
-    "    modeHints.push('検索で根拠ニュースが取れない候補は出さない。候補が無ければ「本日の条件では有力候補なし」と書く');",
-    "  }",
-    "  if (config.toolMode === 'fx_auto') {",
-    "    modeHints.push('必須: エントリー条件・損切り・利確・見送り条件を含める');",
-    "  }",
-    "  const userInput = [",
-    "    (LABELS.promptGenre || 'テーマ:') + ' ' + (selectedGenre || config.category || ''),",
-    "    (LABELS.promptTopic || '内容:') + ' ' + (topic || expandTopic(selectedGenre) || selectedGenre),",
-    "    angle ? ((LABELS.promptAngle || '補足:') + ' ' + angle) : '',",
-    "    (LABELS.promptLength || '分量:') + ' ' + length,",
-    "    '成果物方針: テーマ選択だけで半自動。URLコピペ要求禁止',",
-    "    'ユーザーへの要求禁止: ニュースURLや長文のコピペを求めない。面倒な調査はツール側で行う',",
-    "    '可能なら公開されている最新動向を踏まえて書く。正確な価格が不明なら断定しない',",
-    "    '確認日時: ' + nowStamp(),",
-    "  ].concat(modeHints).concat([",
-    "    config.purpose ? ('ツール目的: ' + config.purpose) : '',",
-    "    config.market ? ('対象: ' + config.market) : '',",
-    "    config.toolMode ? ('toolMode: ' + config.toolMode) : '',",
-    "  ]).filter(Boolean).join('\\n');",
-    "  try {",
-    "    const result = isDemoMode()",
-    "      ? { text: buildLocalDemoResult(topic), sources: [] }",
-    "      : await runViaPublishedProxy(userInput);",
-    "    let text = result.text || LABELS.empty;",
-    "    if (result.sources && result.sources.length) {",
-    "      text += '\\n\\n---\\n' + (LABELS.sourcesTitle || '参照した情報源') + '\\n' + result.sources.map(function (s, i) {",
-    "        return (i + 1) + '. ' + (s.title || s.uri) + (s.uri ? '\\n   ' + s.uri : '');",
-    "      }).join('\\n');",
-    "      text += '\\nニュース確認日時: ' + nowStamp();",
-    "    }",
-    "    if (resultBox) resultBox.textContent = text;",
-    "    setStatus(LABELS.complete, 'is-done');",
-    "  } catch (error) {",
-    "    const code = error && error.code;",
-    "    let message = error && error.message ? error.message : String(error);",
-    "    if (code === 'NETWORK_ERROR') message = LABELS.errNetwork || message;",
-    "    else if (code === 'API_KEY_ERROR' || code === 'SERVER_API_KEY_MISSING') message = LABELS.errApiKey || message;",
-    "    else if (code === 'EMPTY_RESPONSE') message = LABELS.errEmpty || message;",
-    "    else if (code === 'AI_ERROR') message = LABELS.errAi || message;",
-    "    else if (!code) message = (LABELS.errGeneric || '通信失敗') + ' / ' + message;",
-    "    if (resultBox) {",
-    "      resultBox.classList.remove('is-loading');",
-    "      resultBox.classList.add('is-error');",
-    "      resultBox.textContent = message;",
-    "    }",
-    "    if (loadingBox) {",
-    "      loadingBox.hidden = false;",
-    "      loadingBox.classList.add('is-error');",
-    "      if (loadingTitle) loadingTitle.textContent = LABELS.error || 'エラー';",
-    "      if (loadingDetail) loadingDetail.textContent = message;",
-    "    }",
-    "    setStatus(message, 'is-error');",
-    "  } finally {",
-    "    setBusy(false);",
-    "  }",
-    "}",
-    "",
-    "async function runConnectionProbe() {",
-    "  probeButton.disabled = true;",
-    "  setStatus('接続テスト中...', 'is-busy');",
-    "  try {",
-    "    const lines = isDemoMode()",
-    "      ? [",
-    "          LABELS.probeOk || '実行経路：正常',",
-    "          LABELS.probeSearchNg || '検索機能：お試しでは未使用',",
-    "          'モード：お試し（ダミー）',",
-    "          '確認日時：' + nowStamp(),",
-    "        ]",
-    "      : [",
-    "          LABELS.probeOk || '実行経路：正常',",
-    "          LABELS.probeSearchOk || '検索機能：公開URLで利用',",
-    "          'モード：本番（サーバー代理）',",
-    "          'slug：' + (config.publishSlug || ''),",
-    "          '確認日時：' + nowStamp(),",
-    "        ];",
-    "    if (!isDemoMode()) {",
-    "      await runViaPublishedProxy('接続テスト。短くOKと返してください。');",
-    "    } else {",
-    "      buildLocalDemoResult(selectedGenre || 'demo');",
-    "    }",
-    "    if (probeResult) {",
-    "      probeResult.hidden = false;",
-    "      probeResult.textContent = lines.join('\\n');",
-    "    }",
-    "    setStatus(lines.join(' / '), 'is-done');",
-    "  } catch (error) {",
-    "    const lines = [",
-    "      LABELS.probeFail || '接続テスト失敗',",
-    "      String(error.message || error),",
-    "      '確認日時：' + nowStamp(),",
-    "    ];",
-    "    if (probeResult) {",
-    "      probeResult.hidden = false;",
-    "      probeResult.textContent = lines.join('\\n');",
-    "    }",
-    "    setStatus(LABELS.probeFail + ': ' + (error.message || error), 'is-error');",
-    "  } finally {",
-    "    probeButton.disabled = false;",
-    "  }",
-    "}",
-    "",
-    "// ブラウザから Gemini/OpenAI への直接通信は禁止。お試しはローカル、本番は runViaPublishedProxy のみ。",
-    "",
-    "window.__neneSelectTopic = function (button) {",
-    "  if (!button) return;",
-    "  selectGenre(button.getAttribute('data-topic') || '', { fillTopic: true });",
-    "  setStatus((LABELS.selectedTheme || '選択テーマ：') + selectedGenre, '');",
-    "};",
-    "window.__neneGenerate = function () { generateResult(); };",
-    "window.__neneCopy = function () { copyResult(); };",
-    "window.__neneProbe = function () { runConnectionProbe(); };",
-    "",
-    "if (document.readyState === 'loading') {",
-    "  document.addEventListener('DOMContentLoaded', initTool);",
-    "} else {",
-    "  initTool();",
-    "}",
-  ].join("\n");
+  // 共通ランタイムをそのまま埋め込む（ツールごとの差はレシピ＝データ側だけ）
+  const scriptJs = `(${neneToolRuntime.toString()})();`;
 
   // ZIP/HTMLとも index.html だけでJSが動くよう自己完結版にする（外部script依存をなくす）
   const packedIndexHtml = buildLaunchHtml({
@@ -4155,7 +4908,7 @@ function buildRunnableToolFiles(options = {}) {
     envContent,
     envExample,
     configJs,
-    mainPrompt: prompt,
+    mainPrompt: recipePrompt,
     nodes: workflowLines,
     sampleOutput,
     indexHtml: packedIndexHtml,
@@ -4163,173 +4916,6 @@ function buildRunnableToolFiles(options = {}) {
     scriptJs,
     hasApiKey,
   };
-}
-
-function buildRunnablePrompt() {
-  const proposal = getSelectedProposal();
-  const summary = getSummary();
-  const category = getSelectedCategory();
-  const mode = getToolMode();
-  const isEnglish = state.language === "en";
-  const commonBan = isEnglish
-    ? "Do NOT ask the user to paste news URLs or long source text. Theme/chip selection is enough."
-    : "ユーザーにニュースURLや長文コピペを絶対に要求しない。テーマ選択だけで完結させる。";
-  const investmentBan = isEnglish
-    ? "This is not investment advice. No profit guarantees. No live order placement. Ask users to verify prices before acting."
-    : "投資助言・利益保証・実注文の執行はしない。候補と理由を出し、最終判断と注文はユーザー自身。価格は公開時点で要確認と書く。";
-
-  if (mode === "stock_picker" || mode === "crypto_picker") {
-    const unit = mode === "stock_picker"
-      ? (isEnglish ? "stocks" : "銘柄")
-      : (isEnglish ? "coins" : "コイン");
-    if (isEnglish) {
-      return [
-        `You are a semi-automatic ${unit} picker for "${proposal.title}".`,
-        `Purpose: ${summary.purpose}`,
-        "Audience: beginners who want picks without researching news themselves.",
-        "",
-        commonBan,
-        "Use recent public information via search grounding. Do not invent stocks without news evidence.",
-        "Prefer official disclosures over blogs/SNS.",
-        "",
-        "Output in Japanese with this structure:",
-        "1. One-line summary of today's theme",
-        `2. ${unit} shortlist (0-5 items). Every item MUST include selection reason, related news, date, and source.`,
-        "Format each item as:",
-        "[1] Name (ticker if known)",
-        "選定理由: why this is notable now (1-3 sentences)",
-        "関連ニュース: what was announced/reported",
-        "発表日: YYYY-MM-DD (or 不明)",
-        "情報源: publisher / official source",
-        "注目度: 高 / 中 / 低",
-        "主なリスク: one sentence",
-        "3. Buy-before checklist (3-5 items)",
-        "4. Pass / watch criteria",
-        "",
-        "If grounding finds no solid news, write 本日の条件では有力候補なし.",
-        "Do not output a name-only list without 選定理由/日付/情報源.",
-        investmentBan,
-      ].join("\n");
-    }
-    return [
-      `あなたは「${proposal.title}」専用の半自動${unit}選定アシスタントです。`,
-      `目的: ${summary.purpose}`,
-      "想定ユーザー: ニュースを自分で選べない／調べたくない人。テーマを押すだけで候補が欲しい人。",
-      "",
-      commonBan,
-      "Google検索（グラウンディング）で直近ニュースを確認してから銘柄を選ぶ。検索根拠がない候補は出さない。",
-      "情報源の優先順位: 1)適時開示・決算 2)官公庁 3)企業公式 4)取引所 5)大手報道 6)その他。掲示板・SNSだけは不可。",
-      "正確な株価・時価総額が不明なら断定しない。",
-      "",
-      "出力構成（日本語・この見出し名を守る）:",
-      "1. 今日のテーマ要約（1〜2行）と、参照した主要ニュースの件数",
-      `2. 注目${unit}リスト（0〜5件。無理に埋めない。根拠が無ければ「本日の条件では有力候補なし」）`,
-      "各件は次の形式で書く:",
-      "【1】銘柄名（コードが分かるなら併記）",
-      "選定理由: （なぜ今このテーマで注目か。1〜3文）",
-      "関連ニュース: （何が発表／報道されたか）",
-      "発表日: YYYY-MM-DD（不明なら不明と書く）",
-      "情報源: （媒体名。可能なら公式発表を優先）",
-      "注目度: 高 / 中 / 低",
-      "主なリスク: （1文。織り込み・急騰含む）",
-      "3. 買う前チェック（3〜5項目）",
-      "4. 見送り条件（目立たせて書く）",
-      "",
-      "禁止: 銘柄名だけのリスト。選定理由・日付・情報源のない候補。一般知識だけの銘柄並べ。",
-      investmentBan,
-    ].join("\n");
-  }
-
-  if (mode === "fx_auto") {
-    if (isEnglish) {
-      return [
-        `You are an FX auto-trading rule/signal builder for "${proposal.title}".`,
-        `Purpose: ${summary.purpose}`,
-        "Audience: users who want automated trading rules, not news summaries.",
-        "",
-        commonBan,
-        "Output Japanese trading rules they can feed into an EA/bot or follow semi-automatically.",
-        "Do NOT connect to brokers or place live orders from this tool.",
-        "",
-        "Required structure:",
-        "1. Today's bias (buy/sell/wait) with reason",
-        "2. Entry conditions (checklist)",
-        "3. Stop-loss / take-profit rules",
-        "4. Position size thinking (risk %)",
-        "5. Invalidation / do-not-trade conditions",
-        "6. EA-style rule summary (if-then)",
-        "",
-        investmentBan,
-      ].join("\n");
-    }
-    return [
-      `あなたは「${proposal.title}」専用のFX自動売買ルール／シグナル生成アシスタントです。`,
-      `目的: ${summary.purpose}`,
-      "想定ユーザー: ニュース要約より、自動・半自動で売買判断したい人。",
-      "",
-      commonBan,
-      "EAや自動売買に落とし込めるルール／シグナルを日本語で出す。このツール自体はブローカー接続・実注文をしない。",
-      "",
-      "必須構成:",
-      "1. 今日の方針（買い／売り／見送り）と理由",
-      "2. エントリー条件（チェックリスト）",
-      "3. 損切り／利確ルール",
-      "4. ロット（リスク％）の考え方",
-      "5. 無効化条件（トレードしない条件）",
-      "6. EA向け if-then ルール要約",
-      "",
-      investmentBan,
-    ].join("\n");
-  }
-
-  if (mode === "news_digest") {
-    return [
-      `あなたは「${proposal.title}」専用の注目ニュース自動整理アシスタントです。`,
-      `目的: ${summary.purpose}`,
-      "",
-      commonBan,
-      "分野テーマだけから、今押さえるべきトピックを半自動で出す。",
-      "",
-      "必須構成:",
-      "1. 今日の注目トップ3",
-      "2. 各トピックの要点となぜ今か",
-      "3. 初心者が次にやること",
-      "4. 深掘り不要なノイズ",
-    ].join("\n");
-  }
-
-  if (mode === "content_auto") {
-    return [
-      `あなたは「${proposal.title}」専用のコンテンツ半自動作成アシスタントです。`,
-      `目的: ${summary.purpose}`,
-      `想定読者: ${summary.user}`,
-      "",
-      commonBan,
-      "テーマ選択だけで公開・投稿できる下書きを作る。SEO記事なら約3000字、SNSならすぐ使える文面。",
-      "",
-      "必須:",
-      "1. すぐ使えるタイトル／見出し",
-      "2. 本文または投稿文",
-      "3. 使い方（どこに貼るか）",
-      "4. 注意点",
-    ].join("\n");
-  }
-
-  return [
-    `あなたは「${proposal.title}」専用の半自動アシスタントです。`,
-    `目的: ${summary.purpose}`,
-    `カテゴリ: ${category.name}`,
-    "",
-    commonBan,
-    "面倒な調べもの・下書き・整理を自動化し、ユーザーは結果を確認して使うだけにする。",
-    "",
-    "必須構成:",
-    "1. 結論（すぐ使える結果）",
-    "2. 理由または根拠",
-    "3. 次の行動チェック",
-    "4. 注意点",
-    category.isInvestment ? investmentBan : "",
-  ].filter(Boolean).join("\n");
 }
 
 function getExportText(format) {
@@ -4546,7 +5132,57 @@ ${blueprintText}`,
 }
 
 function adsCurrentlyEnabled() {
-  return window.NENE_ADS?.enabled !== false;
+  return window.NENE_ADS?.enabled !== false && !state.auth.user?.isAdFree;
+}
+
+function fillSponsorLabel(labelEl) {
+  if (!labelEl) return;
+  const name = window.NeneAds?.getLastBannerName?.() || "";
+  const base = state.language === "en" ? "Sponsored" : "スポンサー";
+  labelEl.textContent = name ? `${base}（${name}）` : base;
+}
+
+function loadExportSponsor() {
+  // 広告は「公開URLを発行する」を押したあとの全画面にだけ出す
+  const wrap = $("#export-sponsor");
+  if (wrap) wrap.hidden = true;
+}
+
+function startPublishFromUi() {
+  if (!state.auth.authenticated && !state.auth.token) {
+    state.status = "公開にはログインが必要です。ログイン後にもう一度「公開URLを発行する」を押してください。";
+    state.publishError = "公開にはログインが必要です。";
+    renderExportStatusOnly();
+    activateScreen("login");
+    return;
+  }
+  const visibility = getSelectedPublishVisibility();
+  const password = String($("#publish-password")?.value || "");
+  if (visibility === "password" && password.length < 4) {
+    state.status = "パスワード保護には4文字以上のパスワードが必要です。";
+    state.publishError = state.status;
+    renderExportStatusOnly();
+    return;
+  }
+  if (!adsCurrentlyEnabled()) {
+    publishCreatedTool({ openAfter: true, autoTest: true });
+    return;
+  }
+  // 広告を見ているあいだに公開URLを発行し、ボタンでツールを開く（ポップアップ止めを防ぐ）
+  const publishPromise = publishCreatedTool({ openAfter: false, autoTest: true });
+  showAdThenLaunch(publishPromise);
+}
+
+function renderApiKeyNotice() {
+  const notice = $("#api-key-notice");
+  if (!notice) return;
+  const ai = state.serverStatus?.ai;
+  const ready = Boolean(ai?.gemini || ai?.openai);
+  notice.hidden = false;
+  notice.classList.toggle("is-warning", !ready);
+  notice.textContent = ready
+    ? ".env のキーは、ログインした作成者が公開URLを開いたときだけ使います。他人が開いても運営のキーは使わず、見本が出ます。"
+    : "自分の確認用に動かすには、.env に GEMINI_API_KEY を入れてサーバーを再起動してください。他人が公開URLを開いても、運営のキーは使いません。";
 }
 
 async function copyExport() {
@@ -4600,27 +5236,39 @@ async function runOutput() {
   renderAll();
 }
 
+function openAdOverlay() {
+  if (adOverlay && !adOverlay.hidden) return false;
+  const waitSeconds = window.NeneAds?.getWaitSeconds?.() ?? 5;
+  const countdown = $("#ad-countdown");
+  const countdownNumber = $("#ad-countdown-number");
+  adOverlay.hidden = false;
+  if (adContinue) {
+    adContinue.hidden = true;
+    adContinue.disabled = true;
+    adContinue.textContent = state.language === "en" ? "continue" : "続ける";
+  }
+  const launchBtn = $("#ad-launch");
+  if (launchBtn) launchBtn.hidden = true;
+  if (countdown) countdown.hidden = false;
+  if (countdownNumber) countdownNumber.textContent = String(Math.max(0, waitSeconds));
+  fillSponsorLabel($("#ad-label"));
+  const adSlot = $("#ad-slot");
+  if (adSlot && window.NeneAds?.loadSlot) {
+    window.NeneAds.loadSlot(adSlot).then(() => fillSponsorLabel($("#ad-label"))).catch(() => {});
+  }
+  return waitSeconds;
+}
+
 function showAdBeforeOutput(callback) {
   if (!adsCurrentlyEnabled()) {
     callback();
     return;
   }
-  const waitSeconds = window.NeneAds?.getWaitSeconds?.() ?? 5;
+  const waitSeconds = openAdOverlay();
+  if (waitSeconds === false) return;
   let seconds = waitSeconds;
   const countdown = $("#ad-countdown");
   const countdownNumber = $("#ad-countdown-number");
-  adOverlay.hidden = false;
-  adContinue.disabled = true;
-  adContinue.hidden = true;
-  adContinue.textContent = state.language === "en" ? "continue" : "続ける";
-  if (countdown) countdown.hidden = false;
-  if (countdownNumber) countdownNumber.textContent = String(Math.max(0, seconds));
-
-  const adSlot = $("#ad-slot");
-  if (adSlot && window.NeneAds?.loadSlot) {
-    window.NeneAds.loadSlot(adSlot).catch(() => {});
-  }
-
   const timer = window.setInterval(() => {
     seconds -= 1;
     if (countdownNumber) countdownNumber.textContent = String(Math.max(0, seconds));
@@ -4631,13 +5279,91 @@ function showAdBeforeOutput(callback) {
       adContinue.disabled = false;
     }
   }, 1000);
-
   adContinue.onclick = () => {
     adOverlay.hidden = true;
     adContinue.onclick = null;
     window.clearInterval(timer);
     callback();
   };
+}
+
+function showAdThenLaunch(publishPromise) {
+  const waitSeconds = openAdOverlay();
+  if (waitSeconds === false) return;
+  let seconds = waitSeconds;
+  let readyUrl = "";
+  let failed = "";
+  const countdown = $("#ad-countdown");
+  const countdownNumber = $("#ad-countdown-number");
+  const launchBtn = $("#ad-launch");
+
+  const bindLaunchLink = () => {
+    if (!launchBtn || !readyUrl) return;
+    launchBtn.href = readyUrl;
+    launchBtn.removeAttribute("aria-disabled");
+    if (isPhoneViewport()) launchBtn.removeAttribute("target");
+    else {
+      launchBtn.target = "_blank";
+      launchBtn.rel = "noopener";
+    }
+  };
+
+  const refreshLaunch = () => {
+    if (seconds > 0) return;
+    if (countdown) countdown.hidden = true;
+    if (adContinue) adContinue.hidden = true;
+    if (!launchBtn) return;
+    if (failed) {
+      launchBtn.hidden = false;
+      launchBtn.removeAttribute("aria-disabled");
+      launchBtn.removeAttribute("href");
+      launchBtn.textContent = state.language === "en" ? "Close" : "閉じる";
+      return;
+    }
+    if (readyUrl) {
+      launchBtn.hidden = false;
+      launchBtn.textContent = state.language === "en" ? "Open the live URL" : "本番URLを開く";
+      bindLaunchLink();
+      return;
+    }
+    launchBtn.hidden = false;
+    launchBtn.setAttribute("aria-disabled", "true");
+    launchBtn.removeAttribute("href");
+    launchBtn.textContent = state.language === "en" ? "Preparing…" : "発行しています…";
+  };
+
+  Promise.resolve(publishPromise).then(() => {
+    readyUrl = toPhoneReachableUrl(state.lastPublish?.url || "");
+    failed = state.publishError || (readyUrl ? "" : "公開URLを発行できませんでした。");
+    refreshLaunch();
+  }).catch((error) => {
+    failed = error?.message || "公開に失敗しました。";
+    refreshLaunch();
+  });
+
+  const timer = window.setInterval(() => {
+    seconds -= 1;
+    if (countdownNumber) countdownNumber.textContent = String(Math.max(0, seconds));
+    if (seconds <= 0) {
+      window.clearInterval(timer);
+      refreshLaunch();
+    }
+  }, 1000);
+
+  if (launchBtn) {
+    launchBtn.onclick = (event) => {
+      window.clearInterval(timer);
+      if (!readyUrl) {
+        event.preventDefault();
+        adOverlay.hidden = true;
+        launchBtn.onclick = null;
+        return;
+      }
+      // スマホは <a href> のまま同じ画面で開く（別タブは止まりやすい）
+      if (isPhoneViewport()) return;
+      adOverlay.hidden = true;
+    };
+  }
 }
 
 async function saveCreatedTool() {
@@ -4693,14 +5419,11 @@ function renderExportStatusOnly() {
   const publishMeta = $("#publish-meta");
   const shareActions = $("#publish-share-actions");
   if (state.lastPublish?.url) {
-    const mainUrl = state.lastPublish.url;
-    const toolsUrl = state.lastPublish.toolsUrl || "";
+    const mainUrl = toPhoneReachableUrl(state.lastPublish.url);
     if (publishUrl) {
       publishUrl.innerHTML = [
-        `<a href="${escapeAttribute(mainUrl)}" target="_blank" rel="noopener">${escapeHtml(mainUrl)}</a>`,
-        toolsUrl && toolsUrl !== mainUrl
-          ? `<br><small>別URL: ${escapeHtml(toolsUrl)}</small>`
-          : "",
+        `<a href="${escapeAttribute(mainUrl)}">${escapeHtml(mainUrl)}</a>`,
+        `<br><small>同じWi-Fiのスマホでも、このアドレスを開けます。</small>`,
       ].filter(Boolean).join("");
     }
     if (publishQr) {
@@ -4712,6 +5435,20 @@ function renderExportStatusOnly() {
     if (openLink) {
       openLink.hidden = false;
       openLink.href = mainUrl;
+      openLink.textContent = state.language === "en" ? "Open the live URL" : "本番URLを開く";
+      if (isPhoneViewport()) openLink.removeAttribute("target");
+      else {
+        openLink.target = "_blank";
+        openLink.rel = "noopener";
+      }
+    }
+    const downloadActions = $("#publish-download-actions");
+    if (downloadActions) downloadActions.hidden = false;
+    const downloadNote = $("#download-note");
+    if (downloadNote) {
+      downloadNote.textContent = state.lastPublish.visibility === "password"
+        ? "このツールはパスワード保護のため、保存したファイルからは実行できません。公開URLから開いてください。"
+        : "保存したHTMLは、ダブルクリックで開けばそのまま使えます（インターネット接続が必要です）。";
     }
     if (publishMeta) {
       const visLabel = {
@@ -4724,6 +5461,8 @@ function renderExportStatusOnly() {
   } else if (state.publishError && publishUrl) {
     publishUrl.textContent = state.publishError;
     if (shareActions) shareActions.hidden = true;
+    const downloadActions = $("#publish-download-actions");
+    if (downloadActions) downloadActions.hidden = true;
     if (publishQr) publishQr.hidden = true;
     const openLink = $("#open-publish-url");
     if (openLink) openLink.hidden = true;
@@ -4774,7 +5513,7 @@ function runPublishSafetyCheck() {
 }
 
 async function copyPublishUrl() {
-  const url = state.lastPublish?.url;
+  const url = toPhoneReachableUrl(state.lastPublish?.url);
   if (!url) {
     state.status = "まだ公開URLがありません。";
     renderExportStatusOnly();
@@ -4790,7 +5529,7 @@ async function copyPublishUrl() {
 }
 
 async function sharePublishUrl() {
-  const url = state.lastPublish?.url;
+  const url = toPhoneReachableUrl(state.lastPublish?.url);
   const title = state.lastPublish?.title || getSelectedProposal()?.title || "NENE Tool";
   if (!url) {
     state.status = "まだ公開URLがありません。";
@@ -4825,12 +5564,13 @@ async function runCreatedToolActionTest() {
     push(/demoMode/.test(files.configJs), "お試しモード設定がある");
     push(/apiKey:\s*""/.test(files.configJs), "HTMLにAPIキーを埋め込んでいない");
     push(/noindex,nofollow/.test(files.indexHtml), "検索除外メタがある");
-    push(/処理を受け付けました|Request accepted/.test(files.scriptJs), "受付ローディング文言がある");
-    push(/通常より時間が掛かっています|Taking longer than usual/.test(files.scriptJs), "5秒超ローディング文言がある");
-    push(/errNetwork|NETWORK_ERROR/.test(files.scriptJs), "ネットワークエラー表示がある");
-    push(/errApiKey|API_KEY_ERROR/.test(files.scriptJs), "APIキーエラー表示がある");
-    push(/errEmpty|EMPTY_RESPONSE/.test(files.scriptJs), "空レスポンス表示がある");
-    push(/errAi|AI_ERROR/.test(files.scriptJs), "AIエラー表示がある");
+    push(/recipe:/.test(files.configJs), "レシピが埋め込まれている");
+    push(/data-axis=/.test(files.indexHtml), "選択エリアがある");
+    push(/data-do="zip"/.test(files.indexHtml), "保存ボタンがある");
+    push(/data-view="table"/.test(files.indexHtml), "結果の見せ方を切り替えられる");
+    push(!/読み込み中/.test(files.indexHtml), "起動時に「読み込み中」を出さない");
+    push(/通信に失敗しました/.test(files.scriptJs), "通信エラー表示がある");
+    push(/本番実行には公開URLが必要/.test(files.scriptJs), "未公開時の案内がある");
     push(/viewport/.test(files.indexHtml), "レスポンシブ用viewportがある");
 
     const iframe = document.createElement("iframe");
@@ -4851,48 +5591,47 @@ async function runCreatedToolActionTest() {
     if (!win || !doc) throw new Error("プレビューDOMを取得できません");
     push(true, "ページが開く（スマホ幅390px）");
 
-    const chip = doc.querySelector("[data-topic]");
-    push(!!chip, "テーマボタンがある");
-    if (chip) {
-      chip.click();
+    // JSが動く前から画面が完成しているか（起動を待たせないため）
+    push(doc.querySelectorAll(".chip").length > 0, "最初からボタンが並んでいる");
+    push((doc.querySelector("#picked")?.textContent || "").trim().length > 0, "選択内容が最初から出ている");
+
+    const chips = Array.from(doc.querySelectorAll('.row[data-axis] .chip'));
+    const target = chips.find((item) => item.getAttribute("aria-pressed") !== "true") || chips[0];
+    push(!!target, "選択ボタンがある");
+    if (target) {
+      target.click();
       await new Promise((r) => setTimeout(r, 80));
-      const selected = doc.querySelector("#selected-theme")?.textContent || "";
-      push(selected.includes(chip.getAttribute("data-topic") || ""), "テーマボタンで選択テーマが変わる");
+      const picked = doc.querySelector("#picked")?.textContent || "";
+      push(picked.includes(target.getAttribute("data-value") || ""), "ボタンを押すと選択が変わる");
     }
 
-    const angle = doc.querySelector("#tool-angle");
-    if (angle) {
-      angle.value = "テスト入力";
-      push(angle.value === "テスト入力", "入力できる");
-    } else {
-      push(true, "入力欄（任意）は省略可");
+    const pencil = doc.querySelector(".row[data-axis] .pencil");
+    push(!!pencil, "「自分で書く」がある");
+    if (pencil) {
+      pencil.click();
+      await new Promise((r) => setTimeout(r, 60));
+      const freeInput = doc.querySelector(".row[data-axis] .free input");
+      if (freeInput) {
+        freeInput.value = "テスト入力";
+        freeInput.dispatchEvent(new win.Event("input", { bubbles: true }));
+        await new Promise((r) => setTimeout(r, 60));
+        const picked = doc.querySelector("#picked")?.textContent || "";
+        push(picked.includes("テスト入力"), "自由入力が選択より優先される");
+      } else {
+        push(false, "自由入力欄が開く");
+      }
     }
 
     const generate = doc.querySelector("#generate-button");
     push(!!generate, "ボタンを押せる（実行ボタンあり）");
     if (generate) {
-      // お試しモードを明示（UI選択のずれで本番扱いになるのを防ぐ）
-      const runMode = doc.querySelector("#run-mode");
-      if (runMode) runMode.value = "demo";
-
       let sawLoading = false;
       const loadingObserver = new MutationObserver(() => {
-        const box = doc.querySelector("#loading-box");
-        const title = doc.querySelector("#loading-title")?.textContent || "";
-        const detail = doc.querySelector("#loading-detail")?.textContent || "";
-        const status = doc.querySelector("#status")?.textContent || "";
-        const buttonText = generate.textContent || "";
-        const blob = `${title}${detail}${status}${buttonText}`;
-        if ((box && !box.hidden) || /処理を受け付け|AIが分析|受け付けました|Request accepted|analyzing|選定中|処理中/i.test(blob)) {
-          sawLoading = true;
-        }
+        const skeleton = doc.querySelector("#skeleton");
+        const status = doc.querySelector("#status");
+        if ((skeleton && !skeleton.hidden) || (status && !status.hidden)) sawLoading = true;
       });
-      loadingObserver.observe(doc.body, {
-        subtree: true,
-        childList: true,
-        attributes: true,
-        characterData: true,
-      });
+      loadingObserver.observe(doc.body, { subtree: true, childList: true, attributes: true, characterData: true });
 
       if (typeof win.__neneGenerate === "function") {
         win.__neneGenerate();
@@ -4900,32 +5639,40 @@ async function runCreatedToolActionTest() {
         generate.click();
       }
 
-      // ローディング検知用に少し待つ（生成側も約450ms待つ）
-      await new Promise((r) => setTimeout(r, 200));
-      const midBox = doc.querySelector("#loading-box");
-      const midText = `${doc.querySelector("#loading-title")?.textContent || ""}${doc.querySelector("#loading-detail")?.textContent || ""}${doc.querySelector("#status")?.textContent || ""}${generate.textContent || ""}`;
-      if ((midBox && !midBox.hidden) || /処理を受け付け|AIが分析|受け付けました|Request accepted|analyzing|選定中|処理中/i.test(midText)) {
-        sawLoading = true;
-      }
+      await new Promise((r) => setTimeout(r, 120));
+      const skeletonNow = doc.querySelector("#skeleton");
+      if (skeletonNow && !skeletonNow.hidden) sawLoading = true;
 
       let resultText = "";
-      for (let i = 0; i < 20; i += 1) {
+      let itemCount = 0;
+      for (let i = 0; i < 30; i += 1) {
         await new Promise((r) => setTimeout(r, 100));
-        resultText = doc.querySelector("#result")?.textContent || "";
-        if (/お試し|ダミー|デモ|サンプル|DEMO/i.test(resultText) && resultText.length > 40) break;
+        const box = doc.querySelector("#result");
+        itemCount = doc.querySelectorAll("#result .item").length;
+        resultText = box && !box.hidden ? box.textContent || "" : "";
+        if (itemCount > 0 && resultText.length > 40) break;
       }
       loadingObserver.disconnect();
 
-      push(sawLoading, "ローディングが表示される");
-      push(/お試し|ダミー|デモ|サンプル|DEMO/i.test(resultText), "結果が表示される");
+      push(sawLoading, "待っている間の表示が出る");
+      push(itemCount > 0, "結果が項目ごとに表示される");
       push(resultText.length > 40, "結果テキストが空でない");
+      push(!doc.querySelector("#actions")?.hidden, "保存・コピーのボタンが出る");
+
+      const tableButton = doc.querySelector('.vw[data-view="table"]');
+      if (tableButton) {
+        tableButton.click();
+        await new Promise((r) => setTimeout(r, 80));
+        push(doc.querySelectorAll("#result table tbody tr").length > 0, "表に切り替えられる");
+        doc.querySelector('.vw[data-view="card"]')?.click();
+      }
     }
 
     // PC幅でも崩れない簡易チェック
     iframe.style.width = "1280px";
     iframe.style.height = "800px";
     await new Promise((r) => setTimeout(r, 80));
-    const shell = doc.querySelector(".tool-shell");
+    const shell = doc.querySelector(".wrap");
     const shellWidth = shell?.getBoundingClientRect?.().width || 0;
     push(shellWidth > 200, "PC幅でもレイアウトが存在する");
     push(!!doc.querySelector("h1"), "見出しが表示される");
@@ -4954,10 +5701,72 @@ async function runCreatedToolActionTest() {
   renderAll();
 }
 
-function downloadCreatedToolZip() {
-  state.status = "ZIPは廃止しました。代わりに公開URLを発行します…";
+/**
+ * 保存用のHTMLを作る。
+ * ダブルクリックで開いても動くよう、公開先のURLを絶対パスで埋め込む。
+ */
+function buildDownloadableToolHtml() {
+  const publish = state.lastPublish;
+  if (!publish?.slug) return null;
+  const files = buildRunnableToolFiles({ forceDemo: false, forPublish: true });
+  const apiOrigin = new URL(publish.url, window.location.href).origin;
+  return files.indexHtml
+    .replaceAll("__NENE_SLUG__", publish.slug)
+    .replaceAll("__NENE_API_BASE__", `${apiOrigin}/api`)
+    .replaceAll("__NENE_DEMO_MODE__", "false");
+}
+
+function toSafeFileName(value) {
+  return String(value || "作成ツール").replace(/[\\/:*?"<>|]/g, "_").slice(0, 40);
+}
+
+function requirePublishedTool() {
+  if (state.lastPublish?.slug) return true;
+  state.status = "先に「公開URLを発行する」を押してください。発行前のファイルは本物のAIにつながりません。";
   renderExportStatusOnly();
-  publishCreatedTool({ openAfter: true, autoTest: true });
+  return false;
+}
+
+function downloadCreatedToolHtml() {
+  if (!requirePublishedTool()) return;
+  const html = buildDownloadableToolHtml();
+  if (!html) return;
+  const name = toSafeFileName(state.lastPublish.title);
+  downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), `${name}.html`);
+  state.status = `${name}.html を保存しました。ダブルクリックで開けます。`;
+  renderExportStatusOnly();
+}
+
+function downloadCreatedToolZip() {
+  if (!requirePublishedTool()) return;
+  const html = buildDownloadableToolHtml();
+  if (!html) return;
+  const name = toSafeFileName(state.lastPublish.title);
+  const readme = [
+    name,
+    "",
+    "【使い方】",
+    "1. tool.html をダブルクリックして開きます。",
+    "2. ボタンを選んで、実行ボタンを押します。",
+    "3. 結果が出たら、コピー・保存・印刷ができます。",
+    "",
+    "【公開URL】",
+    state.lastPublish.url,
+    "スマホで使うときは、こちらのURLを開いてください。",
+    "",
+    "【注意】",
+    "・インターネット接続が必要です。",
+    "・本番AIは、作成者がログインした状態で公開URLを開いたときだけ動きます。",
+    "・このファイルをダブルクリックした場合や、他人が開いた場合は見本が出ます（運営のキーは使いません）。",
+    "・APIキーはこのファイルに含まれていません。",
+    `・保存日時: ${new Date().toLocaleString("ja-JP")}`,
+  ].join("\n");
+  downloadBlob(createZipBlob({
+    "tool.html": html,
+    "README.txt": readme,
+  }), `${name}.zip`);
+  state.status = `${name}.zip を保存しました（ツール本体と使い方）。`;
+  renderExportStatusOnly();
 }
 
 async function publishCreatedTool(options = {}) {
@@ -5035,29 +5844,30 @@ async function publishCreatedTool(options = {}) {
     if (!data?.url) {
       throw new Error("サーバーから公開URLが返りませんでした。");
     }
+    const liveUrl = toPhoneReachableUrl(data.url);
     state.lastPublish = {
       ...data,
       title: proposal.title,
-      url: data.url,
-      toolsUrl: data.toolsUrl || data.url,
-      qrUrl: data.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(data.url)}`,
+      url: liveUrl,
+      toolsUrl: data.toolsUrl || liveUrl,
+      qrUrl: data.qrUrl || `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(liveUrl)}`,
+      shareText: `${proposal.title}\n${liveUrl}`,
     };
     state.publishError = "";
-    state.status = `公開しました。すぐ使えます: ${data.url}`;
+    state.status = `公開しました。すぐ使えます: ${liveUrl}`;
     state.createdOutput = {
       title: proposal.title,
       format: "publish",
-      text: data.url,
+      text: liveUrl,
     };
+    if (data.slug && !state.agentSelectedSlugs.includes(data.slug)) {
+      state.agentSelectedSlugs = [data.slug, ...state.agentSelectedSlugs];
+    }
+    loadPublishedToolsShelf({ force: true }).catch(() => {});
     renderExportStatusOnly();
     renderAll();
-    // ポップアップブロックされても画面上にURLは残す
-    if (openAfter && data.url) {
-      const opened = window.open(data.url, "_blank", "noopener");
-      if (!opened) {
-        state.status = `公開しました（別タブがブロックされたため、下のURLを開いてください）: ${data.url}`;
-        renderExportStatusOnly();
-      }
+    if (openAfter && liveUrl) {
+      openPublishedTool(liveUrl);
     }
   } catch (error) {
     const message = error.message || String(error);
@@ -5094,7 +5904,9 @@ function buildLaunchHtml(files) {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="robots" content="noindex,nofollow" />
+  <meta name="theme-color" content="#10457e" />
   <title>${title}</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%2310457e'/><path d='M18 42l9-18 9 12 5-8 5 14z' fill='%23fff'/></svg>" />
   <style>${styleCss}</style>
 </head>
 <body>
@@ -5140,13 +5952,6 @@ function downloadGeneratedFile(text, format, title) {
 }
 
 function downloadBlob(blob, fileName) {
-  // ZIP成果物は廃止。誤ってZIP経路に入っても公開URLへ誘導する
-  if (/\.zip$/i.test(String(fileName || ""))) {
-    state.status = "ZIPダウンロードは廃止しました。公開URLを発行します…";
-    renderExportStatusOnly?.();
-    publishCreatedTool({ openAfter: true, autoTest: true });
-    return;
-  }
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
@@ -5424,30 +6229,155 @@ function loadSavedBlueprint(index) {
   activateScreen("blueprint");
 }
 
-function getAgentIdeas() {
-  const tools = state.savedBlueprints;
-  if (tools.length === 0) {
+async function loadPublishedToolsShelf(options = {}) {
+  if (!state.auth.token && !state.auth.authenticated) {
+    state.publishedToolsShelf = [];
     return [];
   }
-  const toolNames = tools.map((tool) => tool.title);
+  try {
+    const data = await apiRequest("/published", { method: "GET" });
+    const tools = Array.isArray(data.tools) ? data.tools : [];
+    state.publishedToolsShelf = tools;
+    const valid = new Set(tools.map((tool) => tool.slug));
+    state.agentSelectedSlugs = state.agentSelectedSlugs.filter((slug) => valid.has(slug));
+    if (options.force || (state.agentSelectedSlugs.length === 0 && tools.length > 0)) {
+      // 初回はすべて選択（発行順＝新しいもの優先の棚から、実行は選択順）
+      if (state.agentSelectedSlugs.length === 0) {
+        state.agentSelectedSlugs = tools.map((tool) => tool.slug);
+      }
+    }
+    return tools;
+  } catch (error) {
+    if (options.force) {
+      agentStatus.textContent = `棚の取得に失敗: ${error.message || error}`;
+    }
+    return state.publishedToolsShelf || [];
+  }
+}
+
+function getSelectedPublishedTools() {
+  const bySlug = new Map((state.publishedToolsShelf || []).map((tool) => [tool.slug, tool]));
+  return state.agentSelectedSlugs
+    .map((slug) => bySlug.get(slug))
+    .filter(Boolean);
+}
+
+function handlePublishedShelfChange(event) {
+  const input = event.target.closest('input[type="checkbox"][data-published-slug]');
+  if (!input) return;
+  const slug = input.getAttribute("data-published-slug");
+  if (!slug) return;
+  if (input.checked) {
+    if (!state.agentSelectedSlugs.includes(slug)) state.agentSelectedSlugs.push(slug);
+  } else {
+    state.agentSelectedSlugs = state.agentSelectedSlugs.filter((item) => item !== slug);
+  }
+  renderAgentBuilder();
+}
+
+function handlePublishedShelfClick(event) {
+  const button = event.target.closest("[data-shelf-move]");
+  if (!button) return;
+  const slug = button.getAttribute("data-slug");
+  const dir = button.getAttribute("data-shelf-move");
+  if (!slug || !dir) return;
+  const list = [...state.agentSelectedSlugs];
+  const index = list.indexOf(slug);
+  if (index < 0) return;
+  const swapWith = dir === "up" ? index - 1 : index + 1;
+  if (swapWith < 0 || swapWith >= list.length) return;
+  [list[index], list[swapWith]] = [list[swapWith], list[index]];
+  state.agentSelectedSlugs = list;
+  renderAgentBuilder();
+}
+
+function renderPublishedToolsShelf() {
+  const shelf = $("#published-tools-shelf");
+  if (!shelf) return;
+  if (!state.auth.token && !state.auth.authenticated) {
+    shelf.innerHTML = `<div class="published-shelf-empty">公開ツール棚を見るにはログインが必要です。</div>`;
+    return;
+  }
+  const tools = state.publishedToolsShelf || [];
+  if (tools.length === 0) {
+    shelf.innerHTML = `<div class="published-shelf-empty">まだ公開ツールがありません。<br>「ツール作成」で公開URLを発行すると、ここに部品として並びます。</div>`;
+    return;
+  }
+  const selectedSet = new Set(state.agentSelectedSlugs);
+  shelf.innerHTML = tools.map((tool) => {
+    const selected = selectedSet.has(tool.slug);
+    const order = selected ? state.agentSelectedSlugs.indexOf(tool.slug) + 1 : "-";
+    const openUrl = tool.apiUrl || tool.url || `#`;
+    return `
+      <article class="published-tool-row${selected ? " is-selected" : ""}">
+        <label>
+          <input type="checkbox" data-published-slug="${escapeAttribute(tool.slug)}" ${selected ? "checked" : ""} />
+        </label>
+        <div class="published-tool-main">
+          <strong>${selected ? `${order}. ` : ""}${escapeHtml(tool.title)}</strong>
+          <small>利用 ${tool.runCount || 0} 回 / ${escapeHtml(tool.visibility || "private")}</small>
+          <a href="${escapeAttribute(openUrl)}" target="_blank" rel="noopener">${escapeHtml(openUrl)}</a>
+        </div>
+        <div class="published-tool-order">
+          <button type="button" class="secondary" data-shelf-move="up" data-slug="${escapeAttribute(tool.slug)}" ${selected ? "" : "disabled"} aria-label="上へ">↑</button>
+          <button type="button" class="secondary" data-shelf-move="down" data-slug="${escapeAttribute(tool.slug)}" ${selected ? "" : "disabled"} aria-label="下へ">↓</button>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function getAgentIdeas() {
+  const published = getSelectedPublishedTools();
+  const savedNames = state.savedBlueprints.map((tool) => tool.title);
+  if (published.length === 0 && savedNames.length === 0) {
+    return [];
+  }
+
+  if (published.length > 0) {
+    const toolNames = published.map((tool) => tool.title);
+    const chain = published.map((tool) => ({
+      slug: tool.slug,
+      title: tool.title,
+      url: tool.apiUrl || tool.url,
+      toolMode: tool.toolMode,
+    }));
+    return [
+      {
+        title: "公開ツール連結エージェント",
+        description: "選んだ公開URLツールを上から順に実行し、結果をつないでゴールへ進めます。",
+        tools: toolNames,
+        chain,
+        output: "連結実行の最終成果物、各ツールの出力ログ",
+        source: "published",
+      },
+      {
+        title: "公開ツール＋自己改善エージェント",
+        description: "公開ツール連鎖のあと、自己チェックと改善を繰り返します。",
+        tools: toolNames,
+        chain,
+        output: "改善済みの最終成果物",
+        source: "published",
+      },
+    ];
+  }
+
   return [
     {
       title: "毎日の自動レポートAIエージェント",
       description: "保存済みツールを順番に実行し、情報収集からレポート作成までを自走でまとめます。",
-      tools: toolNames,
+      tools: savedNames,
+      chain: [],
       output: "日次レポート、要点、次に見るべき項目",
+      source: "saved",
     },
     {
       title: "SNS投稿準備AIエージェント",
       description: "調査した内容を、投稿文・画像指示・確認メモまで自走で展開します。",
-      tools: toolNames.slice(0, Math.max(1, Math.min(toolNames.length, 3))),
+      tools: savedNames.slice(0, Math.max(1, Math.min(savedNames.length, 3))),
+      chain: [],
       output: "X投稿案、画像生成指示、投稿前チェック",
-    },
-    {
-      title: "確認付き作業代行AIエージェント",
-      description: "各ツールの結果を自己チェックしながら進め、合格するまで改善します。",
-      tools: toolNames,
-      output: "確認リスト、作業ログ、最終出力",
+      source: "saved",
     },
   ];
 }
@@ -5466,7 +6396,7 @@ function syncAgentFormFromState() {
   if (logEl) {
     logEl.textContent = state.agentLogs.length
       ? state.agentLogs.join("\n")
-      : "まだ実行していません。ゴールを入れて「エージェントを実行」を押してください。";
+      : "まだ実行していません。公開ツールを選び、ゴールを入れて実行してください。";
   }
   if (resultEl) {
     resultEl.textContent = state.agentResult || "ここに完成した成果物が表示されます。";
@@ -5486,28 +6416,30 @@ function appendAgentLog(message) {
 }
 
 function renderAgentBuilder() {
+  renderPublishedToolsShelf();
   const ideas = getAgentIdeas();
   if (ideas.length === 0) {
     agentProposals.innerHTML = `
       <article class="agent-proposal-card">
-        <span class="tag">保存済みツールが必要</span>
-        <h2>まずツールを保存してください</h2>
-        <p>ツール作成画面で「ツールを作成する」を押し、保存にチェックして保存すると、ここにAIエージェント案が出ます。</p>
+        <span class="tag">部品が必要</span>
+        <h2>まず公開ツールを用意してください</h2>
+        <p>「ツール作成」で公開URLを発行すると、上の棚に部品が並びます。または保存済みツールでも案を出せます。</p>
       </article>
     `;
-    agentPreview.textContent = "保存済みツールを追加すると、作成できるAIエージェント案が表示されます。";
+    agentPreview.textContent = "公開ツールを選ぶと、つなぎ方がここに表示されます。";
     syncAgentFormFromState();
     return;
   }
 
+  if (state.selectedAgentIndex >= ideas.length) state.selectedAgentIndex = 0;
   const selectedIdea = ideas[state.selectedAgentIndex] || ideas[0];
   agentProposals.innerHTML = ideas
     .map((idea, index) => `
       <article class="agent-proposal-card${index === state.selectedAgentIndex ? " active" : ""}" data-agent-index="${index}">
-        <span class="tag">提案 ${index + 1}</span>
+        <span class="tag">${idea.source === "published" ? "公開ツール連携" : "保存済み"} ${index + 1}</span>
         <h2>${escapeHtml(idea.title)}</h2>
         <p>${escapeHtml(idea.description)}</p>
-        <p class="meta">使うツール：${escapeHtml(idea.tools.join("、"))}</p>
+        <p class="meta">使う部品：${escapeHtml(idea.tools.join(" → "))}</p>
       </article>
     `)
     .join("");
@@ -5519,18 +6451,40 @@ function renderAgentBuilder() {
 function buildAgentText(idea) {
   const goal = state.agentGoal.trim() || "（実行時にゴールを入力）";
   const maxLoops = state.agentMaxLoops || 3;
+  const chainLines = (idea.chain || [])
+    .map((tool, index) => `  ${index + 1}. ${tool.title} (${tool.slug}) ${tool.url || ""}`)
+    .join("\n");
   return `agent_name: ${idea.title}
 purpose: ${idea.description}
 goal: ${goal}
+published_tools_chain:
+${chainLines || "  （未選択：保存済みツール名のみ）"}
 tools:
 ${idea.tools.map((tool, index) => `  ${index + 1}. ${tool}`).join("\n")}
 self_running_loop:
-  1. 計画：ゴールと材料から実行手順を立てる
-  2. 実行：保存済みツールの役割に沿って順番に処理する
-  3. 自己チェック：ゴール達成度を判定する
-  4. 改善：不合格ならフィードバックを持って次の周へ（上限 ${maxLoops} 回）
+  1. 計画：ゴールから手順を立てる
+  2. 実行：公開ツールを順番にAPI呼び出し
+  3. 自己チェック：ゴール達成度を判定
+  4. 改善：不合格なら上限 ${maxLoops} 回まで再実行
 output: ${idea.output}
-note: このAIエージェントは自走ループ付きです。HTML書き出しで単体実行できます。`;
+note: 公開URLツールを部品として連結するエージェントです。`;
+}
+
+async function runPublishedToolInAgent(tool, context = {}) {
+  const data = await apiRequest(`/public/tools/${encodeURIComponent(tool.slug)}/run`, {
+    method: "POST",
+    body: JSON.stringify({
+      systemPrompt: `あなたは公開ツール「${tool.title}」です。エージェントのゴール達成に役立つ結果だけを日本語で出してください。`,
+      input: [
+        `ゴール: ${context.goal || ""}`,
+        context.step ? `今回の依頼: ${context.step}` : "ゴールに役立つ結果を出してください。",
+        context.material ? `材料:\n${context.material}` : "",
+        context.draft ? `これまでの結果:\n${String(context.draft).slice(0, 6000)}` : "",
+      ].filter(Boolean).join("\n\n"),
+      demo: false,
+    }),
+  });
+  return String(data.text || "").trim();
 }
 
 async function callStudioAi(systemPrompt, userInput) {
@@ -5643,9 +6597,11 @@ async function copyAgentResult() {
 
 async function runAgentLoop() {
   if (state.agentRunning) return;
+  await loadPublishedToolsShelf();
   const ideas = getAgentIdeas();
   if (ideas.length === 0) {
-    agentStatus.textContent = "先にツールを保存してください。";
+    agentStatus.textContent = "先に公開ツールを選ぶか、ツールを保存してください。";
+    renderAgentBuilder();
     return;
   }
 
@@ -5659,6 +6615,15 @@ async function runAgentLoop() {
   }
 
   const idea = ideas[state.selectedAgentIndex] || ideas[0];
+  const chain = Array.isArray(idea.chain) && idea.chain.length
+    ? idea.chain
+    : getSelectedPublishedTools().map((tool) => ({
+      slug: tool.slug,
+      title: tool.title,
+      url: tool.apiUrl || tool.url,
+      toolMode: tool.toolMode,
+    }));
+
   state.agentRunning = true;
   state.agentAbortRequested = false;
   state.agentLogs = [];
@@ -5667,6 +6632,11 @@ async function runAgentLoop() {
   agentStatus.textContent = "エージェントを実行中です…";
   appendAgentLog(`▶ 「${idea.title}」を開始（上限 ${state.agentMaxLoops} 周）`);
   appendAgentLog(`ゴール: ${state.agentGoal}`);
+  if (chain.length) {
+    appendAgentLog(`公開ツール連鎖: ${chain.map((tool) => tool.title).join(" → ")}`);
+  } else {
+    appendAgentLog("公開ツール未選択のため、AIのみで進めます。");
+  }
 
   let draft = "";
   let feedback = "";
@@ -5684,7 +6654,7 @@ async function runAgentLoop() {
         "あなたは実務AIエージェントの計画担当です。ゴール達成のための短い実行手順を、番号付きで3〜6個だけ日本語で出力してください。前置きは不要です。",
         [
           `エージェント名: ${idea.title}`,
-          `使えるツール: ${idea.tools.join("、")}`,
+          `使える公開ツール: ${chain.map((tool) => tool.title).join("、") || idea.tools.join("、")}`,
           `ゴール: ${state.agentGoal}`,
           state.agentMaterial.trim() ? `材料:\n${state.agentMaterial.trim()}` : "",
           feedback ? `前回の改善点:\n${feedback}` : "",
@@ -5695,24 +6665,71 @@ async function runAgentLoop() {
       const steps = parseAgentPlan(planText);
       steps.forEach((step, index) => appendAgentLog(`計画 ${index + 1}. ${step}`));
 
-      for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
-        if (state.agentAbortRequested) break;
-        const step = steps[stepIndex];
-        appendAgentLog(`実行 ${stepIndex + 1}/${steps.length}: ${step}`);
+      if (chain.length) {
+        appendAgentLog(`— ${round}周目：公開ツールを順番に実行 —`);
+        const parts = [];
+        for (let i = 0; i < chain.length; i += 1) {
+          if (state.agentAbortRequested) break;
+          const tool = chain[i];
+          appendAgentLog(`部品 ${i + 1}/${chain.length}: ${tool.title} を実行中…`);
+          try {
+            const toolOut = await runPublishedToolInAgent(tool, {
+              goal: state.agentGoal,
+              material: state.agentMaterial,
+              draft,
+              step: steps[Math.min(i, steps.length - 1)] || "ゴールに役立つ結果を出してください",
+            });
+            parts.push(`【${tool.title}】\n${toolOut || "（空の応答）"}`);
+            appendAgentLog(`✔ ${tool.title}: ${String(toolOut || "").slice(0, 120).replace(/\s+/g, " ")}…`);
+          } catch (toolError) {
+            const msg = toolError.message || String(toolError);
+            parts.push(`【${tool.title}】\nエラー: ${msg}`);
+            appendAgentLog(`✖ ${tool.title}: ${msg}`);
+          }
+        }
+        if (parts.length) {
+          draft = [
+            `ゴール: ${state.agentGoal}`,
+            "",
+            "公開ツール連結結果:",
+            parts.join("\n\n---\n\n"),
+            draft ? `\n\n（参考：前回下書き）\n${draft.slice(0, 2000)}` : "",
+          ].join("\n");
+        }
+      } else {
+        for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
+          if (state.agentAbortRequested) break;
+          const step = steps[stepIndex];
+          appendAgentLog(`実行 ${stepIndex + 1}/${steps.length}: ${step}`);
+          draft = await callStudioAi(
+            `あなたは「${idea.title}」の実行担当です。指定ステップだけを進め、これまでの下書きを更新した完成途中の成果物全文を日本語で出力してください。前置きは不要です。`,
+            [
+              `ゴール: ${state.agentGoal}`,
+              `使えるツールの役割: ${idea.tools.join("、")}`,
+              `今回のステップ: ${step}`,
+              `期待する最終出力: ${idea.output}`,
+              state.agentMaterial.trim() ? `材料:\n${state.agentMaterial.trim()}` : "",
+              draft ? `これまでの下書き:\n${draft}` : "これまでの下書き: （なし）",
+              feedback ? `改善してほしい点:\n${feedback}` : "",
+            ].filter(Boolean).join("\n\n"),
+          );
+        }
+      }
+      if (state.agentAbortRequested) break;
+
+      // 公開ツール結果をゴール向けに要約・整形
+      if (chain.length && draft) {
+        appendAgentLog(`— ${round}周目：結果の統合 —`);
         draft = await callStudioAi(
-          `あなたは「${idea.title}」の実行担当です。指定ステップだけを進め、これまでの下書きを更新した完成途中の成果物全文を日本語で出力してください。前置きは不要です。`,
+          `あなたは「${idea.title}」の統合担当です。各公開ツールの出力を、ゴール達成の最終成果物として読みやすく日本語でまとめ直してください。前置きは不要です。`,
           [
             `ゴール: ${state.agentGoal}`,
-            `使えるツールの役割: ${idea.tools.join("、")}`,
-            `今回のステップ: ${step}`,
             `期待する最終出力: ${idea.output}`,
-            state.agentMaterial.trim() ? `材料:\n${state.agentMaterial.trim()}` : "",
-            draft ? `これまでの下書き:\n${draft}` : "これまでの下書き: （なし）",
             feedback ? `改善してほしい点:\n${feedback}` : "",
+            `材料・各ツール出力:\n${draft}`,
           ].filter(Boolean).join("\n\n"),
         );
       }
-      if (state.agentAbortRequested) break;
 
       appendAgentLog(`— ${round}周目：自己チェック —`);
       const reviewText = await callStudioAi(
@@ -5993,9 +7010,11 @@ function buildStandaloneAgentHtml(idea) {
 }
 
 async function createAgent() {
+  await loadPublishedToolsShelf();
   const ideas = getAgentIdeas();
   if (ideas.length === 0) {
-    state.status = "AIエージェントを作るには、先にツールを保存してください。";
+    state.status = "AIエージェントを作るには、公開ツールを選ぶか、ツールを保存してください。";
+    agentStatus.textContent = state.status;
     renderAll();
     return;
   }
@@ -6006,31 +7025,24 @@ async function createAgent() {
 
   const idea = ideas[state.selectedAgentIndex] || ideas[0];
   const content = buildAgentText(idea);
-  const html = buildStandaloneAgentHtml(idea);
   state.createdAgent = {
     title: idea.title,
     tools: [...idea.tools],
+    chain: idea.chain || getSelectedPublishedTools(),
     content,
     goal: state.agentGoal,
     material: state.agentMaterial,
     maxLoops: state.agentMaxLoops,
-    html,
   };
-  try {
-    if (navigator.clipboard) await navigator.clipboard.writeText(content);
-    else fallbackCopy(content);
-  } catch (error) {
-    fallbackCopy(content);
-  }
-  downloadBlob(new Blob([html], { type: "text/html;charset=utf-8" }), `${sanitizeFileName(idea.title)}.html`);
-  downloadGeneratedFile(content, "agent", idea.title);
-  state.status = "自走対応のHTMLと設計内容を出力しました。保存する場合は「保存する」を押してください。APIキー入りのため共有しないでください。";
+  agentPreview.textContent = content;
+  agentStatus.textContent = "エージェント設定を確定しました。「エージェントを実行」で公開ツールをつないで動かせます。";
+  state.status = agentStatus.textContent;
   renderAll();
 }
 
 function saveAgent() {
   if (!state.createdAgent) {
-    state.status = "先に「HTMLで書き出す（自走対応）」を押してください。";
+    state.status = "先に「設定を確定する」を押してください。";
     renderAll();
     return;
   }
@@ -6040,14 +7052,9 @@ function saveAgent() {
     renderAll();
     return;
   }
-  const key = String(state.settings.userApiKey || readSessionApiKey() || "").trim();
-  const safeHtml = key && state.createdAgent.html
-    ? state.createdAgent.html.split(key).join("")
-    : state.createdAgent.html;
   state.savedAgents.unshift({
     ...state.createdAgent,
-    html: safeHtml,
-    content: redactApiKey(state.createdAgent.content),
+    content: redactApiKey(state.createdAgent.content || ""),
   });
   state.status = "AIエージェントを保存済みに追加しました。";
   renderAll();
@@ -6122,7 +7129,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=48").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=77").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
