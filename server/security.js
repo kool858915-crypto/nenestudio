@@ -6,7 +6,7 @@ export const CONTENT_SECURITY_POLICY = [
   "script-src 'self' https://accounts.google.com https://apis.google.com https://www.gstatic.com https://appleid.cdn-apple.com https://pagead2.googlesyndication.com https://www.googletagservices.com https://contextual.media.net",
   "style-src 'self' 'unsafe-inline' https://accounts.google.com https://www.gstatic.com",
   "img-src 'self' data: https: blob:",
-  "connect-src 'self' https://nenestudio.onrender.com https://api.nenestudio.net https://generativelanguage.googleapis.com https://api.openai.com https://accounts.google.com https://www.googleapis.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.google.com",
+  "connect-src 'self' https://api.nenestudio.net https://generativelanguage.googleapis.com https://api.openai.com https://accounts.google.com https://www.googleapis.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://*.google.com",
   "frame-src https://accounts.google.com https://appleid.apple.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://pagead2.googlesyndication.com",
   "font-src 'self' https://fonts.gstatic.com https://www.gstatic.com",
   "object-src 'none'",

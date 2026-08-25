@@ -268,7 +268,7 @@ function servePublishedToolPage(request, response, slug) {
     "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
-    "connect-src 'self' https://api.nenestudio.net https://nenestudio.onrender.com",
+    "connect-src 'self' https://api.nenestudio.net",
     "object-src 'none'",
     "base-uri 'self'",
   ].join("; "));

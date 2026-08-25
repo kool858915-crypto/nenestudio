@@ -3,14 +3,16 @@
   const isLoopback = hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
   const isLan = isPrivateLanHost(hostname);
   const isTunnel = isTunnelHost(hostname);
-  // スマホからパソコンの番号／トンネルで開いたときは、同じサーバーを使う（本番APIへ飛ばさない）
-  const isLocal = isLoopback || isLan || isTunnel || location.protocol === "file:";
-  const renderApi = "https://nenestudio.onrender.com/api";
-  const customApi = "https://api.nenestudio.net/api";
+  const isFile = location.protocol === "file:";
+  // AWS 1台構成：画面もAPIも同じサーバーが配信するので、常に同一オリジンの /api を使う。
+  // 同一オリジンなら CORS も Cookie も設定ミスで壊れない（過去の公開トラブルの原因を根絶）。
+  const isLocal = isLoopback || isLan || isTunnel || isFile;
+  // file:// で開いたときだけ、呼び先が無いので本番APIへ逃がす。
+  const fallbackApi = "https://api.nenestudio.net/api";
 
   window.NENE_CONFIG = {
-    apiBase: isLocal ? "/api" : customApi,
-    apiBaseFallback: isLocal ? "/api" : renderApi,
+    apiBase: isFile ? fallbackApi : "/api",
+    apiBaseFallback: isFile ? fallbackApi : "/api",
     appHost: hostname,
     isLocal,
   };
