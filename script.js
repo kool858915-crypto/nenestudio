@@ -1278,6 +1278,11 @@ function bindEvents() {
     button.addEventListener("click", () => activateScreen(button.dataset.goto));
   });
 
+  const billingPortalButton = $("#open-billing-portal");
+  if (billingPortalButton) {
+    billingPortalButton.addEventListener("click", openBillingPortal);
+  }
+
   $$("[data-select-plan]").forEach((button) => {
     button.addEventListener("click", () => {
       const plan = button.dataset.selectPlan;
@@ -1608,6 +1613,36 @@ function runMainAction() {
   activateScreen(nextByScreen[state.currentScreen] || "create");
 }
 
+function renderSubscriptionManagePanel() {
+  const panel = $("#manage-subscription-panel");
+  if (!panel) return;
+  const user = state.auth.user;
+  const plan = user?.subscriptionPlan || "free";
+  // 有料プランを契約している人にだけ「契約管理」を出す
+  panel.hidden = !(user && plan && plan !== "free");
+}
+
+async function openBillingPortal() {
+  if (!state.auth.user) {
+    state.status = "ログインしてからご利用ください。";
+    renderAll();
+    activateScreen("login");
+    return;
+  }
+  try {
+    const data = await apiRequest("/billing/portal", { method: "POST" });
+    if (data?.url) {
+      window.location.href = data.url;
+      state.status = "Stripeの契約管理画面を開きました。";
+    } else {
+      state.status = "契約管理画面のURLを取得できませんでした。";
+    }
+  } catch (error) {
+    state.status = error.message;
+  }
+  renderAll();
+}
+
 function renderAll() {
   renderCategories();
   renderHearingOptions();
@@ -1627,6 +1662,7 @@ function renderAll() {
   renderCreateProgress();
   renderLanguage();
   renderAuthUi();
+  renderSubscriptionManagePanel();
 }
 
 function renderLanguage() {
@@ -7129,7 +7165,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=79").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=80").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });

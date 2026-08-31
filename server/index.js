@@ -790,6 +790,27 @@ app.post("/api/billing/create-checkout-session", requireAuth, async (request, re
   }
 });
 
+app.post("/api/billing/portal", requireAuth, async (request, response) => {
+  if (!stripe) {
+    return response.status(500).json({ error: "Stripeのサーバー設定が未完了です。" });
+  }
+  const customerId = request.user.stripeCustomerId;
+  if (!customerId) {
+    return response.status(400).json({ error: "有料プランのご契約が見つかりません。決済後にご利用いただけます。" });
+  }
+
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${publicAppUrl}/index.html?stripe=portal`,
+    });
+    return response.json({ url: session.url });
+  } catch (error) {
+    const message = error?.raw?.message || error.message || "契約管理画面の作成に失敗しました。";
+    return response.status(502).json({ error: message });
+  }
+});
+
 app.post("/api/ai/generate", requireAuth, async (request, response) => {
   const { systemPrompt, input, userApiKey, provider, requireSearch } = request.body || {};
   if (!input) {

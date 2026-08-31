@@ -20,7 +20,7 @@
   <meta name="twitter:description" content="カテゴリを選んで質問に答えるだけ。株・FX・ニュース分析・SNS運用などのAIツールが作れて、公開URLとしてすぐ使えます。" />
   <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="icon" href="./assets/icon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="./styles.css?v=79" />
+    <link rel="stylesheet" href="./styles.css?v=80" />
     <!-- AdSense: 広告再開時に戻す
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9344128846274010" crossorigin="anonymous"></script>
     -->
@@ -751,6 +751,12 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
               <button class="secondary plan-link-button" type="button" data-select-plan="ai100">このプランを選ぶ</button>
             </article>
           </div>
+          <div class="policy-panel plan-summary-panel" id="manage-subscription-panel" hidden>
+            <h2>契約中のプランを管理</h2>
+            <p>解約、支払い方法（カード）の変更、領収書・請求書の取得ができます。ボタンを押すと Stripe の管理画面が開きます。</p>
+            <button class="secondary plan-link-button" type="button" id="open-billing-portal">解約・支払い方法の変更</button>
+            <p class="plan-note">解約すると、次回の請求は行われません。ご契約中の期間が終わるまではそのままご利用いただけます。</p>
+          </div>
           <div class="policy-panel plan-summary-panel">
             <h2>選び方</h2>
             <ul>
@@ -1049,9 +1055,9 @@ prompt: ニュースを読み、投資判断ではなく整理情報としてま
         <a class="primary ad-launch-button" id="ad-launch" hidden>ツールを起動する</a>
       </div>
     </div>
-    <script src="./ads.config.js?v=79"></script>
-    <script src="./ads.js?v=79"></script>
-    <script src="./config.js?v=79"></script>
-    <script src="./script.js?v=79"></script>
+    <script src="./ads.config.js?v=80"></script>
+    <script src="./ads.js?v=80"></script>
+    <script src="./config.js?v=80"></script>
+    <script src="./script.js?v=80"></script>
   </body>
 </html>
