@@ -84,6 +84,7 @@ export const PUBLIC_STATIC_FILES = new Set([
   "/manifest.webmanifest",
   "/sw.js",
   "/robots.txt",
+  "/sitemap.xml",
 ]);
 
 export function isPublicStaticPath(requestPath) {
