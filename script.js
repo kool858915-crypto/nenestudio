@@ -200,6 +200,7 @@ const screenCopy = {
   agent: ["AIエージェントを作成します", "HTMLで書き出す（自走対応）"],
   terms: ["利用規約", "作る画面へ戻る"],
   privacy: ["プライバシーポリシー", "作る画面へ戻る"],
+  tokushoho: ["特定商取引法に基づく表記", "作る画面へ戻る"],
   contact: ["お問い合わせ", "作る画面へ戻る"],
   settings: ["プランとAPI設定", "保存する"],
 };
@@ -219,13 +220,14 @@ const screenCopyEn = {
   agent: ["Create AI Agent", "Export HTML (self-running)"],
   terms: ["Terms of Use", "Back to Build"],
   privacy: ["Privacy Policy", "Back to Build"],
+  tokushoho: ["Legal Notice (Japan)", "Back to Build"],
   contact: ["Contact", "Back to Build"],
   settings: ["Plan and API Settings", "Save"],
 };
 
 const uiText = {
   ja: {
-    nav: { create: "作る", login: "ログイン", usage: "使い方", implement: "無料で実装", plans: "プラン", apikey: "APIキー設定", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", contact: "お問い合わせ", settings: "設定" },
+    nav: { create: "作る", login: "ログイン", usage: "使い方", implement: "無料で実装", plans: "プラン", apikey: "APIキー設定", saved: "保存済み", agent: "AIエージェント作成", terms: "利用規約", privacy: "プライバシーポリシー", tokushoho: "特定商取引法に基づく表記", contact: "お問い合わせ", settings: "設定" },
     brand: "AIツール作成",
     launch: "プレビューする",
     exportTitle: "完成：公開URLを発行",
@@ -237,7 +239,7 @@ const uiText = {
     publish: "公開URLを発行する",
   },
   en: {
-    nav: { create: "Build", login: "Login", usage: "How to Use", implement: "Build Free", plans: "Plans", apikey: "API Key", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", contact: "Contact", settings: "Settings" },
+    nav: { create: "Build", login: "Login", usage: "How to Use", implement: "Build Free", plans: "Plans", apikey: "API Key", saved: "Saved", agent: "AI Agent", terms: "Terms", privacy: "Privacy Policy", tokushoho: "Legal Notice (Japan)", contact: "Contact", settings: "Settings" },
     brand: "AI Tool Builder",
     launch: "Preview",
     exportTitle: "Done: Issue your URL",
@@ -7171,7 +7173,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=81").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=82").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
