@@ -1137,6 +1137,12 @@ function persistAuthToken(token) {
   else sessionStorage.removeItem(AUTH_TOKEN_KEY);
 }
 
+// Cookieだけでログインが復元された場合（新しいタブ・ブラウザ再起動など）は
+// sessionStorage の控え(token)が無い。どちらか一方でも有効ならログイン済みとして扱う。
+function hasAuthSession() {
+  return Boolean(state.auth.token) || state.auth.authenticated === true;
+}
+
 function clearAuthToken() {
   state.auth.token = "";
   sessionStorage.removeItem(AUTH_TOKEN_KEY);
@@ -2545,7 +2551,7 @@ function renderPaymentSettings() {
 }
 
 async function openStripeCheckout() {
-  if (!state.auth.token) {
+  if (!hasAuthSession()) {
     state.status = "Stripe決済を開始するにはログインしてください。";
     renderAll();
     activateScreen("login");
@@ -6178,7 +6184,7 @@ async function saveLatestToolToServer() {
 }
 
 async function loadSavedToolsFromServer() {
-  if (!state.auth.token) return;
+  if (!hasAuthSession()) return;
   try {
     const data = await apiRequest("/tools");
     const serverTools = data.tools.map((tool) => tool.payload);
@@ -6534,7 +6540,7 @@ async function callStudioAi(systemPrompt, userInput) {
       : callGeminiDirect(apiKey, systemPrompt, userInput);
   }
 
-  if (!state.auth.token) {
+  if (!hasAuthSession()) {
     throw new Error("APIキーが未設定です。「設定」でキーを保存するか、ログインして有料プランの運営APIを使ってください。");
   }
 
@@ -7165,7 +7171,7 @@ function registerServiceWorker() {
     hasReloadedForUpdate = true;
     window.location.reload();
   });
-  navigator.serviceWorker.register("./sw.js?v=80").then((registration) => {
+  navigator.serviceWorker.register("./sw.js?v=81").then((registration) => {
     registration.update().catch(() => {});
     if (registration.waiting) {
       registration.waiting.postMessage({ type: "SKIP_WAITING" });
