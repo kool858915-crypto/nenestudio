@@ -1219,6 +1219,25 @@ button {
   color: var(--muted);
 }
 
+.site-legal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  justify-content: center;
+  padding: 18px 16px 28px;
+  font-size: 13px;
+}
+
+.site-legal-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-legal-footer a:hover {
+  color: var(--blue);
+  text-decoration: underline;
+}
+
 .legal-table {
   width: 100%;
   border-collapse: collapse;

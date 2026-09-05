@@ -85,6 +85,10 @@ export const PUBLIC_STATIC_FILES = new Set([
   "/sw.js",
   "/robots.txt",
   "/sitemap.xml",
+  "/privacy.html",
+  "/terms.html",
+  "/tokushoho.html",
+  "/contact.html",
 ]);
 
 export function isPublicStaticPath(requestPath) {
