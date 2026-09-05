@@ -3,8 +3,8 @@
  *
  * 現在は A8 のみ配信。banners に入れた中から毎回1件をランダムで表示する。
  * waitSeconds は配列なら、その秒数から毎回1つをランダムに選ぶ。
- * AdSense を再開する場合は adsense.slot に広告ユニットIDを入れ、
- * index.html の AdSense スクリプトのコメントを外す。
+ * AdSense を使う場合は adsense.client に自分のパブリッシャーID、
+ * adsense.slot に広告ユニットIDを入れる（両方そろって初めて配信される）。
  *
  * 追加するときは A8 の管理画面が出すタグから、以下をそのまま写す。
  *   linkUrl  = <a href="..."> の中身
@@ -17,7 +17,7 @@ window.NENE_ADS = {
   waitSeconds: [5, 15, 30],
 
   adsense: {
-    client: "ca-pub-9344128846274010",
+    client: "",
     slot: "",
   },
 
